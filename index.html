@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!-- Эта строка говорит браузеру, что сайт адаптирован под мобильные устройства -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой Веб-Дневник</title>
+    <!-- Подключаем наш файл стилей -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+            <header>
+                <h1>Мой Дневник</h1>
+                <div class="header-controls">
+                    <!-- НОВОЕ: Кнопки экспорта/импорта -->
+                    <div class="data-buttons">
+                        <button type="button" id="export-btn" class="small-btn" title="Экспорт в JSON">📤</button>
+                        <button type="button" id="import-btn" class="small-btn" title="Импорт из JSON">📥</button>
+                        <!-- Скрытый input для выбора файла -->
+                        <input type="file" id="import-file" accept=".json" style="display: none;">
+                    </div>
+                    
+                    <div class="theme-switcher">
+                        <button type="button" class="theme-btn" data-theme="light" title="Светлая">☀️</button>
+                        <button type="button" class="theme-btn" data-theme="dark" title="Тёмная">🌙</button>
+                        <button type="button" class="theme-btn" data-theme="pastel" title="Пастельная">🌸</button>
+                    </div>
+                    <div id="save-status">Готов к работе</div>
+                </div>
+            </header>
+
+        <main>
+            <!-- НОВОЕ: Календарь настроений -->
+            <section class="calendar-section">
+                <div class="calendar-header">
+                    <button type="button" id="prev-month" class="calendar-nav">←</button>
+                    <h2 id="current-month">Октябрь 2026</h2>
+                    <button type="button" id="next-month" class="calendar-nav">→</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <div>Пн</div>
+                    <div>Вт</div>
+                    <div>Ср</div>
+                    <div>Чт</div>
+                    <div>Пт</div>
+                    <div>Сб</div>
+                    <div>Вс</div>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- Дни месяца будут добавляться сюда через JavaScript -->
+                </div>
+            </section>
+                    <!-- НОВОЕ: График настроений -->
+            <section class="chart-section">
+                <div class="chart-header">
+                    <h2>Настроение за месяц</h2>
+                    <span id="chart-average">—</span>
+                </div>
+
+                <canvas id="mood-chart" aria-label="График настроений за месяц">
+                    Ваш браузер не поддерживает Canvas.
+                </canvas>
+
+                <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
+            </section>
+
+            <section class="input-area">
+            <!-- Форма создания новой записи -->
+            <section class="input-area">
+                <!-- Выбор настроения: просто кнопки с эмодзи -->
+                <div class="mood-selector">
+                    <span>Настроение:</span>
+                    <button type="button" class="mood-btn" data-mood="😡">😡</button>
+                    <button type="button" class="mood-btn" data-mood="😕">😕</button>
+                    <button type="button" class="mood-btn" data-mood="😐">😐</button>
+                    <button type="button" class="mood-btn" data-mood="🙂">🙂</button>
+                    <button type="button" class="mood-btn" data-mood="😁">😁</button>
+                </div>
+                
+                <!-- Поле для ввода текста -->
+                <textarea id="entry-text" placeholder="О чём думаешь сегодня?"></textarea>
+                <!-- Счётчик слов -->
+                <div class="word-count">Слов: <span id="word-count-value">0</span></div>
+                <!-- Кнопка сохранения -->
+                <button id="save-btn" class="primary-btn">Сохранить запись</button>
+            </section>
+
+            <!-- Разделитель -->
+            <hr class="divider">
+            <!-- НОВОЕ: Поле поиска -->
+            <div class="search-area">
+                <input type="text" id="search-input" placeholder="🔍 Поиск по тексту или настроению...">
+            </div>
+
+            <!-- Сюда будем выводить список сохранённых записей -->
+            <section id="entries-list">
+                <!-- Записи будут добавляться сюда через JavaScript -->
+            </section>
+        </main>
+
+    <!-- Подключаем наш скрипт. defer означает, что он запустится после загрузки HTML -->
+    <script src="script.js" defer></script>
+</body>
+</html>

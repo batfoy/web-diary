@@ -1,0 +1,415 @@
+/* === СБРОС И БАЗА === */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* === 📅 КАЛЕНДАРЬ НАСТРОЕНИЙ === */
+.calendar-section {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.calendar-header h2 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.calendar-nav {
+    background: var(--mood-btn-bg);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.calendar-nav:hover {
+    background: var(--mood-btn-selected-bg);
+    transform: scale(1.05);
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.calendar-day {
+    aspect-ratio: 1; /* Делает ячейку квадратной */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mood-btn-bg);
+    border-radius: 8px;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+    position: relative;
+}
+
+.calendar-day:hover {
+    transform: scale(1.05);
+    background: var(--mood-btn-selected-bg);
+}
+
+.calendar-day.empty {
+    background: transparent;
+    cursor: default;
+}
+
+.calendar-day.empty:hover {
+    transform: none;
+}
+
+.calendar-day.today {
+    border: 2px solid var(--accent-color);
+    font-weight: bold;
+}
+
+.calendar-day .day-number {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.5em;
+    color: var(--text-muted);
+}
+
+/* === 🎨 ТЕМА ПО УМОЛЧАНИЮ (Светлая) === */
+/* Мы объявляем "переменные" — имена для цветов. 
+   Везде ниже мы будем ссылаться на них через var(--имя) */
+:root {
+    --bg-color: #f5f5f5;
+    --card-bg: #ffffff;
+    --text-color: #333333;
+    --text-muted: #888888;
+    --border-color: #dddddd;
+    --accent-color: #4CAF50;
+    --accent-hover: #45a049;
+    --input-bg: #ffffff;
+    --mood-btn-bg: #f0f0f0;
+    --mood-btn-selected-bg: #e8f5e9;
+}
+
+/* === 🌙 ТЁМНАЯ ТЕМА === */
+body.theme-dark {
+    --bg-color: #1e1e1e;
+    --card-bg: #2d2d2d;
+    --text-color: #e0e0e0;
+    --text-muted: #999999;
+    --border-color: #444444;
+    --accent-color: #66bb6a;
+    --accent-hover: #81c784;
+    --input-bg: #3a3a3a;
+    --mood-btn-bg: #3a3a3a;
+    --mood-btn-selected-bg: #2e4a2f;
+}
+
+/* === 🌸 ПАСТЕЛЬНАЯ ТЕМА === */
+body.theme-pastel {
+    --bg-color: #fdf6f0;
+    --card-bg: #fff9f5;
+    --text-color: #5d4037;
+    --text-muted: #a1887f;
+    --border-color: #f0d9cc;
+    --accent-color: #f48fb1;
+    --accent-hover: #f06292;
+    --input-bg: #ffffff;
+    --mood-btn-bg: #fce4ec;
+    --mood-btn-selected-bg: #f8bbd0;
+}
+
+/* === ПРИМЕНЯЕМ ПЕРЕМЕННЫЕ К ЭЛЕМЕНТАМ === */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    /* Плавный переход при смене темы */
+    transition: background-color 0.3s, color 0.3s;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* === ПЕРЕКЛЮЧАТЕЛЬ ТЕМ === */
+.theme-switcher {
+    display: flex;
+    gap: 5px;
+}
+
+.theme-btn {
+    font-size: 1.2em;
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: transform 0.1s, border-color 0.2s;
+}
+
+.theme-btn:hover, .theme-btn.selected {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+}
+
+#save-status {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    min-width: 120px;
+    text-align: right;
+}
+
+/* === ЗОНА ВВОДА === */
+.input-area {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.mood-selector {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mood-btn {
+    font-size: 1.5em;
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.1s, border-color 0.2s, background-color 0.2s;
+}
+
+.mood-btn:hover, .mood-btn.selected {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+textarea {
+    width: 100%;
+    height: 120px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1em;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 5px;
+    background: var(--input-bg);
+    color: var(--text-color);
+    transition: border-color 0.2s;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.word-count {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    text-align: right;
+    margin-bottom: 10px;
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.primary-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.divider {
+    margin: 30px 0;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+}
+
+/* === ПОИСК === */
+.search-area {
+    margin-bottom: 15px;
+}
+
+.search-area input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1em;
+    font-family: inherit;
+    background: var(--input-bg);
+    color: var(--text-color);
+}
+
+.search-area input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* === КАРТОЧКИ ЗАПИСЕЙ === */
+.entry-card {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.entry-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.entry-mood {
+    font-size: 1.2em;
+}
+
+.entry-text {
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 0 5px;
+    opacity: 0.5;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* === КНОПКИ ЭКСПОРТА/ИМПОРТА === */
+.data-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.small-btn {
+    font-size: 1.2em;
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: transform 0.1s, border-color 0.2s;
+}
+
+.small-btn:hover {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+}
+
+/* === СЧЁТЧИК СЛОВ В КАРТОЧКЕ === */
+.entry-stats {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-top: 8px;
+    text-align: right;
+}
+
+/* === 📈 ГРАФИК НАСТРОЕНИЙ === */
+.chart-section {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.chart-header h2 {
+    font-size: 1.05em;
+    font-weight: 600;
+}
+
+#chart-average {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+/* ВАЖНО: размер задаём через CSS, а внутренний буфер — через JS */
+#mood-chart {
+    display: block;
+    width: 100%;
+    height: 180px;
+}
+
+.chart-summary {
+    margin-top: 8px;
+    font-size: 0.8em;
+    color: var(--text-muted);
+    text-align: center;
+}
