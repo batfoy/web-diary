@@ -2,103 +2,186 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Эта строка говорит браузеру, что сайт адаптирован под мобильные устройства -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Мой Веб-Дневник</title>
-    <!-- Подключаем наш файл стилей -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-            <header>
-                <h1>Мой Дневник</h1>
-                <div class="header-controls">
-                    <!-- НОВОЕ: Кнопки экспорта/импорта -->
-                    <div class="data-buttons">
-                        <button type="button" id="export-btn" class="small-btn" title="Экспорт в JSON">📤</button>
-                        <button type="button" id="import-btn" class="small-btn" title="Импорт из JSON">📥</button>
-                        <!-- Скрытый input для выбора файла -->
-                        <input type="file" id="import-file" accept=".json" style="display: none;">
-                    </div>
-                    
-                    <div class="theme-switcher">
-                        <button type="button" class="theme-btn" data-theme="light" title="Светлая">☀️</button>
-                        <button type="button" class="theme-btn" data-theme="dark" title="Тёмная">🌙</button>
-                        <button type="button" class="theme-btn" data-theme="pastel" title="Пастельная">🌸</button>
-                    </div>
-                    <div id="save-status">Готов к работе</div>
-                </div>
-            </header>
 
-        <main>
-            <!-- НОВОЕ: Календарь настроений -->
-            <section class="calendar-section">
-                <div class="calendar-header">
-                    <button type="button" id="prev-month" class="calendar-nav">←</button>
-                    <h2 id="current-month">Октябрь 2026</h2>
-                    <button type="button" id="next-month" class="calendar-nav">→</button>
-                </div>
-                <div class="calendar-weekdays">
-                    <div>Пн</div>
-                    <div>Вт</div>
-                    <div>Ср</div>
-                    <div>Чт</div>
-                    <div>Пт</div>
-                    <div>Сб</div>
-                    <div>Вс</div>
-                </div>
-                <div id="calendar-grid" class="calendar-grid">
-                    <!-- Дни месяца будут добавляться сюда через JavaScript -->
-                </div>
-            </section>
-                    <!-- НОВОЕ: График настроений -->
-            <section class="chart-section">
-                <div class="chart-header">
-                    <h2>Настроение за месяц</h2>
-                    <span id="chart-average">—</span>
-                </div>
+    <!-- ШАПКА С ГАМБУРГЕРОМ И ЛУПОЙ -->
+    <header class="main-header">
+        <button id="menu-btn" class="icon-btn" title="Меню">☰</button>
+        <h1 id="header-title">Мой Дневник</h1>
+        <button id="search-btn" class="icon-btn" title="Поиск">🔍</button>
+    </header>
 
-                <canvas id="mood-chart" aria-label="График настроений за месяц">
-                    Ваш браузер не поддерживает Canvas.
-                </canvas>
+    <!-- ПАНЕЛЬ ПОИСКА (скрыта по умолчанию) -->
+    <div id="search-bar" class="search-bar hidden">
+        <button id="close-search-btn" class="icon-btn">←</button>
+        <input type="text" id="search-input" placeholder="Поиск по тексту или настроению...">
+    </div>
 
-                <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
-            </section>
-
-            <section class="input-area">
-            <!-- Форма создания новой записи -->
-            <section class="input-area">
-                <!-- Выбор настроения: просто кнопки с эмодзи -->
-                <div class="mood-selector">
-                    <span>Настроение:</span>
-                    <button type="button" class="mood-btn" data-mood="😡">😡</button>
-                    <button type="button" class="mood-btn" data-mood="😕">😕</button>
-                    <button type="button" class="mood-btn" data-mood="😐">😐</button>
-                    <button type="button" class="mood-btn" data-mood="🙂">🙂</button>
-                    <button type="button" class="mood-btn" data-mood="😁">😁</button>
+    <!-- БОКОВОЕ МЕНЮ (ГАМБУРГЕР) -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2>Меню</h2>
+            <button id="close-sidebar-btn" class="icon-btn">✕</button>
+        </div>
+        <div class="sidebar-menu">
+            <button id="sidebar-calendar-btn" class="sidebar-menu-btn">📅 Календарь</button>
+            <div class="sidebar-divider"></div>
+            
+            <div class="sidebar-submenu">
+                <button id="sidebar-theme-toggle" class="sidebar-menu-btn">🎨 Тема</button>
+                <div id="theme-options" class="theme-options hidden">
+                    <button class="theme-btn" data-theme="light">☀️ Светлая</button>
+                    <button class="theme-btn" data-theme="dark">🌙 Тёмная</button>
+                    <button class="theme-btn" data-theme="pastel">🌸 Пастельная</button>
+                    <div class="theme-coming-soon">Следующие темы скоро...</div>
                 </div>
-                
-                <!-- Поле для ввода текста -->
-                <textarea id="entry-text" placeholder="О чём думаешь сегодня?"></textarea>
-                <!-- Счётчик слов -->
-                <div class="word-count">Слов: <span id="word-count-value">0</span></div>
-                <!-- Кнопка сохранения -->
-                <button id="save-btn" class="primary-btn">Сохранить запись</button>
-            </section>
+            </div>
+            <div class="sidebar-divider"></div>
+            
+            <button id="sidebar-export-btn" class="sidebar-menu-btn">📤 Экспорт</button>
+            <div class="sidebar-divider"></div>
+            <button id="sidebar-import-btn" class="sidebar-menu-btn">📥 Импорт</button>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+        </div>
+    </aside>
 
-            <!-- Разделитель -->
-            <hr class="divider">
-            <!-- НОВОЕ: Поле поиска -->
-            <div class="search-area">
-                <input type="text" id="search-input" placeholder="🔍 Поиск по тексту или настроению...">
+    <main>
+        <!-- ЦИТАТА ДНЯ -->
+        <section class="quote-section">
+            <p id="daily-quote-text">Загрузка цитаты...</p>
+            <span id="daily-quote-author"></span>
+        </section>
+                <!-- КАЛЕНДАРЬ ДЛЯ ПК (виден только на больших экранах) -->
+        <section class="calendar-section-desktop hidden">
+            <div class="calendar-header">
+                <button id="prev-month-desktop" class="calendar-nav">←</button>
+                <h3 id="calendar-month-label-desktop"></h3>
+                <button id="next-month-desktop" class="calendar-nav">→</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div>Пн</div><div>Вт</div><div>Ср</div>
+                <div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+            </div>
+            <div id="calendar-grid-desktop" class="calendar-grid"></div>
+        </section>
+        <!-- ГРАФИК НАСТРОЕНИЯ -->
+        <section class="chart-section">
+            <div class="chart-header">
+                <h2>Настроение за месяц</h2>
+                <span id="chart-average">—</span>
+            </div>
+            <canvas id="mood-chart" aria-label="График настроений"></canvas>
+            <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
+        </section>
+
+        <!-- СПИСОК ЗАПИСЕЙ -->
+        <section id="entries-list" class="entries-list"></section>
+    </main>
+
+    <!-- СВЕТЯЩАЯСЯ КНОПКА "+" -->
+    <button id="fab-add" class="fab-button" title="Новая запись"><span>+</span></button>
+
+    <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ -->
+    <div id="mood-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content mood-modal-content">
+            <h2>Как прошел ваш день?</h2>
+            <div class="mood-grid" id="mood-grid"></div>
+            <button class="modal-close-text" id="close-mood-modal">Отмена</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СОЗДАНИЯ/РЕДАКТИРОВАНИЯ -->
+    <div id="entry-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content entry-modal-content">
+            <div class="entry-modal-header">
+                <input type="date" id="entry-date-input" class="date-picker">
+                <span id="selected-mood-display" class="selected-mood-display">😐</span>
+                <button class="modal-close-btn" id="close-entry-modal">✕</button>
+            </div>
+            <div class="entry-form">
+                <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)">
+                <textarea id="entry-text" class="entry-text-input" placeholder="О чем вы хотите написать?"></textarea>
+            </div>
+            <div class="entry-actions">
+                <button id="cancel-entry-btn" class="btn-secondary">Отмена</button>
+                <button id="save-entry-btn" class="btn-primary">Сохранить</button>
+                <button id="update-entry-btn" class="btn-primary hidden">Обновить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <p id="confirm-message">Вы уверены?</p>
+            <div class="modal-buttons">
+                <button type="button" id="confirm-cancel" class="modal-btn secondary">Отмена</button>
+                <button type="button" id="confirm-ok" class="modal-btn primary">Да</button>
+            </div>
+        </div>
+    </div>
+        <!-- КАЛЕНДАРЬ -->
+    <div id="calendar-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content calendar-modal-content">
+            <div class="entry-modal-header">
+                <button id="close-calendar-btn" class="back-btn">← Назад</button>
+                <h2>Календарь</h2>
+                <span></span>
             </div>
 
-            <!-- Сюда будем выводить список сохранённых записей -->
-            <section id="entries-list">
-                <!-- Записи будут добавляться сюда через JavaScript -->
-            </section>
-        </main>
+            <!-- Переключатель месяца -->
+            <div class="calendar-header">
+                <button id="prev-month-btn" class="calendar-nav">←</button>
+                <h3 id="calendar-month-label"></h3>
+                <button id="next-month-btn" class="calendar-nav">→</button>
+            </div>
 
-    <!-- Подключаем наш скрипт. defer означает, что он запустится после загрузки HTML -->
+            <!-- Названия дней недели -->
+            <div class="calendar-weekdays">
+                <div>Пн</div><div>Вт</div><div>Ср</div>
+                <div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+            </div>
+
+            <!-- Сетка дней (заполняет JS) -->
+            <div id="calendar-grid" class="calendar-grid"></div>
+
+            <p class="calendar-hint">Нажми на день, чтобы увидеть записи</p>
+        </div>
+    </div>
+
+    <!-- ЗАПИСИ ВЫБРАННОГО ДНЯ -->
+    <div id="day-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="entry-modal-header">
+                <h2 id="day-modal-title">Записи за день</h2>
+                <button id="day-modal-close" class="modal-close-btn">✕</button>
+            </div>
+            <div id="day-modal-body"></div>
+        </div>
+    </div>
+        <!-- НАПОМИНАНИЕ О ЗАПИСЯХ -->
+    <div id="reminder-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content reminder-modal-content">
+            <h2>👋 Давно не виделись!</h2>
+            <p id="reminder-text">Последняя запись была...</p>
+            <div class="reminder-actions">
+                <button id="reminder-later-btn" class="btn-secondary">Позже</button>
+                <button id="reminder-write-btn" class="btn-primary">Написать</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container" class="toast-container"></div>
     <script src="script.js" defer></script>
 </body>
 </html>
