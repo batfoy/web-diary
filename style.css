@@ -483,13 +483,6 @@ body {
 }
 
 /* Кнопки действий в карточке */
-.entry-actions-icons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 10px;
-}
-
 .icon-action {
     background: none;
     border: none;
@@ -767,15 +760,6 @@ body {
     font-family: inherit;
 }
 
-/* Кнопки действий внизу модалки */
-.entry-actions {
-    padding: 15px 20px;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    flex-shrink: 0;
-}
 
 .btn-primary {
     background: var(--accent-color);
@@ -806,6 +790,22 @@ body {
 
 .btn-secondary:hover {
     background: var(--mood-btn-selected-bg);
+}
+
+.btn-danger {
+    background: var(--danger-bg, #ffebee);
+    color: var(--danger-color, #d32f2f);
+    border: 1px solid var(--danger-color, #d32f2f);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.btn-danger:hover {
+    opacity: 0.85;
 }
 
 /* ============================================
@@ -1131,4 +1131,19 @@ body {
 /* Модальное окно, открытое поверх другого */
 .modal.top-layer {
     z-index: 1001;
+}
+
+/* === КНОПКИ В МОДАЛКЕ ЗАПИСИ (одно правило!) === */
+.entry-actions {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Толкаем "Удалить" влево, остальные кнопки сами прижимаются вправо */
+.entry-actions #cancel-entry-btn {
+    margin-right: auto;
 }

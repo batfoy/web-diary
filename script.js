@@ -6,6 +6,7 @@ let searchQuery = '';
 let editingEntryId = null;
 let tempMood = '😐';
 let currentQuoteIndex = 0;
+const DRAFT_KEY = 'my_web_diary_draft_v1';
 
 // Множественное удаление
 let multiDeleteMode = false;
@@ -152,6 +153,48 @@ function selectMoodForEntry(emoji) {
 }
 
 // === 📝 МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ===
+// === 💾 ЧЕРНОВИК ===
+let draftSaveTimer = null;
+
+function saveDraft() {
+    if (editingEntryId) return; // Черновик только для новых записей
+    const title = document.getElementById('entry-title').value.trim();
+    const text = document.getElementById('entry-text').value.trim();
+    
+    if (!title && !text) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+    }
+    
+    const draft = {
+        title: title,
+        content: text,
+        mood: tempMood,
+        dateKey: document.getElementById('entry-date-display').dataset.date,
+        savedAt: Date.now()
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+}
+
+function loadDraft() {
+    const stored = localStorage.getItem(DRAFT_KEY);
+    if (!stored) return null;
+    try {
+        return JSON.parse(stored);
+    } catch (e) {
+        localStorage.removeItem(DRAFT_KEY);
+        return null;
+    }
+}
+
+function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+}
+
+function scheduleDraftSave() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraft, 1000); // 1 секунда после ввода
+}
 function openEntryForm(entry = null) {
     const dateDisplay = document.getElementById('entry-date-display');
     const dateText = document.getElementById('entry-date-text');
@@ -168,19 +211,36 @@ function openEntryForm(entry = null) {
         textInput.value = entry.content;
         saveBtn.classList.add('hidden');
         updateBtn.classList.remove('hidden');
+        // Кнопка "Удалить" всегда одинаковая
+        document.getElementById('cancel-entry-btn').textContent = 'Удалить';
+        document.getElementById('cancel-entry-btn').className = 'btn-danger';
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
     } else {
         editingEntryId = null;
-        tempMood = '😐';
-        titleInput.value = '';
-        textInput.value = '';
         saveBtn.classList.remove('hidden');
         updateBtn.classList.add('hidden');
-        const todayKey = getDateKey(new Date());
-        dateDisplay.dataset.date = todayKey;
-        dateText.textContent = 'Сегодня';
+        // Кнопка "Удалить" всегда одинаковая
+        document.getElementById('cancel-entry-btn').textContent = 'Удалить';
+        document.getElementById('cancel-entry-btn').className = 'btn-danger';
+        
+        // Пытаемся восстановить черновик
+        const draft = loadDraft();
+        if (draft) {
+            titleInput.value = draft.title || '';
+            textInput.value = draft.content || '';
+            tempMood = draft.mood || '😐';
+            dateDisplay.dataset.date = draft.dateKey || getDateKey(new Date());
+            dateText.textContent = formatPrettyDate(dateDisplay.dataset.date);
+        } else {
+            titleInput.value = '';
+            textInput.value = '';
+            tempMood = '😐';
+            const todayKey = getDateKey(new Date());
+            dateDisplay.dataset.date = todayKey;
+            dateText.textContent = 'Сегодня';
+        }
     }
     moodDisplay.textContent = tempMood;
     document.getElementById('entry-modal').classList.remove('hidden');
@@ -214,13 +274,24 @@ function handleSaveEntry() {
         };
         diaryEntries.unshift(newEntry);
         showToast('Запись сохранена', 'success');
+            // Очищаем черновик после сохранения
+        clearDraft();
     }
+    
 
     closeEntryForm();
     saveAndRender();
 }
 
 function closeEntryForm() {
+    const titleInput = document.getElementById('entry-title');
+    const textInput = document.getElementById('entry-text');
+    
+    // Если закрываем без сохранения и текст пустой — очищаем черновик
+    if (!editingEntryId && !titleInput.value.trim() && !textInput.value.trim()) {
+        clearDraft();
+    }
+    
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
 }
@@ -704,9 +775,37 @@ document.getElementById('next-month-desktop').onclick = () => changeCalendarMont
 // === 🪟 МОДАЛКА СОЗДАНИЯ/РЕДАКТИРОВАНИЯ ===
 document.getElementById('fab-add').onclick = () => openEntryForm();
 document.getElementById('close-entry-modal').onclick = closeEntryForm;
-document.getElementById('cancel-entry-btn').onclick = closeEntryForm;
+document.getElementById('cancel-entry-btn').onclick = async () => {
+    if (editingEntryId) {
+        // Режим редактирования — удаляем запись
+        const confirmed = await showConfirm('Удалить запись?', 'Это действие нельзя отменить.');
+        if (confirmed) {
+            const entryId = editingEntryId;
+            closeEntryForm();
+            diaryEntries = diaryEntries.filter(e => e.id !== entryId);
+            saveAndRender();
+            showToast('Запись удалена', 'success');
+        }
+    } else {
+        // Режим создания — удаляем черновик
+        const confirmed = await showConfirm('Удалить черновик?', 'Текст записи будет удалён без возможности восстановления.');
+        if (confirmed) {
+            clearDraft();
+            document.getElementById('entry-title').value = '';
+            document.getElementById('entry-text').value = '';
+            tempMood = '😐';
+            document.getElementById('selected-mood-display').textContent = '😐';
+            closeEntryForm();
+            showToast('Черновик удалён', 'success');
+        }
+    }
+};
 document.querySelector('#entry-modal .modal-backdrop').onclick = closeEntryForm;
 document.getElementById('save-entry-btn').onclick = handleSaveEntry;
+// Автосохранение черновика при вводе
+document.getElementById('entry-title').addEventListener('input', scheduleDraftSave);
+document.getElementById('entry-text').addEventListener('input', scheduleDraftSave);
+
 document.getElementById('update-entry-btn').onclick = handleSaveEntry;
 
 // Клик по дате — открывает календарь для выбора
