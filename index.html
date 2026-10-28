@@ -48,6 +48,9 @@
             <div class="sidebar-divider"></div>
             <button id="sidebar-import-btn" class="sidebar-menu-btn">📥 Импорт</button>
             <input type="file" id="import-file" accept=".json" style="display: none;">
+            <div class="sidebar-divider"></div>
+            <button id="sidebar-tags-btn" class="sidebar-menu-btn">🏷️ Теги</button>
+            <div class="sidebar-divider"></div>
         </div>
     </aside>
 
@@ -101,25 +104,36 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ЗАПИСИ -->
+        <!-- МОДАЛКА ПРОСМОТРА / РЕДАКТИРОВАНИЯ ЗАПИСИ -->
     <div id="entry-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content entry-modal-content">
+            <!-- Верхняя шапка: Дата, Карандаш (в режиме просмотра), Закрыть -->
             <div class="entry-modal-header">
                 <div id="entry-date-display" class="date-picker-display">
                     <span class="date-picker-icon">📅</span>
                     <span id="entry-date-text">Сегодня</span>
                 </div>
-                <span id="selected-mood-display" class="selected-mood-display">😐</span>
+                <!-- Кнопка редактирования (видна только в режиме просмотра) -->
+                <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">✏️</button>
                 <button class="modal-close-btn" id="close-entry-modal">✕</button>
             </div>
-            <div class="entry-form">
-                <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)">
-                <textarea id="entry-text" class="entry-text-input" placeholder="О чем вы хотите написать?"></textarea>
+            
+            <!-- Строка заголовка и настроения (слева заголовок, справа эмодзи) -->
+            <div class="entry-title-row">
+                <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
+                <span id="selected-mood-display" class="selected-mood-display">😐</span>
             </div>
+
+            <div class="entry-form">
+                <textarea id="entry-text" class="entry-text-input" placeholder="О чем вы хотите написать?" readonly></textarea>
+            </div>
+
+            <!-- Кнопки действий (видны только в режиме редактирования) -->
             <div class="entry-actions">
                 <button id="cancel-entry-btn" class="btn-danger">Удалить</button>
-                <button id="save-entry-btn" class="btn-primary">Сохранить</button>
+                <button id="insert-tag-btn" class="btn-tag hidden">#теги</button>
+                <button id="save-entry-btn" class="btn-primary hidden">Сохранить</button>
                 <button id="update-entry-btn" class="btn-primary hidden">Обновить</button>
             </div>
         </div>
@@ -157,6 +171,21 @@
             </div>
             <div id="calendar-grid" class="calendar-grid"></div>
             <p class="calendar-hint">Нажми на день, чтобы увидеть записи</p>
+        </div>
+    </div>
+
+        <!-- МОДАЛКА ВСЕХ ТЕГОВ -->
+    <div id="tags-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content tags-modal-content">
+            <div class="entry-modal-header">
+                <h2>Все теги</h2>
+                <button class="modal-close-btn" id="close-tags-modal">✕</button>
+            </div>
+            <div id="tags-list" class="tags-list">
+                <!-- Теги будут сгенерированы здесь через JS -->
+            </div>
+            <p class="calendar-hint">Нажмите на тег, чтобы увидеть записи</p>
         </div>
     </div>
 

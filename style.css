@@ -1147,3 +1147,156 @@ body {
 .entry-actions #cancel-entry-btn {
     margin-right: auto;
 }
+
+/* === ДОПОЛНЕНИЯ К МОДАЛКЕ ЗАПИСИ: РЕЖИМЫ ПРОСМОТРА И РЕДАКТИРОВАНИЯ === */
+
+/* Строка заголовка и эмодзи */
+.entry-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px 0 20px;
+    gap: 10px;
+}
+
+/* Стили полей в режиме ПРОСМОТРА (readonly) */
+#entry-modal:not(.is-editing) .entry-title-input,
+#entry-modal:not(.is-editing) .entry-text-input {
+    background: transparent;
+    border-bottom: 2px solid transparent; /* Убираем подчеркивание */
+    color: var(--text-color);
+    cursor: default;
+    opacity: 0.95;
+}
+
+#entry-modal:not(.is-editing) .entry-text-input {
+    resize: none; /* Запрет на растягивание в режиме просмотра */
+}
+
+/* Стили полей в режиме РЕДАКТИРОВАНИЯ */
+#entry-modal.is-editing .entry-title-input {
+    border-bottom-color: var(--border-color);
+}
+#entry-modal.is-editing .entry-title-input:focus {
+    border-bottom-color: var(--accent-color);
+}
+
+/* Кнопка карандаша */
+.edit-btn {
+    font-size: 1.3em;
+    margin-right: 5px;
+    transition: transform 0.2s;
+}
+.edit-btn:hover {
+    transform: scale(1.15);
+}
+
+/* Логика видимости элементов через класс .is-editing на модалке */
+
+/* 1. Кнопка карандаша видна ТОЛЬКО в режиме просмотра */
+#entry-modal:not(.is-editing) .edit-btn {
+    display: block;
+}
+#entry-modal.is-editing .edit-btn {
+    display: none;
+}
+
+/* 2. Нижние кнопки действий видны ТОЛЬКО в режиме редактирования */
+#entry-modal:not(.is-editing) .entry-actions {
+    display: none;
+}
+
+/* 3. Эмодзи: в режиме просмотра НЕ кликабельно, в режиме редактирования - кликабельно */
+#entry-modal:not(.is-editing) #selected-mood-display {
+    cursor: default;
+    pointer-events: none; /* Полностью блокирует клик по эмодзи */
+    opacity: 1;
+}
+#entry-modal.is-editing #selected-mood-display {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* === ТЕГИ === */
+
+/* Кнопка вставки тега в модалке */
+.btn-tag {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-tag:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* Облако тегов в модалке */
+.tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 20px 20px 20px;
+    justify-content: center;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.tag-pill {
+    background: var(--mood-btn-bg);
+    color: var(--text-color);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s, transform 0.15s;
+    border: 1px solid transparent;
+}
+
+.tag-pill:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.tag-pill .count {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-left: 4px;
+}
+
+/* Баннер активного фильтра тегов над списком записей */
+.active-filter-banner {
+    background: var(--mood-btn-selected-bg);
+    color: var(--text-color);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    border-left: 4px solid var(--accent-color);
+    animation: slideIn 0.3s ease-out;
+}
+
+.clear-filter-btn {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1.2em;
+    padding: 0 5px;
+    transition: transform 0.2s;
+}
+
+.clear-filter-btn:hover {
+    transform: scale(1.2);
+}

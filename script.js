@@ -4,16 +4,19 @@ const STORAGE_KEY = 'my_web_diary_entries_v2';
 let currentCalendarDate = new Date();
 let searchQuery = '';
 let editingEntryId = null;
+let activeTagFilter = null;
+let activeDateFilter = null;
 let tempMood = '😐';
 let currentQuoteIndex = 0;
 const DRAFT_KEY = 'my_web_diary_draft_v1';
 
-// Множественное удаление
 let multiDeleteMode = false;
 let selectedEntries = [];
-
-// Режим выбора даты в календаре (null = обычный просмотр)
 let datePickerCallback = null;
+let isEditing = false;
+let draftSaveTimer = null;
+
+const appMain = document.getElementById('app-main');
 
 const MOODS = [
     { emoji: '😡', score: 0 }, { emoji: '😭', score: 1 }, { emoji: '☹️', score: 2 },
@@ -57,6 +60,25 @@ const QUOTES = [
 ];
 
 // === 🛠️ ВСПОМОГАТЕЛЬНЫЕ ===
+function extractTags(text) {
+    if (!text) return [];
+    const matches = text.match(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g);
+    return matches ? [...new Set(matches.map(t => t.toLowerCase()))] : [];
+}
+
+function migrateEntriesTags() {
+    let needsSave = false;
+    diaryEntries.forEach(entry => {
+        if (!entry.tags || entry.tags.length === 0) {
+            entry.tags = extractTags(entry.content);
+            needsSave = true;
+        }
+    });
+    if (needsSave) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryEntries));
+    }
+}
+
 function getMoodScore(emoji) {
     const found = MOODS.find(m => m.emoji === emoji);
     return found ? found.score : null;
@@ -107,17 +129,12 @@ function displayQuote() {
 function nextQuote() {
     const textEl = document.getElementById('daily-quote-text');
     const authorEl = document.getElementById('daily-quote-author');
-    
-    // Плавно скрываем только текст
     textEl.style.opacity = '0';
     authorEl.style.opacity = '0';
-    
     setTimeout(() => {
         currentQuoteIndex = (currentQuoteIndex + 1) % QUOTES.length;
         localStorage.setItem('quote_index', currentQuoteIndex);
         displayQuote();
-        
-        // Плавно показываем новый текст
         textEl.style.opacity = '1';
         authorEl.style.opacity = '1';
     }, 250);
@@ -136,7 +153,6 @@ function openMoodModal() {
     });
     const moodModal = document.getElementById('mood-modal');
     moodModal.classList.remove('hidden');
-    // Поднимаем модалку выбора поверх остальных модалок
     moodModal.classList.add('top-layer');
 }
 
@@ -144,28 +160,21 @@ function selectMoodForEntry(emoji) {
     tempMood = emoji;
     const moodModal = document.getElementById('mood-modal');
     moodModal.classList.add('hidden');
-    moodModal.classList.remove('top-layer'); // Возвращаем обычный z-index
+    moodModal.classList.remove('top-layer');
     
     const moodDisplay = document.getElementById('selected-mood-display');
     if (moodDisplay) moodDisplay.textContent = tempMood;
-    const viewMood = document.getElementById('entry-view-mood');
-    if (viewMood) viewMood.textContent = tempMood;
 }
 
-// === 📝 МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ===
 // === 💾 ЧЕРНОВИК ===
-let draftSaveTimer = null;
-
 function saveDraft() {
-    if (editingEntryId) return; // Черновик только для новых записей
+    if (editingEntryId) return;
     const title = document.getElementById('entry-title').value.trim();
     const text = document.getElementById('entry-text').value.trim();
-    
     if (!title && !text) {
         localStorage.removeItem(DRAFT_KEY);
         return;
     }
-    
     const draft = {
         title: title,
         content: text,
@@ -193,8 +202,29 @@ function clearDraft() {
 
 function scheduleDraftSave() {
     clearTimeout(draftSaveTimer);
-    draftSaveTimer = setTimeout(saveDraft, 1000); // 1 секунда после ввода
+    draftSaveTimer = setTimeout(saveDraft, 1000);
 }
+
+// === 📝 МОДАЛКА ПРОСМОТРА / РЕДАКТИРОВАНИЯ ===
+function updateEditModeUI() {
+    const modal = document.getElementById('entry-modal');
+    const titleInput = document.getElementById('entry-title');
+    const textInput = document.getElementById('entry-text');
+    const insertTagBtn = document.getElementById('insert-tag-btn');
+
+    if (isEditing) {
+        modal.classList.add('is-editing');
+        titleInput.removeAttribute('readonly');
+        textInput.removeAttribute('readonly');
+        insertTagBtn.classList.remove('hidden');
+    } else {
+        modal.classList.remove('is-editing');
+        titleInput.setAttribute('readonly', true);
+        textInput.setAttribute('readonly', true);
+        insertTagBtn.classList.add('hidden');
+    }
+}
+
 function openEntryForm(entry = null) {
     const dateDisplay = document.getElementById('entry-date-display');
     const dateText = document.getElementById('entry-date-text');
@@ -203,6 +233,7 @@ function openEntryForm(entry = null) {
     const textInput = document.getElementById('entry-text');
     const saveBtn = document.getElementById('save-entry-btn');
     const updateBtn = document.getElementById('update-entry-btn');
+    const cancelBtn = document.getElementById('cancel-entry-btn');
 
     if (entry) {
         editingEntryId = entry.id;
@@ -211,21 +242,20 @@ function openEntryForm(entry = null) {
         textInput.value = entry.content;
         saveBtn.classList.add('hidden');
         updateBtn.classList.remove('hidden');
-        // Кнопка "Удалить" всегда одинаковая
-        document.getElementById('cancel-entry-btn').textContent = 'Удалить';
-        document.getElementById('cancel-entry-btn').className = 'btn-danger';
+        cancelBtn.textContent = 'Удалить';
+        cancelBtn.className = 'btn-danger';
+        
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
+        isEditing = false;
     } else {
         editingEntryId = null;
         saveBtn.classList.remove('hidden');
         updateBtn.classList.add('hidden');
-        // Кнопка "Удалить" всегда одинаковая
-        document.getElementById('cancel-entry-btn').textContent = 'Удалить';
-        document.getElementById('cancel-entry-btn').className = 'btn-danger';
+        cancelBtn.textContent = 'Очистить';
+        cancelBtn.className = 'btn-secondary';
         
-        // Пытаемся восстановить черновик
         const draft = loadDraft();
         if (draft) {
             titleInput.value = draft.title || '';
@@ -241,10 +271,16 @@ function openEntryForm(entry = null) {
             dateDisplay.dataset.date = todayKey;
             dateText.textContent = 'Сегодня';
         }
+        isEditing = true;
     }
+
     moodDisplay.textContent = tempMood;
+    updateEditModeUI();
     document.getElementById('entry-modal').classList.remove('hidden');
-    if (!entry) setTimeout(() => titleInput.focus(), 100);
+    
+    if (isEditing && !entry) {
+        setTimeout(() => titleInput.focus(), 100);
+    }
 }
 
 function handleSaveEntry() {
@@ -260,38 +296,50 @@ function handleSaveEntry() {
 
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
     const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
+    const tags = extractTags(text);
 
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
         if (index !== -1) {
-            diaryEntries[index] = { ...diaryEntries[index], date: finalDate, title, content: text, mood: tempMood, wordCount, updatedAt: Date.now() };
+            diaryEntries[index] = { 
+                ...diaryEntries[index], 
+                date: finalDate, 
+                title, 
+                content: text, 
+                mood: tempMood, 
+                wordCount, 
+                tags,
+                updatedAt: Date.now() 
+            };
         }
         showToast('Запись обновлена', 'success');
     } else {
         const newEntry = {
-            id: Date.now().toString(), date: finalDate, title, content: text,
-            mood: tempMood, wordCount, updatedAt: Date.now()
+            id: Date.now().toString(), 
+            date: finalDate, 
+            title, 
+            content: text,
+            mood: tempMood, 
+            wordCount, 
+            tags,
+            updatedAt: Date.now()
         };
         diaryEntries.unshift(newEntry);
         showToast('Запись сохранена', 'success');
-            // Очищаем черновик после сохранения
         clearDraft();
     }
-    
 
-    closeEntryForm();
+    isEditing = false;
+    updateEditModeUI();
     saveAndRender();
 }
 
 function closeEntryForm() {
     const titleInput = document.getElementById('entry-title');
     const textInput = document.getElementById('entry-text');
-    
-    // Если закрываем без сохранения и текст пустой — очищаем черновик
     if (!editingEntryId && !titleInput.value.trim() && !textInput.value.trim()) {
         clearDraft();
     }
-    
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
 }
@@ -325,8 +373,6 @@ function drawMoodChart() {
     const maxScore = MOODS.length;
     const xForDay = day => left + ((day - 1) / (daysInMonth - 1)) * plotW;
     const yForScore = score => top + ((maxScore - 1 - score) / (maxScore - 1)) * plotH;
-
-    // 5 опорных уровней: 😡 (0), ☹️ (2), 😏 (5), 😁 (7), 🥰 (9)
     const scoreIndices = [0, 3, 6, 9];
 
     ctx.font = '14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -397,19 +443,44 @@ function renderEntries() {
     const list = document.getElementById('entries-list');
     list.innerHTML = '';
 
-    const filtered = diaryEntries.filter(entry => {
-        if (!searchQuery) return true;
+    appMain.classList.toggle('search-active', !!(activeTagFilter || activeDateFilter || searchQuery));
+
+    let filtered = diaryEntries;
+    if (activeDateFilter) {
+        filtered = filtered.filter(entry => getDateKey(entry.date) === activeDateFilter);
+    }
+    if (activeTagFilter) {
+        filtered = filtered.filter(entry => entry.tags && entry.tags.includes(activeTagFilter));
+    }
+    if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        return (entry.content && entry.content.toLowerCase().includes(query)) ||
-               (entry.title && entry.title.toLowerCase().includes(query)) ||
-               (entry.mood && entry.mood.includes(query));
-    });
+        filtered = filtered.filter(entry =>
+            (entry.content && entry.content.toLowerCase().includes(query)) ||
+            (entry.title && entry.title.toLowerCase().includes(query)) ||
+            (entry.mood && entry.mood.includes(query))
+        );
+    }
 
     const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+    if (activeDateFilter) {
+        const prettyDate = new Date(activeDateFilter + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        const banner = document.createElement('div');
+        banner.className = 'active-filter-banner';
+        banner.innerHTML = `<span>📅 <strong>${prettyDate}</strong></span><button class="clear-filter-btn" id="clear-date-filter" title="Показать все записи">✕</button>`;
+        list.appendChild(banner);
+    } else if (activeTagFilter) {
+        const banner = document.createElement('div');
+        banner.className = 'active-filter-banner';
+        banner.innerHTML = `<span>Тег: <strong>${escapeHtml(activeTagFilter)}</strong></span><button class="clear-filter-btn" id="clear-tag-filter" title="Показать все записи">✕</button>`;
+        list.appendChild(banner);
+    }
+
     if (sorted.length === 0) {
-        const msg = searchQuery ? 'Ничего не найдено' : 'Пока нет записей. Нажмите +, чтобы начать!';
-        list.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:40px;">${msg}</p>`;
+        const empty = document.createElement('p');
+        empty.style.cssText = 'text-align:center; color:var(--text-muted); margin-top:40px;';
+        empty.textContent = activeDateFilter ? 'В этот день записей нет' : (activeTagFilter ? `Нет записей с тегом ${activeTagFilter}` : (searchQuery ? 'Ничего не найдено' : 'Пока нет записей. Нажмите +, чтобы начать!'));
+        list.appendChild(empty);
         return;
     }
 
@@ -421,6 +492,10 @@ function renderEntries() {
         const dateObj = new Date(entry.date);
         const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
+        const tagsHtml = (entry.tags && entry.tags.length > 0) 
+            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>` 
+            : '';
+
         card.innerHTML = `
             <div class="entry-header">
                 <span>${dateStr}</span>
@@ -428,10 +503,10 @@ function renderEntries() {
             </div>
             ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
             <div class="entry-text">${escapeHtml(entry.content)}</div>
+            ${tagsHtml}
             <div class="entry-stats">Слов: ${entry.wordCount || 0}</div>
         `;
 
-        // Long press для множественного удаления
         let pressTimer = null;
         let isLongPress = false;
 
@@ -455,7 +530,6 @@ function renderEntries() {
         card.addEventListener('mouseup', endPress);
         card.addEventListener('mouseleave', cancelPress);
 
-        // Клик по карточке
         card.addEventListener('click', () => {
             if (isLongPress) { isLongPress = false; return; }
             if (multiDeleteMode) { toggleEntrySelection(entry.id); return; }
@@ -475,6 +549,7 @@ function saveAndRender() {
 function loadEntries() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) diaryEntries = JSON.parse(stored);
+    migrateEntriesTags();
     renderEntries();
 }
 
@@ -617,19 +692,35 @@ function renderCalendar() {
     fillGrid('calendar-grid-desktop');
 }
 
-// Единый обработчик клика по дню — либо выбор даты, либо просмотр записей
 function handleDayClick(dateStr) {
     if (datePickerCallback) {
-        // Режим выбора даты
         const callback = datePickerCallback;
         datePickerCallback = null;
         document.querySelector('.calendar-modal-content').classList.remove('selecting-date');
         closeCalendarScreen();
         callback(dateStr);
     } else {
-        // Режим просмотра
-        showDayEntries(dateStr);
+        applyDateFilter(dateStr);
     }
+}
+
+function applyDateFilter(dateKey) {
+    activeDateFilter = dateKey;
+    activeTagFilter = null;
+    searchQuery = '';
+    document.getElementById('search-input').value = '';
+    if (multiDeleteMode) exitMultiDeleteMode();
+    closeCalendarScreen();
+    appMain.classList.add('search-active');
+    renderEntries();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const prettyDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    showToast(`Записи за ${prettyDate}`, 'info');
+}
+
+function clearDateFilter() {
+    activeDateFilter = null;
+    renderEntries();
 }
 
 function openCalendarScreen() {
@@ -660,33 +751,6 @@ function changeCalendarMonth(delta) {
     drawMoodChart();
 }
 
-function showDayEntries(dateKey) {
-    const entries = diaryEntries.filter(e => getDateKey(e.date) === dateKey);
-    const body = document.getElementById('day-modal-body');
-    const prettyDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-    document.getElementById('day-modal-title').textContent = prettyDate;
-
-    if (entries.length === 0) {
-        body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px 0;">В этот день записей нет</p>';
-    } else {
-        body.innerHTML = entries.map(entry => `
-            <div class="day-entry-card">
-                <div class="day-entry-header">
-                    <span>${new Date(entry.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                    <span>${escapeHtml(entry.mood)}</span>
-                </div>
-                ${entry.title ? `<div class="day-title">${escapeHtml(entry.title)}</div>` : ''}
-                <div class="day-entry-text">${escapeHtml(entry.content)}</div>
-            </div>
-        `).join('');
-    }
-    document.getElementById('day-modal').classList.remove('hidden');
-}
-
-function closeDayModal() {
-    document.getElementById('day-modal').classList.add('hidden');
-}
-
 // === 🔔 НАПОМИНАНИЕ ===
 function checkReminder() {
     if (diaryEntries.length === 0) return;
@@ -709,7 +773,6 @@ function openNewEntryFromReminder() {
 }
 
 // === 🔍 ПОИСК ===
-const appMain = document.getElementById('app-main');
 const header = document.querySelector('.main-header');
 const searchBtn = document.getElementById('search-btn');
 const headerTitle = document.getElementById('header-title');
@@ -730,6 +793,8 @@ document.getElementById('close-search-btn').onclick = () => {
     searchBtn.classList.remove('hidden');
     searchInput.value = '';
     searchQuery = '';
+    activeTagFilter = null;
+    activeDateFilter = null;
     renderEntries();
 };
 
@@ -763,22 +828,33 @@ sidebar.addEventListener('touchend', e => {
     if (touchStartX - e.changedTouches[0].screenX > 50) closeSidebar();
 }, { passive: true });
 
-// === 📅 КНОПКИ КАЛЕНДАРЯ ===
-document.getElementById('sidebar-calendar-btn').onclick = openCalendarScreen;
-document.getElementById('close-calendar-btn').onclick = closeCalendarScreen;
-document.querySelector('#calendar-modal .modal-backdrop').onclick = closeCalendarScreen;
-document.getElementById('prev-month-btn').onclick = () => changeCalendarMonth(-1);
-document.getElementById('next-month-btn').onclick = () => changeCalendarMonth(1);
-document.getElementById('prev-month-desktop').onclick = () => changeCalendarMonth(-1);
-document.getElementById('next-month-desktop').onclick = () => changeCalendarMonth(1);
-
-// === 🪟 МОДАЛКА СОЗДАНИЯ/РЕДАКТИРОВАНИЯ ===
+// === 🪟 ОБРАБОТЧИКИ МОДАЛКИ ЗАПИСИ ===
 document.getElementById('fab-add').onclick = () => openEntryForm();
 document.getElementById('close-entry-modal').onclick = closeEntryForm;
+document.querySelector('#entry-modal .modal-backdrop').onclick = closeEntryForm;
+
+document.getElementById('edit-mode-btn').onclick = () => {
+    isEditing = true;
+    updateEditModeUI();
+    document.getElementById('entry-title').focus();
+};
+
+document.getElementById('selected-mood-display').onclick = () => {
+    if (isEditing) openMoodModal();
+};
+
+document.getElementById('insert-tag-btn').onclick = () => {
+    const textInput = document.getElementById('entry-text');
+    const currentText = textInput.value;
+    const suffix = (currentText.length > 0 && !currentText.endsWith(' ')) ? ' #' : '#';
+    textInput.value = currentText + suffix;
+    textInput.focus();
+    textInput.scrollTop = textInput.scrollHeight;
+};
+
 document.getElementById('cancel-entry-btn').onclick = async () => {
     if (editingEntryId) {
-        // Режим редактирования — удаляем запись
-        const confirmed = await showConfirm('Удалить запись?', 'Это действие нельзя отменить.');
+        const confirmed = await showConfirm('Удалить эту запись?');
         if (confirmed) {
             const entryId = editingEntryId;
             closeEntryForm();
@@ -787,28 +863,21 @@ document.getElementById('cancel-entry-btn').onclick = async () => {
             showToast('Запись удалена', 'success');
         }
     } else {
-        // Режим создания — удаляем черновик
-        const confirmed = await showConfirm('Удалить черновик?', 'Текст записи будет удалён без возможности восстановления.');
+        const confirmed = await showConfirm('Очистить черновик?');
         if (confirmed) {
             clearDraft();
-            document.getElementById('entry-title').value = '';
-            document.getElementById('entry-text').value = '';
-            tempMood = '😐';
-            document.getElementById('selected-mood-display').textContent = '😐';
             closeEntryForm();
-            showToast('Черновик удалён', 'success');
+            showToast('Черновик очищен', 'success');
         }
     }
 };
-document.querySelector('#entry-modal .modal-backdrop').onclick = closeEntryForm;
+
 document.getElementById('save-entry-btn').onclick = handleSaveEntry;
-// Автосохранение черновика при вводе
+document.getElementById('update-entry-btn').onclick = handleSaveEntry;
+
 document.getElementById('entry-title').addEventListener('input', scheduleDraftSave);
 document.getElementById('entry-text').addEventListener('input', scheduleDraftSave);
 
-document.getElementById('update-entry-btn').onclick = handleSaveEntry;
-
-// Клик по дате — открывает календарь для выбора
 document.getElementById('entry-date-display').onclick = () => {
     openDatePicker((selectedDate) => {
         const dateDisplay = document.getElementById('entry-date-display');
@@ -818,18 +887,12 @@ document.getElementById('entry-date-display').onclick = () => {
     });
 };
 
-// Клик по настроению — открывает модалку выбора
-document.getElementById('selected-mood-display').onclick = () => {
-    openMoodModal();
-};
-
 // === 😊 МОДАЛКА НАСТРОЕНИЯ ===
 function closeMoodModal() {
     const moodModal = document.getElementById('mood-modal');
     moodModal.classList.add('hidden');
     moodModal.classList.remove('top-layer');
 }
-
 document.getElementById('close-mood-modal').onclick = closeMoodModal;
 document.querySelector('#mood-modal .modal-backdrop').onclick = closeMoodModal;
 
@@ -837,10 +900,6 @@ document.querySelector('#mood-modal .modal-backdrop').onclick = closeMoodModal;
 document.getElementById('confirm-ok').onclick = () => closeConfirm(true);
 document.getElementById('confirm-cancel').onclick = () => closeConfirm(false);
 document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeConfirm(false);
-
-// === 📆 ЗАПИСИ ДНЯ ===
-document.getElementById('day-modal-close').onclick = closeDayModal;
-document.querySelector('#day-modal .modal-backdrop').onclick = closeDayModal;
 
 // === 🎨 ТЕМЫ ===
 document.getElementById('sidebar-theme-toggle').onclick = () => {
@@ -861,7 +920,6 @@ function loadTheme() {
     const savedTheme = localStorage.getItem('my_web_diary_theme_v1') || 'light';
     applyTheme(savedTheme);
 }
-
 document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.onclick = () => { applyTheme(btn.getAttribute('data-theme')); };
 });
@@ -906,6 +964,83 @@ document.querySelector('#reminder-modal .modal-backdrop').onclick = closeReminde
 
 // === 💬 ЦИТАТА ===
 document.querySelector('.quote-section').onclick = nextQuote;
+
+// === 📅 КНОПКИ КАЛЕНДАРЯ ===
+document.getElementById('sidebar-calendar-btn').onclick = openCalendarScreen;
+document.getElementById('close-calendar-btn').onclick = closeCalendarScreen;
+document.querySelector('#calendar-modal .modal-backdrop').onclick = closeCalendarScreen;
+document.getElementById('prev-month-btn').onclick = () => changeCalendarMonth(-1);
+document.getElementById('next-month-btn').onclick = () => changeCalendarMonth(1);
+document.getElementById('prev-month-desktop').onclick = () => changeCalendarMonth(-1);
+document.getElementById('next-month-desktop').onclick = () => changeCalendarMonth(1);
+
+// === 🏷️ ТЕГИ ===
+function openTagsModal() {
+    closeSidebar();
+    const tagCounts = {};
+    diaryEntries.forEach(entry => {
+        if (entry.tags && entry.tags.length > 0) {
+            entry.tags.forEach(tag => {
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        }
+    });
+
+    const sortedTags = Object.entries(tagCounts).sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1];
+        return a[0].localeCompare(b[0]);
+    });
+
+    const list = document.getElementById('tags-list');
+    if (sortedTags.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); width:100%;">Пока нет ни одного тега.<br>Добавьте #тег в текст записи!</p>';
+    } else {
+        list.innerHTML = sortedTags.map(([tag, count]) =>
+            `<div class="tag-pill" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)} <span class="count">(${count})</span></div>`
+        ).join('');
+    }
+    document.getElementById('tags-modal').classList.remove('hidden');
+}
+
+document.getElementById('tags-list').addEventListener('click', (e) => {
+    const pill = e.target.closest('.tag-pill');
+    if (!pill) return;
+    applyTagFilter(pill.dataset.tag);
+});
+
+function applyTagFilter(tag) {
+    activeTagFilter = tag;
+    searchQuery = '';
+    document.getElementById('search-input').value = '';
+    if (multiDeleteMode) exitMultiDeleteMode();
+    closeTagsModal();
+    appMain.classList.add('search-active');
+    renderEntries();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast(`Показаны записи: ${tag}`, 'info');
+}
+
+function clearTagFilter() {
+    activeTagFilter = null;
+    renderEntries();
+}
+
+function closeTagsModal() {
+    document.getElementById('tags-modal').classList.add('hidden');
+}
+
+document.getElementById('sidebar-tags-btn').onclick = openTagsModal;
+document.getElementById('close-tags-modal').onclick = closeTagsModal;
+document.querySelector('#tags-modal .modal-backdrop').onclick = closeTagsModal;
+
+// Делегирование кликов для кнопок сброса фильтров
+document.getElementById('entries-list').addEventListener('click', (e) => {
+    if (e.target.closest('#clear-tag-filter')) {
+        clearTagFilter();
+    } else if (e.target.closest('#clear-date-filter')) {
+        clearDateFilter();
+    }
+});
 
 // === 🚀 ЗАПУСК ===
 loadTheme();
