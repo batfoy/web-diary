@@ -1,24 +1,26 @@
+// === 📦 ПЕРЕМЕННЫЕ ===
 let diaryEntries = [];
 const STORAGE_KEY = 'my_web_diary_entries_v2';
 let currentCalendarDate = new Date();
+let searchQuery = '';
 let editingEntryId = null;
 let tempMood = '😐';
-let searchQuery = ''; // Для фильтрации записей
+let currentQuoteIndex = 0;
+
+// Множественное удаление
+let multiDeleteMode = false;
+let selectedEntries = [];
+
+// Режим выбора даты в календаре (null = обычный просмотр)
+let datePickerCallback = null;
 
 const MOODS = [
-    { emoji: '😡', score: 0 },  // Самое плохое (внизу)
-    { emoji: '😭', score: 1 },
-    { emoji: '☹️', score: 2 },
-    { emoji: '😕', score: 3 },
-    { emoji: '😐', score: 4 },  // Нейтральное (середина)
-    { emoji: '😏', score: 5 },
-    { emoji: '😊', score: 6 },
-    { emoji: '😁', score: 7 },
-    { emoji: '🤪', score: 8 },
-    { emoji: '🥰', score: 9 }   // Самое хорошее (вверху)
+    { emoji: '😡', score: 0 }, { emoji: '😭', score: 1 }, { emoji: '☹️', score: 2 },
+    { emoji: '😕', score: 3 }, { emoji: '😐', score: 4 }, { emoji: '😏', score: 5 },
+    { emoji: '😊', score: 6 }, { emoji: '😁', score: 7 }, { emoji: '🤪', score: 8 },
+    { emoji: '🥰', score: 9 }
 ];
 
-// 31 ЦИТАТА (меняется в зависимости от числа месяца: 1-31)
 const QUOTES = [
     { text: "Счастье — это не пункт назначения, а способ путешествия.", author: "Рой Гудман" },
     { text: "Не считай дни, извлекай из них пользу.", author: "Мухаммед Али" },
@@ -53,24 +55,66 @@ const QUOTES = [
     { text: "Вы никогда не пересечете океан, если не наберетесь мужества потерять берег из виду.", author: "Христофор Колумб" }
 ];
 
+// === 🛠️ ВСПОМОГАТЕЛЬНЫЕ ===
 function getMoodScore(emoji) {
     const found = MOODS.find(m => m.emoji === emoji);
     return found ? found.score : null;
 }
 
-// === 📅 ЦИТАТА ДНЯ ===
-function updateDailyQuote() {
-    // Получаем текущее число месяца (от 1 до 31)
-    const dayOfMonth = new Date().getDate();
-    // Используем его как индекс (dayOfMonth - 1, так как массив начинается с 0)
-    // Оператор % гарантирует, что если цитат меньше 31, мы не выйдем за границы массива
-    const quoteIndex = (dayOfMonth - 1) % QUOTES.length;
-    
-    document.getElementById('daily-quote-text').textContent = `«${QUOTES[quoteIndex].text}»`;
-    document.getElementById('daily-quote-author').textContent = `— ${QUOTES[quoteIndex].author}`;
+function getDateKey(date) {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// === 📝 ЛОГИКА СОЗДАНИЯ/РЕДАКТИРОВАНИЯ ===
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+               .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function formatPrettyDate(dateKey) {
+    const date = new Date(dateKey + 'T12:00:00');
+    const today = new Date();
+    const todayKey = getDateKey(today);
+    if (dateKey === todayKey) return 'Сегодня';
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (dateKey === getDateKey(yesterday)) return 'Вчера';
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// === 📅 ЦИТАТА ДНЯ ===
+function updateDailyQuote() {
+    const lastDate = localStorage.getItem('quote_last_date');
+    const today = new Date().toDateString();
+    if (lastDate !== today) {
+        const dayOfMonth = new Date().getDate();
+        currentQuoteIndex = (dayOfMonth - 1) % QUOTES.length;
+        localStorage.setItem('quote_last_date', today);
+        localStorage.setItem('quote_index', currentQuoteIndex);
+    } else {
+        currentQuoteIndex = parseInt(localStorage.getItem('quote_index')) || 0;
+    }
+    displayQuote();
+}
+
+function displayQuote() {
+    document.getElementById('daily-quote-text').textContent = `«${QUOTES[currentQuoteIndex].text}»`;
+    document.getElementById('daily-quote-author').textContent = `— ${QUOTES[currentQuoteIndex].author}`;
+}
+
+function nextQuote() {
+    const quoteSection = document.querySelector('.quote-section');
+    quoteSection.classList.add('fade-out');
+    setTimeout(() => {
+        currentQuoteIndex = (currentQuoteIndex + 1) % QUOTES.length;
+        localStorage.setItem('quote_index', currentQuoteIndex);
+        displayQuote();
+        quoteSection.classList.remove('fade-out');
+    }, 300);
+}
+
+// === 😊 ВЫБОР НАСТРОЕНИЯ ===
 function openMoodModal() {
     const grid = document.getElementById('mood-grid');
     grid.innerHTML = '';
@@ -81,17 +125,28 @@ function openMoodModal() {
         btn.onclick = () => selectMoodForEntry(m.emoji);
         grid.appendChild(btn);
     });
-    document.getElementById('mood-modal').classList.remove('hidden');
+    const moodModal = document.getElementById('mood-modal');
+    moodModal.classList.remove('hidden');
+    // Поднимаем модалку выбора поверх остальных модалок
+    moodModal.classList.add('top-layer');
 }
 
 function selectMoodForEntry(emoji) {
     tempMood = emoji;
-    document.getElementById('mood-modal').classList.add('hidden');
-    openEntryForm();
+    const moodModal = document.getElementById('mood-modal');
+    moodModal.classList.add('hidden');
+    moodModal.classList.remove('top-layer'); // Возвращаем обычный z-index
+    
+    const moodDisplay = document.getElementById('selected-mood-display');
+    if (moodDisplay) moodDisplay.textContent = tempMood;
+    const viewMood = document.getElementById('entry-view-mood');
+    if (viewMood) viewMood.textContent = tempMood;
 }
 
+// === 📝 МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ===
 function openEntryForm(entry = null) {
-    const dateInput = document.getElementById('entry-date-input');
+    const dateDisplay = document.getElementById('entry-date-display');
+    const dateText = document.getElementById('entry-date-text');
     const moodDisplay = document.getElementById('selected-mood-display');
     const titleInput = document.getElementById('entry-title');
     const textInput = document.getElementById('entry-text');
@@ -100,28 +155,33 @@ function openEntryForm(entry = null) {
 
     if (entry) {
         editingEntryId = entry.id;
-        dateInput.value = entry.date.split('T')[0];
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
         textInput.value = entry.content;
         saveBtn.classList.add('hidden');
         updateBtn.classList.remove('hidden');
+        const entryDateKey = getDateKey(entry.date);
+        dateDisplay.dataset.date = entryDateKey;
+        dateText.textContent = formatPrettyDate(entryDateKey);
     } else {
         editingEntryId = null;
-        dateInput.value = new Date().toISOString().split('T')[0];
+        tempMood = '😐';
         titleInput.value = '';
         textInput.value = '';
         saveBtn.classList.remove('hidden');
         updateBtn.classList.add('hidden');
+        const todayKey = getDateKey(new Date());
+        dateDisplay.dataset.date = todayKey;
+        dateText.textContent = 'Сегодня';
     }
-    
     moodDisplay.textContent = tempMood;
     document.getElementById('entry-modal').classList.remove('hidden');
     if (!entry) setTimeout(() => titleInput.focus(), 100);
 }
 
 function handleSaveEntry() {
-    const dateInput = document.getElementById('entry-date-input').value;
+    const dateDisplay = document.getElementById('entry-date-display');
+    const dateInput = dateDisplay.dataset.date;
     const title = document.getElementById('entry-title').value.trim();
     const text = document.getElementById('entry-text').value.trim();
 
@@ -141,7 +201,8 @@ function handleSaveEntry() {
         showToast('Запись обновлена', 'success');
     } else {
         const newEntry = {
-            id: Date.now().toString(), date: finalDate, title, content: text, mood: tempMood, wordCount, updatedAt: Date.now()
+            id: Date.now().toString(), date: finalDate, title, content: text,
+            mood: tempMood, wordCount, updatedAt: Date.now()
         };
         diaryEntries.unshift(newEntry);
         showToast('Запись сохранена', 'success');
@@ -186,24 +247,21 @@ function drawMoodChart() {
     const xForDay = day => left + ((day - 1) / (daysInMonth - 1)) * plotW;
     const yForScore = score => top + ((maxScore - 1 - score) / (maxScore - 1)) * plotH;
 
-        // Сетка и эмодзи слева (от 0 до 9)
     ctx.font = '14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     for (let score = 0; score < maxScore; score++) {
         const y = yForScore(score);
         ctx.strokeStyle = grid; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width - right, y); ctx.stroke();
-        ctx.fillStyle = muted; 
+        ctx.fillStyle = muted;
         ctx.fillText(MOODS[score].emoji, 2, y);
     }
 
-    // Подписи дней внизу
     ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = muted;
     const step = plotW < 260 ? 7 : 5;
     for (let day = 1; day <= daysInMonth; day += step) {
         ctx.fillText(String(day), xForDay(day), height - bottom + 8);
     }
 
-    // Сбор данных
     const days = {};
     diaryEntries.forEach(entry => {
         const d = new Date(entry.date);
@@ -227,29 +285,18 @@ function drawMoodChart() {
         return;
     }
 
-    // === Линии с умной логикой соединения ===
-    ctx.strokeStyle = accent; 
-    ctx.lineWidth = 2.5; 
-    ctx.lineJoin = 'round'; 
-    ctx.lineCap = 'round';
-
-    // Рисуем линии между точками, если пропуск <= 2 дня
+    ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     for (let i = 1; i < data.length; i++) {
         const prev = data[i - 1];
         const cur = data[i];
-        const gap = cur.day - prev.day;
-
-        if (gap <= 2) {
-            // Пропуск 1-2 дня — соединяем линией
+        if (cur.day - prev.day <= 2) {
             ctx.beginPath();
             ctx.moveTo(xForDay(prev.day), yForScore(prev.score));
             ctx.lineTo(xForDay(cur.day), yForScore(cur.score));
             ctx.stroke();
         }
-        // Если gap > 2 — линия не рисуется (обрыв)
     }
 
-    // Точки
     ctx.fillStyle = accent;
     data.forEach(item => {
         ctx.beginPath();
@@ -257,23 +304,21 @@ function drawMoodChart() {
         ctx.fill();
     });
 
-    // Итоговые цифры
     const average = data.reduce((sum, item) => sum + item.score, 0) / data.length;
     const averageEmoji = MOODS[Math.round(average)]?.emoji || '😐';
     document.getElementById('chart-average').textContent = `Среднее: ${average.toFixed(1)} ${averageEmoji}`;
     document.getElementById('chart-summary').textContent = `Записей: ${totalEntries} · Дней: ${data.length}`;
 }
 
-// === 📋 ОТРИСОВКА СПИСКА (с учетом поиска) ===
+// === 📋 СПИСОК ЗАПИСЕЙ ===
 function renderEntries() {
     const list = document.getElementById('entries-list');
     list.innerHTML = '';
-    
-    // Фильтрация по поисковому запросу
+
     const filtered = diaryEntries.filter(entry => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
-        return (entry.content && entry.content.toLowerCase().includes(query)) || 
+        return (entry.content && entry.content.toLowerCase().includes(query)) ||
                (entry.title && entry.title.toLowerCase().includes(query)) ||
                (entry.mood && entry.mood.includes(query));
     });
@@ -289,32 +334,54 @@ function renderEntries() {
     sorted.forEach(entry => {
         const card = document.createElement('div');
         card.className = 'entry-card';
+        card.dataset.entryId = entry.id;
+
         const dateObj = new Date(entry.date);
         const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-        const timeStr = dateObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
         card.innerHTML = `
             <div class="entry-header">
-                <span>${dateStr} в ${timeStr}</span>
+                <span>${dateStr}</span>
                 <span style="font-size:1.2em">${entry.mood}</span>
             </div>
             ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
             <div class="entry-text">${escapeHtml(entry.content)}</div>
             <div class="entry-stats">Слов: ${entry.wordCount || 0}</div>
-            <div class="entry-actions-icons">
-                <button class="icon-action edit-btn" title="Редактировать">✏️</button>
-                <button class="icon-action delete-btn" title="Удалить">🗑️</button>
-            </div>
         `;
-        card.querySelector('.edit-btn').onclick = () => openEntryForm(entry);
-        card.querySelector('.delete-btn').onclick = () => deleteEntry(entry.id);
+
+        // Long press для множественного удаления
+        let pressTimer = null;
+        let isLongPress = false;
+
+        const startPress = () => {
+            isLongPress = false;
+            card.classList.add('long-press');
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                card.classList.remove('long-press');
+                enterMultiDeleteMode(entry.id);
+            }, 500);
+        };
+        const endPress = () => { clearTimeout(pressTimer); card.classList.remove('long-press'); };
+        const cancelPress = () => { clearTimeout(pressTimer); card.classList.remove('long-press'); };
+
+        card.addEventListener('touchstart', startPress, { passive: true });
+        card.addEventListener('touchend', endPress);
+        card.addEventListener('touchmove', cancelPress);
+        card.addEventListener('touchcancel', cancelPress);
+        card.addEventListener('mousedown', startPress);
+        card.addEventListener('mouseup', endPress);
+        card.addEventListener('mouseleave', cancelPress);
+
+        // Клик по карточке
+        card.addEventListener('click', () => {
+            if (isLongPress) { isLongPress = false; return; }
+            if (multiDeleteMode) { toggleEntrySelection(entry.id); return; }
+            openEntryForm(entry);
+        });
+
         list.appendChild(card);
     });
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 function saveAndRender() {
@@ -337,13 +404,17 @@ async function deleteEntry(id) {
     }
 }
 
+// === 🔔 TOAST И CONFIRM ===
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = msg;
     container.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 let confirmResolve = null;
@@ -359,9 +430,233 @@ function closeConfirm(res) {
     if (confirmResolve) { confirmResolve(res); confirmResolve = null; }
 }
 
-// === ⚡ СОБЫТИЯ ИНТЕРФЕЙСА (МЕНЮ, ПОИСК, СВАЙП) ===
+// === 🗑️ МНОЖЕСТВЕННОЕ УДАЛЕНИЕ ===
+function enterMultiDeleteMode(firstEntryId) {
+    multiDeleteMode = true;
+    selectedEntries = [firstEntryId];
+    updateDeleteButton();
+    document.querySelectorAll('.entry-card').forEach(card => card.classList.add('multi-delete-mode'));
+    const firstCard = document.querySelector(`[data-entry-id="${firstEntryId}"]`);
+    if (firstCard) firstCard.classList.add('selected');
+}
 
-// 1. Гамбургер меню
+function exitMultiDeleteMode() {
+    multiDeleteMode = false;
+    selectedEntries = [];
+    const searchBtn = document.getElementById('search-btn');
+    searchBtn.textContent = '🔍';
+    searchBtn.classList.remove('multi-delete-mode');
+    searchBtn.title = 'Поиск';
+    document.querySelectorAll('.entry-card').forEach(card => card.classList.remove('multi-delete-mode', 'selected'));
+}
+
+function toggleEntrySelection(entryId) {
+    const index = selectedEntries.indexOf(entryId);
+    const card = document.querySelector(`[data-entry-id="${entryId}"]`);
+    if (index === -1) {
+        selectedEntries.push(entryId);
+        if (card) card.classList.add('selected');
+    } else {
+        selectedEntries.splice(index, 1);
+        if (card) card.classList.remove('selected');
+    }
+    updateDeleteButton();
+    if (selectedEntries.length === 0) exitMultiDeleteMode();
+}
+
+function updateDeleteButton() {
+    const searchBtn = document.getElementById('search-btn');
+    if (selectedEntries.length > 0) {
+        searchBtn.textContent = `🗑️ ${selectedEntries.length}`;
+        searchBtn.classList.add('multi-delete-mode');
+        searchBtn.title = `Удалить ${selectedEntries.length} записей`;
+    }
+}
+
+async function deleteSelectedEntries() {
+    if (selectedEntries.length === 0) return;
+    const count = selectedEntries.length;
+    const confirmed = await showConfirm(`Удалить ${count} ${count === 1 ? 'запись' : count < 5 ? 'записи' : 'записей'}?`);
+    if (confirmed) {
+        diaryEntries = diaryEntries.filter(e => !selectedEntries.includes(e.id));
+        saveAndRender();
+        exitMultiDeleteMode();
+        showToast(`Удалено: ${count}`, 'success');
+    }
+}
+
+// === 📅 КАЛЕНДАРЬ ===
+function renderCalendar() {
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+    const monthDate = new Date(year, month, 1);
+    const monthText = monthDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+
+    const labelModal = document.getElementById('calendar-month-label');
+    const labelDesktop = document.getElementById('calendar-month-label-desktop');
+    if (labelModal) labelModal.textContent = monthText;
+    if (labelDesktop) labelDesktop.textContent = monthText;
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+    const todayKey = getDateKey(new Date());
+
+    function fillGrid(gridId) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let i = 0; i < offset; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day empty';
+            grid.appendChild(cell);
+        }
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'calendar-day';
+            const dayEntries = diaryEntries.filter(e => getDateKey(e.date) === dateStr);
+
+            if (dayEntries.length > 0) {
+                cell.textContent = dayEntries[0].mood;
+                cell.classList.add('has-entry');
+                cell.title = `Записей: ${dayEntries.length}`;
+            } else {
+                cell.textContent = day;
+                cell.classList.add('no-entry');
+            }
+            if (dateStr === todayKey) cell.classList.add('today');
+            cell.onclick = () => handleDayClick(dateStr);
+            grid.appendChild(cell);
+        }
+    }
+    fillGrid('calendar-grid');
+    fillGrid('calendar-grid-desktop');
+}
+
+// Единый обработчик клика по дню — либо выбор даты, либо просмотр записей
+function handleDayClick(dateStr) {
+    if (datePickerCallback) {
+        // Режим выбора даты
+        const callback = datePickerCallback;
+        datePickerCallback = null;
+        document.querySelector('.calendar-modal-content').classList.remove('selecting-date');
+        closeCalendarScreen();
+        callback(dateStr);
+    } else {
+        // Режим просмотра
+        showDayEntries(dateStr);
+    }
+}
+
+function openCalendarScreen() {
+    closeSidebar();
+    datePickerCallback = null;
+    renderCalendar();
+    document.getElementById('calendar-modal').classList.remove('hidden');
+}
+
+function openDatePicker(callback) {
+    datePickerCallback = callback;
+    renderCalendar();
+    document.getElementById('calendar-modal').classList.remove('hidden');
+    document.querySelector('.calendar-modal-content').classList.add('selecting-date');
+}
+
+function closeCalendarScreen() {
+    document.getElementById('calendar-modal').classList.add('hidden');
+}
+
+function changeCalendarMonth(delta) {
+    const grid = document.getElementById('calendar-grid');
+    grid.classList.remove('slide-left', 'slide-right');
+    void grid.offsetWidth;
+    grid.classList.add(delta > 0 ? 'slide-left' : 'slide-right');
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+    renderCalendar();
+    drawMoodChart();
+}
+
+function showDayEntries(dateKey) {
+    const entries = diaryEntries.filter(e => getDateKey(e.date) === dateKey);
+    const body = document.getElementById('day-modal-body');
+    const prettyDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('day-modal-title').textContent = prettyDate;
+
+    if (entries.length === 0) {
+        body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px 0;">В этот день записей нет</p>';
+    } else {
+        body.innerHTML = entries.map(entry => `
+            <div class="day-entry-card">
+                <div class="day-entry-header">
+                    <span>${new Date(entry.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>${escapeHtml(entry.mood)}</span>
+                </div>
+                ${entry.title ? `<div class="day-title">${escapeHtml(entry.title)}</div>` : ''}
+                <div class="day-entry-text">${escapeHtml(entry.content)}</div>
+            </div>
+        `).join('');
+    }
+    document.getElementById('day-modal').classList.remove('hidden');
+}
+
+function closeDayModal() {
+    document.getElementById('day-modal').classList.add('hidden');
+}
+
+// === 🔔 НАПОМИНАНИЕ ===
+function checkReminder() {
+    if (diaryEntries.length === 0) return;
+    const lastEntry = diaryEntries.reduce((latest, entry) => new Date(entry.date) > new Date(latest.date) ? entry : latest);
+    const lastDate = new Date(lastEntry.date);
+    const now = new Date();
+    const daysDiff = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+
+    if (daysDiff >= 2) {
+        const prettyDate = lastDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('reminder-text').textContent = `Последняя запись была ${prettyDate}. Есть что добавить?`;
+        setTimeout(() => { document.getElementById('reminder-modal').classList.remove('hidden'); }, 500);
+    }
+}
+
+function closeReminder() { document.getElementById('reminder-modal').classList.add('hidden'); }
+function openNewEntryFromReminder() {
+    closeReminder();
+    document.getElementById('fab-add').click();
+}
+
+// === 🔍 ПОИСК ===
+const appMain = document.getElementById('app-main');
+const header = document.querySelector('.main-header');
+const searchBtn = document.getElementById('search-btn');
+const headerTitle = document.getElementById('header-title');
+const searchBar = document.getElementById('search-bar');
+const searchInput = document.getElementById('search-input');
+
+searchBtn.onclick = () => {
+    if (multiDeleteMode) { deleteSelectedEntries(); return; }
+    headerTitle.classList.add('hidden');
+    searchBtn.classList.add('hidden');
+    searchBar.classList.remove('hidden');
+    setTimeout(() => searchInput.focus(), 50);
+};
+
+document.getElementById('close-search-btn').onclick = () => {
+    searchBar.classList.add('hidden');
+    headerTitle.classList.remove('hidden');
+    searchBtn.classList.remove('hidden');
+    searchInput.value = '';
+    searchQuery = '';
+    renderEntries();
+};
+
+searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderEntries();
+});
+
+// === 📂 БОКОВОЕ МЕНЮ ===
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 
@@ -370,7 +665,6 @@ function openSidebar() {
     sidebarBackdrop.classList.remove('hidden');
     setTimeout(() => sidebarBackdrop.classList.add('open'), 10);
 }
-
 function closeSidebar() {
     sidebar.classList.remove('open');
     sidebarBackdrop.classList.remove('open');
@@ -381,46 +675,71 @@ document.getElementById('menu-btn').onclick = openSidebar;
 document.getElementById('close-sidebar-btn').onclick = closeSidebar;
 sidebarBackdrop.onclick = closeSidebar;
 
-// Свайп влево для закрытия меню
 let touchStartX = 0;
-sidebar.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-}, { passive: true });
-
+sidebar.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
 sidebar.addEventListener('touchend', e => {
-    const touchEndX = e.changedTouches[0].screenX;
-    if (touchStartX - touchEndX > 50) {
-        closeSidebar();
-    }
+    if (touchStartX - e.changedTouches[0].screenX > 50) closeSidebar();
 }, { passive: true });
 
-// Календарь открывается из меню
+// === 📅 КНОПКИ КАЛЕНДАРЯ ===
 document.getElementById('sidebar-calendar-btn').onclick = openCalendarScreen;
 document.getElementById('close-calendar-btn').onclick = closeCalendarScreen;
 document.querySelector('#calendar-modal .modal-backdrop').onclick = closeCalendarScreen;
-
-// Переключение месяца (для модалки)
 document.getElementById('prev-month-btn').onclick = () => changeCalendarMonth(-1);
 document.getElementById('next-month-btn').onclick = () => changeCalendarMonth(1);
-
-// Переключение месяца (для ПК версии)
 document.getElementById('prev-month-desktop').onclick = () => changeCalendarMonth(-1);
 document.getElementById('next-month-desktop').onclick = () => changeCalendarMonth(1);
 
-// Окно записей дня
+// === 🪟 МОДАЛКА СОЗДАНИЯ/РЕДАКТИРОВАНИЯ ===
+document.getElementById('fab-add').onclick = () => openEntryForm();
+document.getElementById('close-entry-modal').onclick = closeEntryForm;
+document.getElementById('cancel-entry-btn').onclick = closeEntryForm;
+document.querySelector('#entry-modal .modal-backdrop').onclick = closeEntryForm;
+document.getElementById('save-entry-btn').onclick = handleSaveEntry;
+document.getElementById('update-entry-btn').onclick = handleSaveEntry;
+
+// Клик по дате — открывает календарь для выбора
+document.getElementById('entry-date-display').onclick = () => {
+    openDatePicker((selectedDate) => {
+        const dateDisplay = document.getElementById('entry-date-display');
+        const dateText = document.getElementById('entry-date-text');
+        dateDisplay.dataset.date = selectedDate;
+        dateText.textContent = formatPrettyDate(selectedDate);
+    });
+};
+
+// Клик по настроению — открывает модалку выбора
+document.getElementById('selected-mood-display').onclick = () => {
+    openMoodModal();
+};
+
+// === 😊 МОДАЛКА НАСТРОЕНИЯ ===
+function closeMoodModal() {
+    const moodModal = document.getElementById('mood-modal');
+    moodModal.classList.add('hidden');
+    moodModal.classList.remove('top-layer');
+}
+
+document.getElementById('close-mood-modal').onclick = closeMoodModal;
+document.querySelector('#mood-modal .modal-backdrop').onclick = closeMoodModal;
+
+// === ❓ CONFIRM ===
+document.getElementById('confirm-ok').onclick = () => closeConfirm(true);
+document.getElementById('confirm-cancel').onclick = () => closeConfirm(false);
+document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeConfirm(false);
+
+// === 📆 ЗАПИСИ ДНЯ ===
 document.getElementById('day-modal-close').onclick = closeDayModal;
 document.querySelector('#day-modal .modal-backdrop').onclick = closeDayModal;
 
-// Кнопка "Тема" - раскрывает подменю
+// === 🎨 ТЕМЫ ===
 document.getElementById('sidebar-theme-toggle').onclick = () => {
     document.getElementById('theme-options').classList.toggle('hidden');
 };
 
-// Темы
 function applyTheme(themeName) {
     document.body.classList.remove('theme-dark', 'theme-pastel');
     if (themeName !== 'light') document.body.classList.add('theme-' + themeName);
-    
     document.querySelectorAll('.theme-btn').forEach(btn => {
         btn.classList.toggle('selected', btn.getAttribute('data-theme') === themeName);
     });
@@ -434,29 +753,25 @@ function loadTheme() {
 }
 
 document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.onclick = () => {
-        applyTheme(btn.getAttribute('data-theme'));
-    };
+    btn.onclick = () => { applyTheme(btn.getAttribute('data-theme')); };
 });
 
-// Экспорт
+// === 💾 ЭКСПОРТ / ИМПОРТ ===
 document.getElementById('sidebar-export-btn').onclick = () => {
     if (diaryEntries.length === 0) return showToast('Нет записей', 'error');
     const blob = new Blob([JSON.stringify({ version: '2.0', entries: diaryEntries }, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
     a.download = `diary_backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click(); 
+    a.click();
     showToast('Экспортировано', 'success');
     closeSidebar();
 };
 
-// Импорт
-document.getElementById('sidebar-import-btn').onclick = () => {
-    document.getElementById('import-file').click();
-};
-
+document.getElementById('sidebar-import-btn').onclick = () => { document.getElementById('import-file').click(); };
 document.getElementById('import-file').onchange = (e) => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
         try {
@@ -474,221 +789,13 @@ document.getElementById('import-file').onchange = (e) => {
     e.target.value = '';
 };
 
-// 5. Модалки создания записи (без изменений)
-document.getElementById('fab-add').onclick = openMoodModal;
-document.getElementById('close-mood-modal').onclick = () => document.getElementById('mood-modal').classList.add('hidden');
-document.querySelector('#mood-modal .modal-backdrop').onclick = () => document.getElementById('mood-modal').classList.add('hidden');
-
-document.getElementById('selected-mood-display').onclick = () => { closeEntryForm(); openMoodModal(); };
-document.getElementById('close-entry-modal').onclick = closeEntryForm;
-document.getElementById('cancel-entry-btn').onclick = closeEntryForm;
-document.querySelector('#entry-modal .modal-backdrop').onclick = closeEntryForm;
-
-document.getElementById('save-entry-btn').onclick = handleSaveEntry;
-document.getElementById('update-entry-btn').onclick = handleSaveEntry;
-
-document.getElementById('confirm-ok').onclick = () => closeConfirm(true);
-document.getElementById('confirm-cancel').onclick = () => closeConfirm(false);
-document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeConfirm(false);
-
-
-// === 📅 КАЛЕНДАРЬ ===
-
-// Локальный ключ даты "2026-10-27" (без часового пояса)
-function getDateKey(date) {
-    const d = new Date(date);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// Рисует сетку текущего месяца
-function renderCalendar() {
-    const year = currentCalendarDate.getFullYear();
-    const month = currentCalendarDate.getMonth();
-
-    // Подпись месяца
-    const monthDate = new Date(year, month, 1);
-    const monthText = monthDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-    
-    // Обновляем оба заголовка (для модалки и для ПК)
-    const labelModal = document.getElementById('calendar-month-label');
-    const labelDesktop = document.getElementById('calendar-month-label-desktop');
-    if (labelModal) labelModal.textContent = monthText;
-    if (labelDesktop) labelDesktop.textContent = monthText;
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(year, month, 1).getDay();
-    const offset = firstDay === 0 ? 6 : firstDay - 1;
-
-    const todayKey = getDateKey(new Date());
-
-    // Функция для заполнения сетки
-    function fillGrid(gridId) {
-        const grid = document.getElementById(gridId);
-        if (!grid) return;
-        
-        grid.innerHTML = '';
-
-        // Пустые клетки до первого числа
-        for (let i = 0; i < offset; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'calendar-day empty';
-            grid.appendChild(cell);
-        }
-
-        // Все дни месяца
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const cell = document.createElement('button');
-            cell.type = 'button';
-            cell.className = 'calendar-day';
-
-            const dayEntries = diaryEntries.filter(e => getDateKey(e.date) === dateStr);
-
-            if (dayEntries.length > 0) {
-                cell.textContent = dayEntries[0].mood;
-                cell.classList.add('has-entry');
-                cell.title = `Записей: ${dayEntries.length}`;
-            } else {
-                cell.textContent = day;
-                cell.classList.add('no-entry');
-            }
-
-            if (dateStr === todayKey) cell.classList.add('today');
-
-            cell.onclick = () => showDayEntries(dateStr);
-            grid.appendChild(cell);
-        }
-    }
-
-    // Заполняем обе сетки
-    fillGrid('calendar-grid');
-    fillGrid('calendar-grid-desktop');
-}
-
-// Открывает календарь из бокового меню
-function openCalendarScreen() {
-    closeSidebar();
-    
-    // На ПК календарь уже виден, просто скроллим к нему
-    if (window.innerWidth > 768) {
-        document.querySelector('.calendar-section-desktop').scrollIntoView({ behavior: 'smooth' });
-        return;
-    }
-    
-    // На телефоне открываем модалку
-    renderCalendar();
-    document.getElementById('calendar-modal').classList.remove('hidden');
-}
-
-function closeCalendarScreen() {
-    const modal = document.getElementById('calendar-modal');
-    // Плавно скрываем (CSS transition сам всё сделает)
-    modal.classList.add('hidden');
-}
-
-// Перелистывание месяца (-1 назад, +1 вперед)
-function changeCalendarMonth(delta) {
-    const grid = document.getElementById('calendar-grid');
-    
-    // 1. Добавляем анимацию в нужную сторону
-    grid.classList.remove('slide-left', 'slide-right');
-    // Форсируем перерисовку, чтобы анимация запустилась заново
-    void grid.offsetWidth;
-    grid.classList.add(delta > 0 ? 'slide-left' : 'slide-right');
-    
-    // 2. Меняем месяц и перерисовываем
-    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
-    renderCalendar();
-    drawMoodChart();
-}
-
-// Показывает все записи выбранного дня
-function showDayEntries(dateKey) {
-    const entries = diaryEntries.filter(e => getDateKey(e.date) === dateKey);
-    const body = document.getElementById('day-modal-body');
-
-    const prettyDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('ru-RU', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
-    document.getElementById('day-modal-title').textContent = prettyDate;
-
-    if (entries.length === 0) {
-        body.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px 0;">В этот день записей нет</p>';
-    } else {
-        body.innerHTML = entries.map(entry => `
-            <div class="day-entry-card">
-                <div class="day-entry-header">
-                    <span>${new Date(entry.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                    <span>${escapeHtml(entry.mood)}
-                        <button class="icon-action day-edit-btn" title="Редактировать">✏️</button>
-                    </span>
-                </div>
-                ${entry.title ? `<div class="day-title">${escapeHtml(entry.title)}</div>` : ''}
-                <div class="day-entry-text">${escapeHtml(entry.content)}</div>
-            </div>
-        `).join('');
-
-        // Вешаем редактирование на каждую карточку
-        body.querySelectorAll('.day-edit-btn').forEach((btn, i) => {
-            btn.onclick = () => {
-                closeDayModal();
-                openEntryForm(entries[i]);
-            };
-        });
-    }
-
-    document.getElementById('day-modal').classList.remove('hidden');
-}
-
-function closeDayModal() {
-    document.getElementById('day-modal').classList.add('hidden');
-}
-
-// === 🔔 НАПОМИНАНИЕ О ЗАПИСЯХ ===
-
-function checkReminder() {
-    if (diaryEntries.length === 0) return; // Нет записей — не напоминаем
-
-    // Находим самую свежую запись
-    const lastEntry = diaryEntries.reduce((latest, entry) => {
-        return new Date(entry.date) > new Date(latest.date) ? entry : latest;
-    });
-
-    const lastDate = new Date(lastEntry.date);
-    const now = new Date();
-    const daysDiff = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
-
-    // Если прошло >= 2 дней
-    if (daysDiff >= 2) {
-        const prettyDate = lastDate.toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-
-        document.getElementById('reminder-text').textContent = 
-            `Последняя запись была ${prettyDate}. Есть что добавить?`;
-        
-        // Показываем с задержкой, чтобы не мешать загрузке
-        setTimeout(() => {
-            document.getElementById('reminder-modal').classList.remove('hidden');
-        }, 500);
-    }
-}
-
-function closeReminder() {
-    document.getElementById('reminder-modal').classList.add('hidden');
-}
-
-function openNewEntryFromReminder() {
-    closeReminder();
-    openMoodModal();
-}
-
-// Напоминание
+// === 🔔 НАПОМИНАНИЕ ===
 document.getElementById('reminder-later-btn').onclick = closeReminder;
 document.getElementById('reminder-write-btn').onclick = openNewEntryFromReminder;
 document.querySelector('#reminder-modal .modal-backdrop').onclick = closeReminder;
+
+// === 💬 ЦИТАТА ===
+document.querySelector('.quote-section').onclick = nextQuote;
 
 // === 🚀 ЗАПУСК ===
 loadTheme();
@@ -696,4 +803,4 @@ updateDailyQuote();
 loadEntries();
 renderCalendar();
 drawMoodChart();
-checkReminder(); // Проверяем, нужно ли показать напоминание
+checkReminder();
