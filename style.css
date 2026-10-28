@@ -1,11 +1,7 @@
 /* ============================================
    1. СБРОС И ПЕРЕМЕННЫЕ ТЕМ
    ============================================ */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
     --bg-color: #f5f5f5;
@@ -58,7 +54,7 @@ body {
     padding: 20px;
     max-width: 600px;
     margin: 0 auto;
-    padding-bottom: 100px; /* Отступ под FAB-кнопку */
+    padding-bottom: 100px;
     transition: background-color 0.3s, color 0.3s;
 }
 
@@ -79,455 +75,191 @@ body {
     z-index: 50;
     transition: background-color 0.3s;
 }
-
-.main-header h1 {
-    font-size: 1.3em;
-    font-weight: 700;
-    flex: 1;
-    text-align: center;
-}
-
-.main-header h1.hidden {
-    display: none;
-}
+.main-header h1 { font-size: 1.3em; font-weight: 700; flex: 1; text-align: center; }
+.main-header h1.hidden { display: none; }
 
 .icon-btn {
-    background: none;
-    border: none;
-    font-size: 1.4em;
-    cursor: pointer;
-    padding: 5px;
-    color: var(--text-color);
-    transition: transform 0.2s, opacity 0.2s;
-    flex-shrink: 0;
+    background: none; border: none; font-size: 1.4em; cursor: pointer;
+    padding: 5px; color: var(--text-color);
+    transition: transform 0.2s, opacity 0.2s; flex-shrink: 0;
 }
+.icon-btn:active { transform: scale(0.9); }
+.icon-btn.hidden { display: none; }
 
-.icon-btn:active {
-    transform: scale(0.9);
-}
-
-.icon-btn.hidden {
-    display: none;
-}
-
-/* Панель поиска (внутри шапки) */
 .search-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    padding: 8px 12px;
-    background: var(--mood-btn-bg);
-    border-radius: 8px;
-    animation: slideIn 0.3s ease-out;
+    display: flex; align-items: center; gap: 10px; flex: 1;
+    padding: 8px 12px; background: var(--mood-btn-bg);
+    border-radius: 8px; animation: slideIn 0.3s ease-out;
 }
-
-.search-bar.hidden {
-    display: none;
-}
-
+.search-bar.hidden { display: none; }
 .search-bar input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-size: 1em;
-    color: var(--text-color);
-    outline: none;
+    flex: 1; border: none; background: transparent;
+    font-size: 1em; color: var(--text-color); outline: none;
 }
-
-.search-bar input::placeholder {
-    color: var(--text-muted);
-}
+.search-bar input::placeholder { color: var(--text-muted); }
 
 @keyframes slideIn {
     from { opacity: 0; transform: translateX(-10px); }
     to { opacity: 1; transform: translateX(0); }
 }
 
-/* Режим поиска: скрываем основные секции */
 #app-main.search-active .quote-section,
 #app-main.search-active .calendar-section-desktop,
-#app-main.search-active .chart-section {
-    display: none !important;
-}
+#app-main.search-active .chart-section { display: none !important; }
 
 /* ============================================
    4. ЦИТАТА ДНЯ
    ============================================ */
 .quote-section {
     background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
-    color: white;
-    padding: 16px 18px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: transform 0.15s;
-    min-height: 90px; /* Фиксированная минимальная высота, чтобы блок не "прыгал" */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    color: white; padding: 16px 18px; border-radius: 12px;
+    margin-bottom: 15px; text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer;
+    transition: transform 0.15s; min-height: 90px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
 }
-
-.quote-section:hover {
-    transform: scale(1.01);
-}
-
-.quote-section:active {
-    transform: scale(0.99);
-}
-
+.quote-section:hover { transform: scale(1.01); }
+.quote-section:active { transform: scale(0.99); }
 #daily-quote-text {
-    font-size: 0.95em;
-    font-style: italic;
-    margin-bottom: 6px;
-    line-height: 1.4;
-    max-width: 100%;
-    opacity: 1;
-    transition: opacity 0.25s ease;
+    font-size: 0.95em; font-style: italic; margin-bottom: 6px;
+    line-height: 1.4; max-width: 100%; opacity: 1; transition: opacity 0.25s ease;
 }
-
 #daily-quote-author {
-    font-size: 0.8em;
-    opacity: 0.9;
-    font-weight: 600;
-    transition: opacity 0.25s ease;
+    font-size: 0.8em; opacity: 0.9; font-weight: 600; transition: opacity 0.25s ease;
 }
-
 .quote-hint {
-    font-size: 0.7em;
-    opacity: 0.7;
-    margin-top: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 500;
+    font-size: 0.7em; opacity: 0.7; margin-top: 8px;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;
 }
 
 /* ============================================
-   5. БОКОВОЕ МЕНЮ (САЙДБАР)
+   5. БОКОВОЕ МЕНЮ
    ============================================ */
 .sidebar {
-    position: fixed;
-    top: 0;
-    left: -300px;
-    width: 280px;
-    height: 100%;
-    background: var(--card-bg);
-    z-index: 1000;
-    padding: 20px;
+    position: fixed; top: 0; left: -300px; width: 280px; height: 100%;
+    background: var(--card-bg); z-index: 1000; padding: 20px;
     box-shadow: 2px 0 15px rgba(0,0,0,0.2);
-    transition: left 0.3s ease;
-    overflow-y: auto;
+    transition: left 0.3s ease; overflow-y: auto;
 }
-
-.sidebar.open {
-    left: 0;
-}
-
+.sidebar.open { left: 0; }
 .sidebar-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); z-index: 999;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
 }
-
-.sidebar-backdrop.open {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.sidebar-backdrop.hidden {
-    display: none;
-}
+.sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+.sidebar-backdrop.hidden { display: none; }
 
 .sidebar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
 }
-
-.sidebar-header h2 {
-    font-size: 1.2em;
-    font-weight: 700;
-}
-
-.sidebar-menu {
-    display: flex;
-    flex-direction: column;
-}
-
+.sidebar-header h2 { font-size: 1.2em; font-weight: 700; }
+.sidebar-menu { display: flex; flex-direction: column; }
 .sidebar-menu-btn {
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    padding: 15px 10px;
-    cursor: pointer;
-    color: var(--text-color);
-    font-size: 1em;
-    border-radius: 8px;
-    transition: background-color 0.2s;
+    width: 100%; text-align: left; background: none; border: none;
+    padding: 15px 10px; cursor: pointer; color: var(--text-color);
+    font-size: 1em; border-radius: 8px; transition: background-color 0.2s;
 }
+.sidebar-menu-btn:hover { background: var(--mood-btn-bg); }
+.sidebar-divider { height: 1px; background: var(--border-color); margin: 5px 0; }
+.sidebar-submenu { position: relative; }
 
-.sidebar-menu-btn:hover {
-    background: var(--mood-btn-bg);
+.theme-options, .mood-filter-options {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 10px 15px; background: var(--mood-btn-bg);
+    border-radius: 8px; margin: 5px 0;
 }
-
-.sidebar-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 5px 0;
-}
-
-.sidebar-submenu {
-    position: relative;
-}
-
-/* Подменю тем */
-.theme-options {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 10px 15px;
-    background: var(--mood-btn-bg);
-    border-radius: 8px;
-    margin: 5px 0;
-}
-
-.theme-options.hidden {
-    display: none;
-}
+.theme-options.hidden, .mood-filter-options.hidden { display: none; }
 
 .theme-btn {
-    text-align: left;
-    background: var(--card-bg);
-    border: 2px solid transparent;
-    border-radius: 6px;
-    padding: 8px 12px;
-    cursor: pointer;
-    color: var(--text-color);
-    font-size: 0.95em;
-    transition: border-color 0.2s, background-color 0.2s;
+    text-align: left; background: var(--card-bg);
+    border: 2px solid transparent; border-radius: 6px;
+    padding: 8px 12px; cursor: pointer; color: var(--text-color);
+    font-size: 0.95em; transition: border-color 0.2s, background-color 0.2s;
 }
-
-.theme-btn:hover {
-    border-color: var(--accent-color);
-}
-
-.theme-btn.selected {
-    border-color: var(--accent-color);
-    background: var(--mood-btn-selected-bg);
-}
-
+.theme-btn:hover { border-color: var(--accent-color); }
+.theme-btn.selected { border-color: var(--accent-color); background: var(--mood-btn-selected-bg); }
 .theme-coming-soon {
-    text-align: center;
-    font-size: 0.8em;
-    color: var(--text-muted);
-    font-style: italic;
-    padding: 5px;
+    text-align: center; font-size: 0.8em; color: var(--text-muted);
+    font-style: italic; padding: 5px;
 }
+
+/* Кнопка сброса PIN (видна только когда PIN установлен) */
+.sidebar-pin-btn.hidden { display: none; }
+.sidebar-pin-btn { color: var(--text-muted); font-size: 0.9em; }
+.sidebar-pin-btn:hover { color: var(--danger-color); }
 
 /* ============================================
-   6. КАЛЕНДАРЬ (ПК ВЕРСИЯ НА ГЛАВНОМ ЭКРАНЕ)
+   6. КАЛЕНДАРЬ (ПК)
    ============================================ */
 .calendar-section-desktop {
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    background: var(--card-bg); padding: 15px; border-radius: 12px;
+    margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
-
-@media (min-width: 769px) {
-    .calendar-section-desktop { display: block !important; }
-}
-
-@media (max-width: 768px) {
-    .calendar-section-desktop { display: none !important; }
-}
+@media (min-width: 769px) { .calendar-section-desktop { display: block !important; } }
+@media (max-width: 768px) { .calendar-section-desktop { display: none !important; } }
 
 /* ============================================
-   7. ГРАФИК НАСТРОЕНИЯ
+   7. ГРАФИК
    ============================================ */
 .chart-section {
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    background: var(--card-bg); padding: 15px; border-radius: 12px;
+    margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
-
 .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
 }
-
-.chart-header h2 {
-    font-size: 1.05em;
-    font-weight: 600;
-}
-
-#chart-average {
-    font-size: 0.85em;
-    color: var(--text-muted);
-}
-
-#mood-chart {
-    display: block;
-    width: 100%;
-    height: 180px;
-}
-
-.chart-summary {
-    margin-top: 8px;
-    font-size: 0.8em;
-    color: var(--text-muted);
-    text-align: center;
-}
-
+.chart-header h2 { font-size: 1.05em; font-weight: 600; }
+#chart-average { font-size: 0.85em; color: var(--text-muted); }
+#mood-chart { display: block; width: 100%; height: 180px; }
+.chart-summary { margin-top: 8px; font-size: 0.8em; color: var(--text-muted); text-align: center; }
 @media (max-width: 768px) {
     #mood-chart { height: 140px; }
     .chart-section { padding: 10px; margin-bottom: 15px; }
 }
 
 /* ============================================
-   8. СПИСОК ЗАПИСЕЙ (КАРТОЧКИ)
+   8. СПИСОК ЗАПИСЕЙ
    ============================================ */
-.entries-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
+.entries-list { display: flex; flex-direction: column; gap: 15px; }
 .entry-card {
-    position: relative;
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative; background: var(--card-bg); padding: 15px;
+    border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
     border: 2px solid transparent;
 }
-
-.entry-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-/* Режим множественного выбора */
-.entry-card.selected {
-    background: var(--mood-btn-selected-bg);
-    border-color: var(--accent-color);
-}
-
+.entry-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.entry-card.selected { background: var(--mood-btn-selected-bg); border-color: var(--accent-color); }
 .entry-card.selected::after {
-    content: '✓';
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 24px;
-    height: 24px;
-    background: var(--accent-color);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: bold;
+    content: '✓'; position: absolute; top: 10px; right: 10px;
+    width: 24px; height: 24px; background: var(--accent-color); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: bold;
 }
-
 .entry-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85em;
-    color: var(--text-muted);
-    margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px;
 }
-
-.entry-title {
-    font-size: 1.1em;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 5px;
-}
-
+.entry-title { font-size: 1.1em; font-weight: 600; color: var(--text-color); margin-bottom: 5px; }
 .entry-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    white-space: pre-wrap;
-    line-height: 1.5;
-    font-size: 0.95em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; white-space: pre-wrap; line-height: 1.5; font-size: 0.95em;
 }
-
-.entry-stats {
-    font-size: 0.8em;
-    color: var(--text-muted);
-    margin-top: 8px;
-    text-align: right;
-}
-
-/* Кнопки действий в карточке */
-.icon-action {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.1em;
-    opacity: 0.6;
-    transition: opacity 0.2s, transform 0.15s;
-    padding: 4px;
-}
-
-.icon-action:hover {
-    opacity: 1;
-    transform: scale(1.15);
-}
+.entry-stats { font-size: 0.8em; color: var(--text-muted); margin-top: 8px; text-align: right; }
 
 /* ============================================
-   9. FAB-КНОПКА "+"
+   9. FAB-КНОПКА
    ============================================ */
 .fab-button {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: var(--accent-color);
-    color: white;
-    border: none;
-    font-size: 2.2em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--accent-color); color: white; border: none;
+    font-size: 2.2em; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
     transition: transform 0.2s, box-shadow 0.2s;
-    animation: glow 2s infinite alternate;
-    z-index: 100;
+    animation: glow 2s infinite alternate; z-index: 100;
 }
-
-.fab-button:hover {
-    transform: translateX(-50%) scale(1.1);
-    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
-}
-
+.fab-button:hover { transform: translateX(-50%) scale(1.1); box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6); }
 @keyframes glow {
     from { box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
     to { box-shadow: 0 4px 25px rgba(76, 175, 80, 0.8), 0 0 10px var(--accent-color); }
@@ -537,766 +269,448 @@ body {
    10. ОБЩИЕ СТИЛИ МОДАЛОК
    ============================================ */
 .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 999; display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
-
-.modal:not(.hidden) {
-    opacity: 1;
-    visibility: visible;
-}
-
+.modal:not(.hidden) { opacity: 1; visibility: visible; }
 .modal-backdrop {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(2px);
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(2px); z-index: 1;
 }
-
 .modal-content {
-    position: relative;
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 2;
-    transform: scale(0.95) translateY(10px);
-    transition: transform 0.3s ease;
+    position: relative; background: var(--card-bg); border-radius: 16px;
+    padding: 20px; width: 90%; max-width: 500px; max-height: 90vh;
+    overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 2;
+    transform: scale(0.95) translateY(10px); transition: transform 0.3s ease;
 }
-
-/* Backdrop ниже контента своей же модалки */
-.modal-backdrop {
-    z-index: 1;
-}
-
-.modal:not(.hidden) .modal-content {
-    transform: scale(1) translateY(0);
-}
-
-.hidden {
-    display: none !important;
-}
+.modal:not(.hidden) .modal-content { transform: scale(1) translateY(0); }
+.hidden { display: none !important; }
 
 /* ============================================
    11. МОДАЛКА ВЫБОРА НАСТРОЕНИЯ
    ============================================ */
-.mood-modal-content {
-    text-align: center;
-}
-
-.mood-modal-content h2 {
-    margin-bottom: 20px;
-    font-size: 1.3em;
-}
-
+.mood-modal-content { text-align: center; }
+.mood-modal-content h2 { margin-bottom: 20px; font-size: 1.3em; }
 .mood-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 10px; margin-bottom: 20px;
 }
-
 .mood-option {
-    font-size: 2em;
-    background: var(--mood-btn-bg);
-    border: 2px solid transparent;
-    border-radius: 12px;
-    padding: 10px;
-    cursor: pointer;
+    font-size: 2em; background: var(--mood-btn-bg);
+    border: 2px solid transparent; border-radius: 12px;
+    padding: 10px; cursor: pointer;
     transition: transform 0.15s, border-color 0.2s, background-color 0.2s;
 }
-
-.mood-option:hover {
-    background: var(--mood-btn-selected-bg);
-    border-color: var(--accent-color);
-    transform: scale(1.1);
-}
-
+.mood-option:hover { background: var(--mood-btn-selected-bg); border-color: var(--accent-color); transform: scale(1.1); }
 .modal-close-text {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 1em;
-    text-decoration: underline;
-    margin-top: 10px;
-    transition: color 0.2s;
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 1em; text-decoration: underline;
+    margin-top: 10px; transition: color 0.2s;
 }
-
-.modal-close-text:hover {
-    color: var(--text-color);
-}
+.modal-close-text:hover { color: var(--text-color); }
 
 /* ============================================
-   12. МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ ЗАПИСИ
+   12. МОДАЛКА ЗАПИСИ
    ============================================ */
 .entry-modal-content {
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    height: 80vh;
-    overflow: hidden;
+    padding: 0; display: flex; flex-direction: column;
+    height: 80vh; overflow: hidden;
 }
-
 .entry-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    border-bottom: 1px solid var(--border-color);
-    flex-shrink: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px 20px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
 }
-
-/* Кликабельный блок выбора даты */
+.entry-title-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 20px 0 20px; gap: 10px;
+}
 .date-picker-display {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--mood-btn-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 8px 14px;
-    cursor: pointer;
-    font-size: 0.95em;
-    color: var(--text-color);
-    transition: background-color 0.2s, transform 0.1s;
-    user-select: none;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--mood-btn-bg); border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 8px 14px; cursor: pointer;
+    font-size: 0.95em; color: var(--text-color);
+    transition: background-color 0.2s, transform 0.1s; user-select: none;
 }
+.date-picker-display:hover { background: var(--mood-btn-selected-bg); }
+.date-picker-display:active { transform: scale(0.97); }
+.date-picker-icon { font-size: 1.1em; }
+#entry-date-text { font-weight: 500; }
 
-.date-picker-display:hover {
-    background: var(--mood-btn-selected-bg);
-}
-
-.date-picker-display:active {
-    transform: scale(0.97);
-}
-
-.date-picker-icon {
-    font-size: 1.1em;
-}
-
-#entry-date-text {
-    font-weight: 500;
-}
-
-/* Выбранное настроение (справа в шапке модалки) */
-.selected-mood-display {
-    font-size: 2em;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.selected-mood-display:hover {
-    transform: scale(1.2);
-}
+.selected-mood-display { font-size: 2em; transition: transform 0.2s; }
+#entry-modal:not(.is-editing) .selected-mood-display { cursor: default; pointer-events: none; opacity: 1; }
+#entry-modal.is-editing .selected-mood-display { cursor: pointer; pointer-events: auto; }
+.selected-mood-display:hover { transform: scale(1.2); }
 
 .modal-close-btn {
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: color 0.2s;
+    background: none; border: none; font-size: 1.5em;
+    cursor: pointer; color: var(--text-muted); transition: color 0.2s;
 }
+.modal-close-btn:hover { color: var(--text-color); }
 
-.modal-close-btn:hover {
-    color: var(--text-color);
+.edit-btn { font-size: 1.3em; margin-right: 5px; transition: transform 0.2s; }
+.edit-btn:hover { transform: scale(1.15); }
+
+#entry-modal:not(.is-editing) .edit-btn { display: block; }
+#entry-modal.is-editing .edit-btn { display: none; }
+
+#entry-modal:not(.is-editing) .entry-title-input,
+#entry-modal:not(.is-editing) .entry-text-input {
+    background: transparent; border-bottom: 2px solid transparent;
+    color: var(--text-color); cursor: default; opacity: 0.95;
 }
+#entry-modal:not(.is-editing) .entry-text-input { resize: none; }
+#entry-modal.is-editing .entry-title-input { border-bottom-color: var(--border-color); }
+#entry-modal.is-editing .entry-title-input:focus { border-bottom-color: var(--accent-color); }
 
-/* Форма ввода */
+#entry-modal:not(.is-editing) .entry-actions { display: none; }
+
 .entry-form {
-    flex: 1;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    overflow-y: auto;
+    flex: 1; padding: 20px; display: flex; flex-direction: column;
+    gap: 15px; overflow-y: auto;
 }
-
 .entry-title-input {
-    width: 100%;
-    border: none;
-    border-bottom: 2px solid var(--border-color);
-    background: transparent;
-    font-size: 1.3em;
-    font-weight: 600;
-    color: var(--text-color);
-    padding: 5px 0;
-    outline: none;
-    transition: border-color 0.2s;
+    width: 100%; border: none; border-bottom: 2px solid var(--border-color);
+    background: transparent; font-size: 1.3em; font-weight: 600;
+    color: var(--text-color); padding: 5px 0; outline: none; transition: border-color 0.2s;
 }
-
-.entry-title-input:focus {
-    border-bottom-color: var(--accent-color);
-}
-
 .entry-text-input {
-    flex: 1;
-    width: 100%;
-    border: none;
-    background: transparent;
-    font-size: 1em;
-    color: var(--text-color);
-    resize: none;
-    outline: none;
-    line-height: 1.6;
-    font-family: inherit;
+    flex: 1; width: 100%; border: none; background: transparent;
+    font-size: 1em; color: var(--text-color); resize: none; outline: none;
+    line-height: 1.6; font-family: inherit;
 }
-
 
 .btn-primary {
-    background: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    background: var(--accent-color); color: white; border: none;
+    border-radius: 8px; padding: 10px 20px; font-size: 1em;
+    font-weight: 600; cursor: pointer; transition: background-color 0.2s;
 }
-
-.btn-primary:hover {
-    background: var(--accent-hover);
-}
-
+.btn-primary:hover { background: var(--accent-hover); }
 .btn-secondary {
-    background: var(--mood-btn-bg);
-    color: var(--text-color);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    background: var(--mood-btn-bg); color: var(--text-color); border: none;
+    border-radius: 8px; padding: 10px 20px; font-size: 1em;
+    cursor: pointer; transition: background-color 0.2s;
 }
-
-.btn-secondary:hover {
-    background: var(--mood-btn-selected-bg);
-}
-
+.btn-secondary:hover { background: var(--mood-btn-selected-bg); }
 .btn-danger {
-    background: var(--danger-bg, #ffebee);
-    color: var(--danger-color, #d32f2f);
-    border: 1px solid var(--danger-color, #d32f2f);
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s, opacity 0.2s;
+    background: var(--danger-bg); color: var(--danger-color);
+    border: 1px solid var(--danger-color); border-radius: 8px;
+    padding: 10px 20px; font-size: 1em; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s;
 }
+.btn-danger:hover { opacity: 0.85; }
 
-.btn-danger:hover {
-    opacity: 0.85;
+.btn-tag {
+    background: transparent; border: 1px solid var(--accent-color);
+    color: var(--accent-color); border-radius: 20px;
+    padding: 8px 16px; font-size: 0.9em; font-weight: 600;
+    cursor: pointer; transition: background-color 0.2s, color 0.2s;
 }
+.btn-tag:hover { background: var(--accent-color); color: white; }
+
+.entry-actions {
+    padding: 15px 20px; border-top: 1px solid var(--border-color);
+    display: flex; gap: 10px; align-items: center; flex-shrink: 0;
+}
+.entry-actions #cancel-entry-btn { margin-right: auto; }
 
 /* ============================================
    13. МОДАЛКА ПОДТВЕРЖДЕНИЯ
    ============================================ */
-.modal-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 15px;
-}
-
+.modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
 .modal-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.95em;
-    transition: opacity 0.2s;
+    padding: 8px 16px; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 0.95em; transition: opacity 0.2s;
 }
-
-.modal-btn:hover {
-    opacity: 0.85;
-}
-
-.modal-btn.primary {
-    background: var(--accent-color);
-    color: white;
-}
-
-.modal-btn.secondary {
-    background: var(--mood-btn-bg);
-    color: var(--text-color);
-}
+.modal-btn:hover { opacity: 0.85; }
+.modal-btn.primary { background: var(--accent-color); color: white; }
+.modal-btn.secondary { background: var(--mood-btn-bg); color: var(--text-color); }
 
 /* ============================================
-   14. МОДАЛКА КАЛЕНДАРЯ
+   14. КАЛЕНДАРЬ
    ============================================ */
-.calendar-modal-content {
-    padding: 0;
-}
-
-/* Режим выбора даты */
+.calendar-modal-content { padding: 0; }
 .calendar-modal-content.selecting-date .calendar-hint::after {
-    content: " (выберите нужный день)";
-    font-weight: 600;
-    color: var(--accent-color);
+    content: " (выберите нужный день)"; font-weight: 600; color: var(--accent-color);
 }
-
 .calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex; justify-content: space-between; align-items: center;
     padding: 10px 15px;
 }
-
-.calendar-header h3 {
-    font-size: 1em;
-    font-weight: 600;
-    text-transform: capitalize;
-}
-
+.calendar-header h3 { font-size: 1em; font-weight: 600; text-transform: capitalize; }
 .calendar-nav {
-    background: var(--mood-btn-bg);
-    color: var(--text-color);
-    border: none;
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 1.1em;
-    cursor: pointer;
+    background: var(--mood-btn-bg); color: var(--text-color); border: none;
+    border-radius: 8px; padding: 6px 12px; font-size: 1.1em; cursor: pointer;
     transition: background-color 0.2s, transform 0.15s;
 }
-
-.calendar-nav:hover {
-    background: var(--mood-btn-selected-bg);
-}
-
-.calendar-nav:active {
-    transform: scale(0.95);
-}
-
+.calendar-nav:hover { background: var(--mood-btn-selected-bg); }
+.calendar-nav:active { transform: scale(0.95); }
 .calendar-weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    font-size: 0.75em;
-    color: var(--text-muted);
-    padding: 0 15px;
-    margin-bottom: 8px;
-    font-weight: 600;
+    display: grid; grid-template-columns: repeat(7, 1fr); text-align: center;
+    font-size: 0.75em; color: var(--text-muted); padding: 0 15px;
+    margin-bottom: 8px; font-weight: 600;
 }
-
 .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    padding: 0 15px;
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    padding: 0 15px; transition: opacity 0.25s ease, transform 0.25s ease;
 }
-
-.calendar-grid.slide-left {
-    animation: slideLeft 0.3s ease;
-}
-
-.calendar-grid.slide-right {
-    animation: slideRight 0.3s ease;
-}
-
+.calendar-grid.slide-left { animation: slideLeft 0.3s ease; }
+.calendar-grid.slide-right { animation: slideRight 0.3s ease; }
 @keyframes slideLeft {
     0% { opacity: 0; transform: translateX(30px); }
     100% { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes slideRight {
     0% { opacity: 0; transform: translateX(-30px); }
     100% { opacity: 1; transform: translateX(0); }
 }
-
 .calendar-day {
-    aspect-ratio: 1;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    background: var(--mood-btn-bg);
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1em;
-    cursor: pointer;
-    padding: 0;
+    aspect-ratio: 1; border: 2px solid transparent; border-radius: 8px;
+    background: var(--mood-btn-bg); color: var(--text-color);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1em; cursor: pointer; padding: 0;
     transition: transform 0.15s, border-color 0.2s, background-color 0.2s;
 }
-
-.calendar-day:hover {
-    transform: scale(1.06);
-    background: var(--mood-btn-selected-bg);
-}
-
-.calendar-day.empty {
-    background: transparent;
-    cursor: default;
-}
-
-.calendar-day.empty:hover {
-    transform: none;
-}
-
-.calendar-day.no-entry {
-    font-size: 0.85em;
-    color: var(--text-muted);
-}
-
-.calendar-day.has-entry {
-    background: var(--mood-btn-selected-bg);
-}
-
-.calendar-day.today {
-    border-color: var(--accent-color);
-}
-
-.calendar-hint {
-    text-align: center;
-    font-size: 0.8em;
-    color: var(--text-muted);
-    padding: 15px;
-    margin: 0;
-}
-
-/* Кнопка "Назад" в календаре */
+.calendar-day:hover { transform: scale(1.06); background: var(--mood-btn-selected-bg); }
+.calendar-day.empty { background: transparent; cursor: default; }
+.calendar-day.empty:hover { transform: none; }
+.calendar-day.no-entry { font-size: 0.85em; color: var(--text-muted); }
+.calendar-day.has-entry { background: var(--mood-btn-selected-bg); }
+.calendar-day.today { border-color: var(--accent-color); }
+.calendar-hint { text-align: center; font-size: 0.8em; color: var(--text-muted); padding: 15px; margin: 0; }
 .back-btn {
-    background: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 0.9em;
-    font-weight: 600;
-    cursor: pointer;
+    background: var(--accent-color); color: white; border: none;
+    border-radius: 8px; padding: 8px 14px; font-size: 0.9em;
+    font-weight: 600; cursor: pointer;
     transition: background-color 0.2s, transform 0.15s;
 }
-
-.back-btn:hover {
-    background: var(--accent-hover);
-    transform: translateX(-2px);
-}
+.back-btn:hover { background: var(--accent-hover); transform: translateX(-2px); }
 
 /* ============================================
-   15. МОДАЛКА ЗАПИСЕЙ ДНЯ
+   15. ТЕГИ
    ============================================ */
-.day-entry-card {
-    background: var(--mood-btn-bg);
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    transition: transform 0.15s;
+.tags-list {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    padding: 10px 20px 20px 20px; justify-content: center;
+    max-height: 60vh; overflow-y: auto;
 }
+.tag-pill {
+    background: var(--mood-btn-bg); color: var(--text-color);
+    padding: 8px 16px; border-radius: 20px; cursor: pointer;
+    font-size: 0.95em; font-weight: 500;
+    transition: background-color 0.2s, transform 0.15s;
+    border: 1px solid transparent;
+}
+.tag-pill:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color); transform: translateY(-2px);
+}
+.tag-pill .count { font-size: 0.8em; opacity: 0.7; margin-left: 4px; }
 
-.day-entry-card:hover {
-    transform: translateX(2px);
+.active-filter-banner {
+    background: var(--mood-btn-selected-bg); color: var(--text-color);
+    padding: 10px 15px; border-radius: 8px; margin-bottom: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; border-left: 4px solid var(--accent-color);
+    animation: slideIn 0.3s ease-out;
 }
-
-.day-entry-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85em;
-    color: var(--text-muted);
-    margin-bottom: 6px;
+.clear-filter-btn {
+    background: none; border: none; color: var(--danger-color);
+    cursor: pointer; font-size: 1.2em; padding: 0 5px; transition: transform 0.2s;
 }
-
-.day-entry-text {
-    white-space: pre-wrap;
-    line-height: 1.5;
-}
-
-.day-title {
-    font-weight: 600;
-    margin-bottom: 4px;
-}
+.clear-filter-btn:hover { transform: scale(1.2); }
 
 /* ============================================
    16. НАПОМИНАНИЕ
    ============================================ */
-.reminder-modal-content {
-    text-align: center;
-}
-
-.reminder-modal-content h2 {
-    margin-bottom: 15px;
-    color: var(--accent-color);
-}
-
-#reminder-text {
-    font-size: 1em;
-    margin-bottom: 20px;
-    color: var(--text-color);
-    line-height: 1.5;
-}
-
-.reminder-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
+.reminder-modal-content { text-align: center; }
+.reminder-modal-content h2 { margin-bottom: 15px; color: var(--accent-color); }
+#reminder-text { font-size: 1em; margin-bottom: 20px; color: var(--text-color); line-height: 1.5; }
+.reminder-actions { display: flex; gap: 10px; justify-content: center; }
 
 /* ============================================
-   17. TOAST-УВЕДОМЛЕНИЯ
+   17. TOAST
    ============================================ */
 .toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    pointer-events: none;
+    position: fixed; top: 20px; right: 20px; z-index: 2000;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: none;
 }
-
 .toast {
-    background: var(--card-bg);
-    color: var(--text-color);
-    padding: 12px 20px;
-    border-radius: 8px;
+    background: var(--card-bg); color: var(--text-color);
+    padding: 12px 20px; border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-size: 0.9em;
-    border-left: 4px solid var(--accent-color);
-    animation: toastSlideIn 0.3s ease-out;
-    pointer-events: auto;
-    transition: opacity 0.3s;
+    font-size: 0.9em; border-left: 4px solid var(--accent-color);
+    animation: toastSlideIn 0.3s ease-out; pointer-events: auto; transition: opacity 0.3s;
 }
-
-.toast.success {
-    border-left-color: #4CAF50;
-}
-
-.toast.error {
-    border-left-color: #f44336;
-}
-
+.toast.success { border-left-color: #4CAF50; }
+.toast.error { border-left-color: #f44336; }
 @keyframes toastSlideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
 
 /* ============================================
-   18. АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ
+   18. АДАПТИВНОСТЬ
    ============================================ */
 @media (max-width: 480px) {
-    body {
-        padding: 12px;
-        padding-bottom: 90px;
-    }
-
-    .main-header h1 {
-        font-size: 1.1em;
-    }
-
-    .quote-section {
-        padding: 10px 12px;
-    }
-
-    .entry-modal-content {
-        height: 90vh;
-        width: 95%;
-    }
-
-    .entry-title-input {
-        font-size: 1.1em;
-    }
-
-    .mood-grid {
-        grid-template-columns: repeat(5, 1fr);
-        gap: 8px;
-    }
-
-    .mood-option {
-        font-size: 1.6em;
-        padding: 8px;
-    }
+    body { padding: 12px; padding-bottom: 90px; }
+    .main-header h1 { font-size: 1.1em; }
+    .quote-section { padding: 10px 12px; }
+    .entry-modal-content { height: 90vh; width: 95%; }
+    .entry-title-input { font-size: 1.1em; }
+    .mood-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .mood-option { font-size: 1.6em; padding: 8px; }
 }
 
-/* Модальное окно, открытое поверх другого */
-.modal.top-layer {
-    z-index: 1001;
+.modal.top-layer { z-index: 1001; }
+
+/* ============================================
+   19. PIN-КОД (НОВОЕ)
+   ============================================ */
+.pin-modal { z-index: 5000; }
+.pin-modal .modal-backdrop.pin-backdrop {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+}
+.pin-modal-content {
+    text-align: center; padding: 30px 20px; max-width: 360px;
+}
+.pin-modal-content h2 {
+    margin-bottom: 8px; color: var(--accent-color); font-size: 1.3em;
+}
+.pin-subtitle {
+    color: var(--text-muted); font-size: 0.9em;
+    margin-bottom: 20px; min-height: 1.4em;
+    transition: color 0.2s;
+}
+.pin-subtitle.error { color: var(--danger-color); font-weight: 600; }
+
+.pin-dots {
+    display: flex; justify-content: center; gap: 16px; margin-bottom: 30px;
+}
+.pin-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--accent-color);
+    transition: background-color 0.2s, transform 0.15s;
+}
+.pin-dot.filled {
+    background-color: var(--accent-color); transform: scale(1.15);
 }
 
-/* === КНОПКИ В МОДАЛКЕ ЗАПИСИ (одно правило!) === */
-.entry-actions {
-    padding: 15px 20px;
-    border-top: 1px solid var(--border-color);
+.pin-pad {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; max-width: 280px; margin: 0 auto;
+}
+.pin-key {
+    aspect-ratio: 1.3; border: none; border-radius: 12px;
+    background: var(--mood-btn-bg); color: var(--text-color);
+    font-size: 1.5em; font-weight: 600; cursor: pointer;
+    transition: background-color 0.15s, transform 0.1s;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.pin-key:hover { background: var(--mood-btn-selected-bg); }
+.pin-key:active { transform: scale(0.93); }
+.pin-key-empty { background: transparent; cursor: default; }
+.pin-key-empty:hover { background: transparent; }
+.pin-key-empty:active { transform: none; }
+.pin-key-delete { font-size: 1.3em; }
+
+.pin-shake { animation: pinShake 0.4s ease; }
+@keyframes pinShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-12px); }
+    40% { transform: translateX(12px); }
+    60% { transform: translateX(-8px); }
+    80% { transform: translateX(8px); }
+}
+
+/* ============================================
+   20. ФИЛЬТР ПО НАСТРОЕНИЮ В САЙДБАРЕ (НОВОЕ)
+   ============================================ */
+.mood-filter-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+}
+.mood-filter-emoji {
+    font-size: 1.5em; background: var(--card-bg);
+    border: 2px solid transparent; border-radius: 10px;
+    padding: 8px 0; cursor: pointer; text-align: center;
+    transition: transform 0.15s, border-color 0.2s, background-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.mood-filter-emoji:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+    transform: scale(1.1);
+}
+.mood-filter-emoji:active { transform: scale(0.95); }
+
+/* ============================================
+   21. СВАЙП ДЛЯ УДАЛЕНИЯ/ПЕРЕНΟΣА
+   ============================================ */
+.entry-card-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    touch-action: pan-y; /* Разрешает скролл вниз, но отдаёт нам контроль над горизонтальным свайпом */
+    user-select: none; /* Запрещает выделение текста при попытке свайпа */
+}
+
+.entry-card-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
     display: flex;
-    gap: 10px;
     align-items: center;
-    flex-shrink: 0;
+    gap: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
 }
 
-/* Толкаем "Удалить" влево, остальные кнопки сами прижимаются вправо */
-.entry-actions #cancel-entry-btn {
-    margin-right: auto;
-}
-
-/* === ДОПОЛНЕНИЯ К МОДАЛКЕ ЗАПИСИ: РЕЖИМЫ ПРОСМОТРА И РЕДАКТИРОВАНИЯ === */
-
-/* Строка заголовка и эмодзи */
-.entry-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px 20px 0 20px;
-    gap: 10px;
-}
-
-/* Стили полей в режиме ПРОСМОТРА (readonly) */
-#entry-modal:not(.is-editing) .entry-title-input,
-#entry-modal:not(.is-editing) .entry-text-input {
-    background: transparent;
-    border-bottom: 2px solid transparent; /* Убираем подчеркивание */
-    color: var(--text-color);
-    cursor: default;
-    opacity: 0.95;
-}
-
-#entry-modal:not(.is-editing) .entry-text-input {
-    resize: none; /* Запрет на растягивание в режиме просмотра */
-}
-
-/* Стили полей в режиме РЕДАКТИРОВАНИЯ */
-#entry-modal.is-editing .entry-title-input {
-    border-bottom-color: var(--border-color);
-}
-#entry-modal.is-editing .entry-title-input:focus {
-    border-bottom-color: var(--accent-color);
-}
-
-/* Кнопка карандаша */
-.edit-btn {
-    font-size: 1.3em;
-    margin-right: 5px;
-    transition: transform 0.2s;
-}
-.edit-btn:hover {
-    transform: scale(1.15);
-}
-
-/* Логика видимости элементов через класс .is-editing на модалке */
-
-/* 1. Кнопка карандаша видна ТОЛЬКО в режиме просмотра */
-#entry-modal:not(.is-editing) .edit-btn {
-    display: block;
-}
-#entry-modal.is-editing .edit-btn {
-    display: none;
-}
-
-/* 2. Нижние кнопки действий видны ТОЛЬКО в режиме редактирования */
-#entry-modal:not(.is-editing) .entry-actions {
-    display: none;
-}
-
-/* 3. Эмодзи: в режиме просмотра НЕ кликабельно, в режиме редактирования - кликабельно */
-#entry-modal:not(.is-editing) #selected-mood-display {
-    cursor: default;
-    pointer-events: none; /* Полностью блокирует клик по эмодзи */
+.entry-card-wrapper.swiped .entry-card-actions {
     opacity: 1;
-}
-#entry-modal.is-editing #selected-mood-display {
-    cursor: pointer;
     pointer-events: auto;
 }
 
-/* === ТЕГИ === */
-
-/* Кнопка вставки тега в модалке */
-.btn-tag {
-    background: transparent;
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-    border-radius: 20px;
-    padding: 8px 16px;
-    font-size: 0.9em;
-    font-weight: 600;
+.entry-card-action-btn {
+    height: 100%;
+    width: 70px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5em;
     cursor: pointer;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-.btn-tag:hover {
-    background: var(--accent-color);
+    transition: background-color 0.2s;
     color: white;
 }
 
-/* Облако тегов в модалке */
-.tags-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px 20px 20px 20px;
-    justify-content: center;
-    max-height: 60vh;
-    overflow-y: auto;
+.entry-card-action-btn.delete-btn {
+    background: var(--danger-color);
 }
 
-.tag-pill {
-    background: var(--mood-btn-bg);
-    color: var(--text-color);
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.95em;
-    font-weight: 500;
-    transition: background-color 0.2s, transform 0.15s;
-    border: 1px solid transparent;
+.entry-card-action-btn.move-up-btn {
+    background: var(--accent-color);
 }
 
-.tag-pill:hover {
-    background: var(--mood-btn-selected-bg);
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
+.entry-card-action-btn:hover {
+    opacity: 0.85;
 }
 
-.tag-pill .count {
-    font-size: 0.8em;
-    opacity: 0.7;
-    margin-left: 4px;
+.entry-card-content {
+    position: relative;
+    background: var(--card-bg);
+    transition: transform 0.3s ease;
+    z-index: 2;
 }
 
-/* Баннер активного фильтра тегов над списком записей */
-.active-filter-banner {
-    background: var(--mood-btn-selected-bg);
-    color: var(--text-color);
-    padding: 10px 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 600;
-    border-left: 4px solid var(--accent-color);
-    animation: slideIn 0.3s ease-out;
+.entry-card-wrapper.swiped .entry-card-content {
+    transform: translateX(-140px); /* Сдвиг на ширину двух кнопок */
 }
 
-.clear-filter-btn {
-    background: none;
-    border: none;
-    color: var(--danger-color);
-    cursor: pointer;
-    font-size: 1.2em;
-    padding: 0 5px;
-    transition: transform 0.2s;
-}
-
-.clear-filter-btn:hover {
-    transform: scale(1.2);
+/* Запрет свайпа в режиме множественного удаления */
+.entry-card.multi-delete-mode .entry-card-content {
+    transform: none !important;
 }

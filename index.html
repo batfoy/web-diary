@@ -8,21 +8,18 @@
 </head>
 <body>
 
-    <!-- ШАПКА С ГАМБУРГЕРОМ И ЛУПОЙ -->
+    <!-- ШАПКА -->
     <header class="main-header">
         <button id="menu-btn" class="icon-btn" title="Меню">☰</button>
         <h1 id="header-title">Мой Дневник</h1>
-        
-        <!-- ПАНЕЛЬ ПОИСКА (внутри header, скрыта по умолчанию) -->
         <div id="search-bar" class="search-bar hidden">
             <button id="close-search-btn" class="icon-btn">←</button>
             <input type="text" id="search-input" placeholder="Искать в дневнике...">
         </div>
-        
         <button id="search-btn" class="icon-btn" title="Поиск">🔍</button>
     </header>
 
-    <!-- БОКОВОЕ МЕНЮ (ГАМБУРГЕР) -->
+    <!-- БОКОВОЕ МЕНЮ -->
     <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
     <aside id="sidebar" class="sidebar">
         <div class="sidebar-header">
@@ -43,27 +40,34 @@
                 </div>
             </div>
             <div class="sidebar-divider"></div>
-            
+
+            <!-- НОВОЕ: Фильтр по настроению -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-mood-filter-toggle" class="sidebar-menu-btn">😊 Настроение</button>
+                <div id="mood-filter-options" class="mood-filter-options hidden">
+                    <div class="mood-filter-grid" id="mood-filter-grid"></div>
+                </div>
+            </div>
+            <div class="sidebar-divider"></div>
+
+            <button id="sidebar-tags-btn" class="sidebar-menu-btn">🏷️ Теги</button>
+            <div class="sidebar-divider"></div>
             <button id="sidebar-export-btn" class="sidebar-menu-btn">📤 Экспорт</button>
             <div class="sidebar-divider"></div>
             <button id="sidebar-import-btn" class="sidebar-menu-btn">📥 Импорт</button>
             <input type="file" id="import-file" accept=".json" style="display: none;">
             <div class="sidebar-divider"></div>
-            <button id="sidebar-tags-btn" class="sidebar-menu-btn">🏷️ Теги</button>
-            <div class="sidebar-divider"></div>
+            <button id="sidebar-reset-pin-btn" class="sidebar-menu-btn sidebar-pin-btn hidden">🔒 Сбросить PIN</button>
         </div>
     </aside>
 
     <main id="app-main">
-        
-        <!-- ЦИТАТА ДНЯ -->
         <section class="quote-section">
             <p id="daily-quote-text">Загрузка цитаты...</p>
             <span id="daily-quote-author"></span>
             <span class="quote-hint">нажмите, чтобы сменить</span>
         </section>
         
-        <!-- КАЛЕНДАРЬ ДЛЯ ПК (виден только на больших экранах) -->
         <section class="calendar-section-desktop">
             <div class="calendar-header">
                 <button id="prev-month-desktop" class="calendar-nav">←</button>
@@ -77,7 +81,6 @@
             <div id="calendar-grid-desktop" class="calendar-grid"></div>
         </section>
         
-        <!-- ГРАФИК НАСТРОЕНИЯ -->
         <section class="chart-section">
             <div class="chart-header">
                 <h2>Настроение за месяц</h2>
@@ -87,14 +90,12 @@
             <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
         </section>
 
-        <!-- СПИСОК ЗАПИСЕЙ -->
         <section id="entries-list" class="entries-list"></section>
     </main>
 
-    <!-- СВЕТЯЩАЯСЯ КНОПКА "+" -->
     <button id="fab-add" class="fab-button" title="Новая запись"><span>+</span></button>
 
-    <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ -->
+    <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ (для записи) -->
     <div id="mood-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content mood-modal-content">
@@ -104,32 +105,25 @@
         </div>
     </div>
 
-        <!-- МОДАЛКА ПРОСМОТРА / РЕДАКТИРОВАНИЯ ЗАПИСИ -->
+    <!-- МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ -->
     <div id="entry-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content entry-modal-content">
-            <!-- Верхняя шапка: Дата, Карандаш (в режиме просмотра), Закрыть -->
             <div class="entry-modal-header">
                 <div id="entry-date-display" class="date-picker-display">
                     <span class="date-picker-icon">📅</span>
                     <span id="entry-date-text">Сегодня</span>
                 </div>
-                <!-- Кнопка редактирования (видна только в режиме просмотра) -->
                 <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">✏️</button>
                 <button class="modal-close-btn" id="close-entry-modal">✕</button>
             </div>
-            
-            <!-- Строка заголовка и настроения (слева заголовок, справа эмодзи) -->
             <div class="entry-title-row">
                 <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
                 <span id="selected-mood-display" class="selected-mood-display">😐</span>
             </div>
-
             <div class="entry-form">
                 <textarea id="entry-text" class="entry-text-input" placeholder="О чем вы хотите написать?" readonly></textarea>
             </div>
-
-            <!-- Кнопки действий (видны только в режиме редактирования) -->
             <div class="entry-actions">
                 <button id="cancel-entry-btn" class="btn-danger">Удалить</button>
                 <button id="insert-tag-btn" class="btn-tag hidden">#теги</button>
@@ -174,7 +168,7 @@
         </div>
     </div>
 
-        <!-- МОДАЛКА ВСЕХ ТЕГОВ -->
+    <!-- МОДАЛКА ВСЕХ ТЕГОВ -->
     <div id="tags-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content tags-modal-content">
@@ -182,26 +176,42 @@
                 <h2>Все теги</h2>
                 <button class="modal-close-btn" id="close-tags-modal">✕</button>
             </div>
-            <div id="tags-list" class="tags-list">
-                <!-- Теги будут сгенерированы здесь через JS -->
-            </div>
+            <div id="tags-list" class="tags-list"></div>
             <p class="calendar-hint">Нажмите на тег, чтобы увидеть записи</p>
         </div>
     </div>
 
-    <!-- ЗАПИСИ ВЫБРАННОГО ДНЯ -->
-    <div id="day-modal" class="modal hidden">
-        <div class="modal-backdrop"></div>
-        <div class="modal-content">
-            <div class="entry-modal-header">
-                <h2 id="day-modal-title">Записи за день</h2>
-                <button id="day-modal-close" class="modal-close-btn">✕</button>
+    <!-- НОВОЕ: МОДАЛКА PIN-КОДА -->
+    <div id="pin-modal" class="modal hidden pin-modal">
+        <div class="modal-backdrop pin-backdrop"></div>
+        <div class="modal-content pin-modal-content">
+            <h2 id="pin-title">🔐 Введите PIN-код</h2>
+            <p id="pin-subtitle" class="pin-subtitle"></p>
+            <div class="pin-dots">
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
             </div>
-            <div id="day-modal-body"></div>
+            <div class="pin-pad">
+                <button class="pin-key" data-key="1">1</button>
+                <button class="pin-key" data-key="2">2</button>
+                <button class="pin-key" data-key="3">3</button>
+                <button class="pin-key" data-key="4">4</button>
+                <button class="pin-key" data-key="5">5</button>
+                <button class="pin-key" data-key="6">6</button>
+                <button class="pin-key" data-key="7">7</button>
+                <button class="pin-key" data-key="8">8</button>
+                <button class="pin-key" data-key="9">9</button>
+                <button class="pin-key pin-key-empty"></button>
+                <button class="pin-key" data-key="0">0</button>
+                <button class="pin-key pin-key-delete">⌫</button>
+            </div>
+            <button id="pin-skip-btn" class="modal-close-text hidden">Пропустить</button>
         </div>
     </div>
 
-    <!-- НАПОМИНАНИЕ О ЗАПИСЯХ -->
+    <!-- НАПОМИНАНИЕ -->
     <div id="reminder-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content reminder-modal-content">
