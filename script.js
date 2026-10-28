@@ -104,14 +104,22 @@ function displayQuote() {
 }
 
 function nextQuote() {
-    const quoteSection = document.querySelector('.quote-section');
-    quoteSection.classList.add('fade-out');
+    const textEl = document.getElementById('daily-quote-text');
+    const authorEl = document.getElementById('daily-quote-author');
+    
+    // Плавно скрываем только текст
+    textEl.style.opacity = '0';
+    authorEl.style.opacity = '0';
+    
     setTimeout(() => {
         currentQuoteIndex = (currentQuoteIndex + 1) % QUOTES.length;
         localStorage.setItem('quote_index', currentQuoteIndex);
         displayQuote();
-        quoteSection.classList.remove('fade-out');
-    }, 300);
+        
+        // Плавно показываем новый текст
+        textEl.style.opacity = '1';
+        authorEl.style.opacity = '1';
+    }, 250);
 }
 
 // === 😊 ВЫБОР НАСТРОЕНИЯ ===
@@ -247,12 +255,15 @@ function drawMoodChart() {
     const xForDay = day => left + ((day - 1) / (daysInMonth - 1)) * plotW;
     const yForScore = score => top + ((maxScore - 1 - score) / (maxScore - 1)) * plotH;
 
+    // 5 опорных уровней: 😡 (0), ☹️ (2), 😏 (5), 😁 (7), 🥰 (9)
+    const scoreIndices = [0, 3, 6, 9];
+
     ctx.font = '14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    for (let score = 0; score < maxScore; score++) {
+    for (const score of scoreIndices) {
         const y = yForScore(score);
         ctx.strokeStyle = grid; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width - right, y); ctx.stroke();
-        ctx.fillStyle = muted;
+        ctx.fillStyle = muted; 
         ctx.fillText(MOODS[score].emoji, 2, y);
     }
 
