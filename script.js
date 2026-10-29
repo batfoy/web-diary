@@ -660,17 +660,37 @@ function renderEntries() {
     });
 }
 
-function saveAndRender() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryEntries));
+async function saveAndRender() {
+    // Сохраняем все записи в IndexedDB
+    await saveAllToIndexedDB();
     renderEntries();
     drawMoodChart();
     renderCalendar();
 }
 
-function loadEntries() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) diaryEntries = JSON.parse(stored);
+async function loadEntries() {
+    // 1. Одноразовая миграция из localStorage (если есть старые данные)
+    const migrated = await migrateFromLocalStorage();
+    if (migrated) {
+        showToast('Данные перенесены в новое хранилище', 'success');
+    }
+    
+    // 2. Загружаем записи из IndexedDB
+    try {
+        diaryEntries = await dbGetAll();
+    } catch (error) {
+        console.error('Ошибка загрузки из IndexedDB:', error);
+        diaryEntries = [];
+    }
+    
+    // 3. Миграция тегов для старых записей (без #)
     migrateEntriesTags();
+    
+    // 4. Если были изменения тегов — сохраняем обратно в IndexedDB
+    if (migrated || diaryEntries.some(e => !e.tags)) {
+        await saveAllToIndexedDB();
+    }
+    
     renderEntries();
 }
 
@@ -1449,10 +1469,25 @@ document.addEventListener('touchend', () => {
 }, { passive: true });
 
 // === 🚀 ЗАПУСК ===
-loadTheme();
-updateDailyQuote();
-loadEntries();
-renderCalendar();
-initMoodFilterGrid();
-initPinProtection();
-checkReminder();
+async function initApp() {
+    // Сначала инициализируем базу данных
+    try {
+        await initDB();
+        console.log('IndexedDB инициализирована');
+    } catch (error) {
+        console.error('Не удалось инициализировать IndexedDB:', error);
+        showToast('Ошибка хранилища данных', 'error');
+        return;
+    }
+    
+    // Затем запускаем всё остальное
+    loadTheme();
+    updateDailyQuote();
+    await loadEntries();
+    renderCalendar();
+    initMoodFilterGrid();
+    initPinProtection();
+    checkReminder();
+}
+
+initApp();
