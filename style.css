@@ -184,7 +184,7 @@ body {
     font-style: italic; padding: 5px;
 }
 
-/* Кнопка сброса PIN (видна только когда PIN установлен) */
+/* Кнопка сброса PIN */
 .sidebar-pin-btn.hidden { display: none; }
 .sidebar-pin-btn { color: var(--text-muted); font-size: 0.9em; }
 .sidebar-pin-btn:hover { color: var(--danger-color); }
@@ -222,11 +222,17 @@ body {
    8. СПИСОК ЗАПИСЕЙ
    ============================================ */
 .entries-list { display: flex; flex-direction: column; gap: 15px; }
+
 .entry-card {
-    position: relative; background: var(--card-bg); padding: 15px;
-    border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+    position: relative; 
+    background: var(--card-bg); 
+    padding: 12px;
+    border-radius: 12px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    cursor: pointer; 
+    transition: transform 0.3s ease, box-shadow 0.2s; /* Обновлено для плавного свайпа */
     border: 2px solid transparent;
+    z-index: 2; /* Чтобы карточка была поверх кнопок действий при свайпе */
 }
 .entry-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .entry-card.selected { background: var(--mood-btn-selected-bg); border-color: var(--accent-color); }
@@ -353,7 +359,9 @@ body {
 .edit-btn:hover { transform: scale(1.15); }
 
 #entry-modal:not(.is-editing) .edit-btn { display: block; }
+#entry-modal:not(.is-editing) .save-check-btn { display: none; }
 #entry-modal.is-editing .edit-btn { display: none; }
+#entry-modal.is-editing .save-check-btn { display: flex; }
 
 #entry-modal:not(.is-editing) .entry-title-input,
 #entry-modal:not(.is-editing) .entry-text-input {
@@ -566,7 +574,7 @@ body {
 .modal.top-layer { z-index: 1001; }
 
 /* ============================================
-   19. PIN-КОД (НОВОЕ)
+   19. PIN-КОД
    ============================================ */
 .pin-modal { z-index: 5000; }
 .pin-modal .modal-backdrop.pin-backdrop {
@@ -626,7 +634,7 @@ body {
 }
 
 /* ============================================
-   20. ФИЛЬТР ПО НАСТРОЕНИЮ В САЙДБАРЕ (НОВОЕ)
+   20. ФИЛЬТР ПО НАСТРОЕНИЮ В САЙДБАРЕ
    ============================================ */
 .mood-filter-grid {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
@@ -646,7 +654,7 @@ body {
 .mood-filter-emoji:active { transform: scale(0.95); }
 
 /* ============================================
-   21. СВАЙП ДЛЯ УДАЛЕНИЯ/ПЕРЕНΟΣА
+   21. СВАЙП ДЛЯ УДАЛЕНИЯ/ПЕРЕНОСА (ИСПРАВЛЕНО)
    ============================================ */
 .entry-card-wrapper {
     position: relative;
@@ -667,6 +675,7 @@ body {
     opacity: 0;
     transition: opacity 0.2s;
     pointer-events: none;
+    z-index: 1;
 }
 
 .entry-card-wrapper.swiped .entry-card-actions {
@@ -699,18 +708,167 @@ body {
     opacity: 0.85;
 }
 
-.entry-card-content {
-    position: relative;
-    background: var(--card-bg);
-    transition: transform 0.3s ease;
-    z-index: 2;
-}
-
-.entry-card-wrapper.swiped .entry-card-content {
-    transform: translateX(-140px); /* Сдвиг на ширину двух кнопок */
+/* ИСПРАВЛЕНО: теперь сдвигаем именно .entry-card, а не .entry-card-content */
+.entry-card-wrapper.swiped .entry-card {
+    transform: translateX(-140px); /* Сдвиг на ширину двух кнопок (70px + 70px) */
 }
 
 /* Запрет свайпа в режиме множественного удаления */
-.entry-card.multi-delete-mode .entry-card-content {
+.entry-card-wrapper.swiped .entry-card.multi-delete-mode {
     transform: none !important;
+}
+
+/* ============================================
+   22. МОДАЛКА ГРАФИКА НАСТРОЕНИЙ
+   ============================================ */
+.chart-modal-content {
+    padding: 0;
+    max-width: 600px;
+}
+
+.chart-modal-body {
+    padding: 15px 20px 20px 20px;
+}
+
+.chart-modal-body .chart-header {
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.chart-modal-body #mood-chart {
+    height: 220px;
+}
+
+.chart-modal-body .chart-summary {
+    margin-top: 12px;
+}
+
+/* ============================================
+   23. МОДАЛКА СТАТИСТИКИ
+   ============================================ */
+.stats-modal-content {
+    padding: 0;
+}
+
+.stats-body {
+    padding: 20px;
+}
+
+.stats-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stats-item:last-child {
+    border-bottom: none;
+}
+
+.stats-label {
+    font-size: 0.95em;
+    color: var(--text-muted);
+}
+
+.stats-value {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.stats-value.large {
+    font-size: 1.3em;
+    color: var(--accent-color);
+}
+
+/* ============================================
+   24. КНОПКА И МОДАЛКА ШАБЛОНОВ
+   ============================================ */
+.btn-templates {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-templates:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+.templates-modal-content {
+    padding: 0;
+    max-width: 500px;
+}
+
+.templates-list {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.template-item {
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 15px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.15s;
+}
+
+.template-item:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+    transform: translateY(-2px);
+}
+
+.template-title {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.template-desc {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+/* ============================================
+   25. КОМПАКТНАЯ ШАПКА ЗАПИСИ
+   ============================================ */
+.save-check-btn {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.15s;
+    flex-shrink: 0;
+}
+.save-check-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.1);
+}
+.save-check-btn:active {
+    transform: scale(0.95);
+}
+
+.entry-actions-right {
+    display: flex;
+    gap: 10px;
 }

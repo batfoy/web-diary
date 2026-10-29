@@ -16,6 +16,7 @@
             <button id="close-search-btn" class="icon-btn">←</button>
             <input type="text" id="search-input" placeholder="Искать в дневнике...">
         </div>
+        <button id="cancel-multi-delete-btn" class="icon-btn hidden" title="Отмена">✕</button>
         <button id="search-btn" class="icon-btn" title="Поиск">🔍</button>
     </header>
 
@@ -29,7 +30,8 @@
         <div class="sidebar-menu">
             <button id="sidebar-calendar-btn" class="sidebar-menu-btn">📅 Календарь</button>
             <div class="sidebar-divider"></div>
-            
+            <button id="sidebar-stats-btn" class="sidebar-menu-btn">📈 Статистика</button>
+            <div class="sidebar-divider"></div>
             <div class="sidebar-submenu">
                 <button id="sidebar-theme-toggle" class="sidebar-menu-btn">🎨 Тема</button>
                 <div id="theme-options" class="theme-options hidden">
@@ -49,7 +51,8 @@
                 </div>
             </div>
             <div class="sidebar-divider"></div>
-
+            <button id="sidebar-chart-btn" class="sidebar-menu-btn">📊 График настроений</button>
+            <div class="sidebar-divider"></div>
             <button id="sidebar-tags-btn" class="sidebar-menu-btn">🏷️ Теги</button>
             <div class="sidebar-divider"></div>
             <button id="sidebar-export-btn" class="sidebar-menu-btn">📤 Экспорт</button>
@@ -80,16 +83,6 @@
             </div>
             <div id="calendar-grid-desktop" class="calendar-grid"></div>
         </section>
-        
-        <section class="chart-section">
-            <div class="chart-header">
-                <h2>Настроение за месяц</h2>
-                <span id="chart-average">—</span>
-            </div>
-            <canvas id="mood-chart" aria-label="График настроений"></canvas>
-            <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
-        </section>
-
         <section id="entries-list" class="entries-list"></section>
     </main>
 
@@ -110,12 +103,13 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content entry-modal-content">
             <div class="entry-modal-header">
+                <button class="modal-close-btn" id="close-entry-modal">✕</button>
                 <div id="entry-date-display" class="date-picker-display">
                     <span class="date-picker-icon">📅</span>
                     <span id="entry-date-text">Сегодня</span>
                 </div>
+                <button id="save-check-btn" class="save-check-btn" title="Сохранить">✓</button>
                 <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">✏️</button>
-                <button class="modal-close-btn" id="close-entry-modal">✕</button>
             </div>
             <div class="entry-title-row">
                 <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
@@ -126,9 +120,10 @@
             </div>
             <div class="entry-actions">
                 <button id="cancel-entry-btn" class="btn-danger">Удалить</button>
-                <button id="insert-tag-btn" class="btn-tag hidden">#теги</button>
-                <button id="save-entry-btn" class="btn-primary hidden">Сохранить</button>
-                <button id="update-entry-btn" class="btn-primary hidden">Обновить</button>
+                <div class="entry-actions-right">
+                    <button id="templates-btn" class="btn-templates hidden">📝 Шаблоны</button>
+                    <button id="insert-tag-btn" class="btn-tag hidden">#теги</button>
+                </div>
             </div>
         </div>
     </div>
@@ -223,7 +218,65 @@
             </div>
         </div>
     </div>
+        <!-- МОДАЛКА ГРАФИКА НАСТРОЕНИЙ -->
+    <div id="chart-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content chart-modal-content">
+            <div class="entry-modal-header">
+                <button id="prev-month-chart" class="calendar-nav">←</button>
+                <h2 id="chart-modal-title">Настроение</h2>
+                <button id="next-month-chart" class="calendar-nav">→</button>
+                <button class="modal-close-btn" id="close-chart-modal">✕</button>
+            </div>
+            <div class="chart-modal-body">
+                <div class="chart-header">
+                    <span id="chart-average">—</span>
+                </div>
+                <canvas id="mood-chart" aria-label="График настроений"></canvas>
+                <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
+            </div>
+        </div>
+    </div>
+        <!-- МОДАЛКА СТАТИСТИКИ -->
+    <div id="stats-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content stats-modal-content">
+            <div class="entry-modal-header">
+                <h2>📈 Статистика</h2>
+                <button class="modal-close-btn" id="close-stats-modal">✕</button>
+            </div>
+            <div id="stats-body" class="stats-body"></div>
+        </div>
+    </div>
 
+        <!-- МОДАЛКА ШАБЛОНОВ -->
+    <div id="templates-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content templates-modal-content">
+            <div class="entry-modal-header">
+                <h2>📝 Выберите шаблон</h2>
+                <button class="modal-close-btn" id="close-templates-modal">✕</button>
+            </div>
+            <div class="templates-list">
+                <button class="template-item" data-template="gratitude">
+                    <div class="template-title">🙏 Благодарности дня</div>
+                    <div class="template-desc">За что я благодарен сегодня?</div>
+                </button>
+                <button class="template-item" data-template="summary">
+                    <div class="template-title">📊 Итоги дня</div>
+                    <div class="template-desc">Что получилось? Что улучшить?</div>
+                </button>
+                <button class="template-item" data-template="ideas">
+                    <div class="template-title">💡 Идеи на будущее</div>
+                    <div class="template-desc">Мысли, планы, мечты</div>
+                </button>
+                <button class="template-item" data-template="empty">
+                    <div class="template-title">📄 Пустой шаблон</div>
+                    <div class="template-desc">Начать с чистого листа</div>
+                </button>
+            </div>
+        </div>
+    </div>
     <div id="toast-container" class="toast-container"></div>
     <script src="script.js" defer></script>
 </body>
