@@ -55,9 +55,15 @@
             <div class="sidebar-divider"></div>
             <button id="sidebar-tags-btn" class="sidebar-menu-btn">🏷️ Теги</button>
             <div class="sidebar-divider"></div>
-            <button id="sidebar-export-btn" class="sidebar-menu-btn">📤 Экспорт</button>
-            <div class="sidebar-divider"></div>
-            <button id="sidebar-import-btn" class="sidebar-menu-btn">📥 Импорт</button>
+            
+            <div class="sidebar-submenu">
+                <button id="sidebar-export-import-toggle" class="sidebar-menu-btn">📦 Экспорт / Импорт</button>
+                <div id="export-import-options" class="export-import-options hidden">
+                    <button id="sidebar-export-btn" class="export-import-btn">📤 Экспорт в JSON</button>
+                    <button id="sidebar-import-btn" class="export-import-btn">📥 Импорт из JSON</button>
+                    <button id="sidebar-markdown-btn" class="export-import-btn">📝 Экспорт в Markdown</button>
+                </div>
+            </div>
             <input type="file" id="import-file" accept=".json" style="display: none;">
             <div class="sidebar-divider"></div>
             <button id="sidebar-reset-pin-btn" class="sidebar-menu-btn sidebar-pin-btn hidden">🔒 Сбросить PIN</button>

@@ -654,70 +654,26 @@ body {
 .mood-filter-emoji:active { transform: scale(0.95); }
 
 /* ============================================
-   21. СВАЙП ДЛЯ УДАЛЕНИЯ/ПЕРЕНОСА (ИСПРАВЛЕНО)
+   21. СПИСОК ЗАПИСЕЙ (БЕЗ СВАЙПА)
    ============================================ */
-.entry-card-wrapper {
-    position: relative;
-    overflow: hidden;
-    border-radius: 12px;
-    touch-action: pan-y; /* Разрешает скролл вниз, но отдаёт нам контроль над горизонтальным свайпом */
-    user-select: none; /* Запрещает выделение текста при попытке свайпа */
+.entry-card {
+    position: relative; 
+    background: var(--card-bg); 
+    padding: 15px;
+    border-radius: 12px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    cursor: pointer; 
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid transparent;
 }
-
-.entry-card-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 1;
+.entry-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.entry-card.selected { background: var(--mood-btn-selected-bg); border-color: var(--accent-color); }
+.entry-card.selected::after {
+    content: '✓'; position: absolute; top: 10px; right: 10px;
+    width: 24px; height: 24px; background: var(--accent-color); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: bold;
 }
-
-.entry-card-wrapper.swiped .entry-card-actions {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.entry-card-action-btn {
-    height: 100%;
-    width: 70px;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5em;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    color: white;
-}
-
-.entry-card-action-btn.delete-btn {
-    background: var(--danger-color);
-}
-
-.entry-card-action-btn.move-up-btn {
-    background: var(--accent-color);
-}
-
-.entry-card-action-btn:hover {
-    opacity: 0.85;
-}
-
-/* ИСПРАВЛЕНО: теперь сдвигаем именно .entry-card, а не .entry-card-content */
-.entry-card-wrapper.swiped .entry-card {
-    transform: translateX(-140px); /* Сдвиг на ширину двух кнопок (70px + 70px) */
-}
-
-/* Запрет свайпа в режиме множественного удаления */
-.entry-card-wrapper.swiped .entry-card.multi-delete-mode {
-    transform: none !important;
-}
-
 /* ============================================
    22. МОДАЛКА ГРАФИКА НАСТРОЕНИЙ
    ============================================ */
@@ -871,4 +827,45 @@ body {
 .entry-actions-right {
     display: flex;
     gap: 10px;
+}
+/* ============================================
+   26. СВАЙП ВПРАВО ДЛЯ ОТМЕНЫ ВЫБОРА
+   ============================================ */
+/* Когда включен режим выбора, разрешаем JS обрабатывать горизонтальные свайпы */
+body.multi-delete-active {
+    touch-action: pan-y;
+}
+
+/* ============================================
+   27. ПОДМЕНЮ ЭКСПОРТ/ИМПОРТ
+   ============================================ */
+.export-import-options {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 15px;
+    background: var(--mood-btn-bg);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.export-import-options.hidden {
+    display: none;
+}
+
+.export-import-btn {
+    text-align: left;
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.95em;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.export-import-btn:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
 }

@@ -7,7 +7,7 @@ let searchQuery = '';
 let editingEntryId = null;
 let activeTagFilter = null;
 let activeDateFilter = null;
-let activeMoodFilter = null; // НОВОЕ: фильтр по настроению
+let activeMoodFilter = null;
 let tempMood = '😐';
 let currentQuoteIndex = 0;
 const DRAFT_KEY = 'my_web_diary_draft_v1';
@@ -20,7 +20,7 @@ let draftSaveTimer = null;
 
 // PIN-код
 let pinInputBuffer = '';
-let pinSetupStage = null; // null | 'enter-new' | 'confirm-new'
+let pinSetupStage = null;
 let pinSetupTemp = '';
 let isPinUnlocked = false;
 
@@ -66,10 +66,6 @@ const QUOTES = [
     { text: "Каждый ребенок — художник. Трудность в том, чтобы остаться художником, выйдя из детского возраста.", author: "Пабло Пикассо" },
     { text: "Вы никогда не пересечете океан, если не наберетесь мужества потерять берег из виду.", author: "Христофор Колумб" }
 ];
-
-
-
-
 
 // === 🛠️ ВСПОМОГАТЕЛЬНЫЕ ===
 function extractTags(text) {
@@ -120,12 +116,9 @@ function formatPrettyDate(dateKey) {
 function initPinProtection() {
     const savedPin = localStorage.getItem(PIN_KEY);
     updateResetPinButtonVisibility();
-    
     if (savedPin) {
-        // PIN установлен — просим ввести
         showPinModal('enter');
     } else {
-        // PIN не установлен — предлагаем установить (с возможностью пропустить)
         showPinModal('setup-new');
     }
 }
@@ -157,7 +150,6 @@ function showPinModal(mode) {
         subtitle.textContent = 'Повторите код ещё раз';
         skipBtn.classList.add('hidden');
     }
-    
     modal.classList.remove('hidden');
 }
 
@@ -179,7 +171,6 @@ function handlePinKey(key) {
     if (pinInputBuffer.length >= 4) return;
     pinInputBuffer += key;
     updatePinDots();
-    
     if (pinInputBuffer.length === 4) {
         setTimeout(() => verifyPinInput(), 150);
     }
@@ -200,11 +191,9 @@ function verifyPinInput() {
     const subtitle = document.getElementById('pin-subtitle');
     
     if (pinSetupStage === 'enter-new') {
-        // Первый этап установки — сохраняем временно и просим подтвердить
         pinSetupTemp = pinInputBuffer;
         showPinModal('setup-confirm');
     } else if (pinSetupStage === 'confirm-new') {
-        // Второй этап установки — проверяем совпадение
         if (pinInputBuffer === pinSetupTemp) {
             localStorage.setItem(PIN_KEY, pinSetupTemp);
             pinSetupTemp = '';
@@ -228,7 +217,6 @@ function verifyPinInput() {
             }, 1500);
         }
     } else {
-        // Режим ввода существующего PIN
         if (pinInputBuffer === savedPin) {
             isPinUnlocked = true;
             document.getElementById('pin-modal').classList.add('hidden');
@@ -301,7 +289,7 @@ function nextQuote() {
     }, 250);
 }
 
-// === 😊 ВЫБОР НАСТРОЕНИЯ (для записи) ===
+// === 😊 ВЫБОР НАСТРОЕНИЯ ===
 function openMoodModal() {
     const grid = document.getElementById('mood-grid');
     grid.innerHTML = '';
@@ -471,10 +459,10 @@ function closeEntryForm() {
 // === 📊 ГРАФИК ===
 function drawMoodChart() {
     const canvas = document.getElementById('mood-chart');
-        // Если модалка графика закрыта — не рисуем (canvas невидим)
     const chartModal = document.getElementById('chart-modal');
     if (chartModal && chartModal.classList.contains('hidden')) return;
     if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
@@ -584,10 +572,9 @@ function renderEntries() {
             (entry.title && entry.title.toLowerCase().includes(query))
         );
     }
-    //Сортировка списков по изменению
+    
     const sorted = [...filtered].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
-    // Баннер фильтра (приоритет: дата > тег > настроение)
     if (activeDateFilter) {
         const prettyDate = new Date(activeDateFilter + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         const banner = document.createElement('div');
@@ -620,19 +607,9 @@ function renderEntries() {
     }
 
     sorted.forEach(entry => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'entry-card-wrapper';
-        wrapper.dataset.entryId = entry.id;
-
-        const actions = document.createElement('div');
-        actions.className = 'entry-card-actions';
-        actions.innerHTML = `
-            <button class="entry-card-action-btn move-up-btn" title="Переместить в начало">↑</button>
-            <button class="entry-card-action-btn delete-btn" title="Удалить">🗑️</button>
-        `;
-
         const card = document.createElement('div');
         card.className = 'entry-card';
+        card.dataset.entryId = entry.id;
 
         const dateObj = new Date(entry.updatedAt || entry.date);
         const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -651,6 +628,7 @@ function renderEntries() {
             ${tagsHtml}
         `;
 
+        // Долгое нажатие для множественного удаления
         let pressTimer = null;
         let isLongPress = false;
 
@@ -667,7 +645,6 @@ function renderEntries() {
         card.addEventListener('touchstart', startPress, { passive: true });
         card.addEventListener('touchend', endPress);
         card.addEventListener('touchmove', cancelPress);
-        card.addEventListener('mousemove', cancelPress);
         card.addEventListener('touchcancel', cancelPress);
         card.addEventListener('mousedown', startPress);
         card.addEventListener('mouseup', endPress);
@@ -679,97 +656,7 @@ function renderEntries() {
             openEntryForm(entry);
         });
 
-        // Свайп для удаления/переноса (ИСПРАВЛЕНО: кнопки теперь работают)
-        let startX = 0;
-        let startY = 0;
-        let isSwiping = false;
-
-        const handleStart = (e) => {
-            // ЕСЛИ НАЖАЛИ НА КНОПКУ — не обрабатываем как свайп
-            if (e.target.closest('.entry-card-action-btn')) return;
-            if (multiDeleteMode) return;
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            startX = clientX;
-            startY = clientY;
-            isSwiping = false;
-        };
-
-        const handleMove = (e) => {
-            if (multiDeleteMode) return;
-            if (e.target.closest('.entry-card-action-btn')) return;
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
-            
-            if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < -30) {
-                isSwiping = true;
-                wrapper.classList.add('swiped');
-                clearTimeout(pressTimer); 
-                if (e.cancelable && e.touches) {
-                    e.preventDefault();
-                }
-            }
-        };
-
-        const handleEnd = (e) => {
-            // ЕСЛИ ОТПУСТИЛИ НА КНОПКЕ — не закрываем свайп автоматически
-            if (e.target.closest('.entry-card-action-btn')) return;
-            
-            if (!isSwiping && wrapper.classList.contains('swiped')) {
-                wrapper.classList.remove('swiped');
-            }
-            isSwiping = false;
-        };
-
-        wrapper.addEventListener('touchstart', handleStart, { passive: false });
-        wrapper.addEventListener('touchmove', handleMove, { passive: false });
-        wrapper.addEventListener('touchend', handleEnd);
-
-        wrapper.addEventListener('mousedown', handleStart);
-        wrapper.addEventListener('mousemove', handleMove);
-        wrapper.addEventListener('mouseup', handleEnd);
-        wrapper.addEventListener('mouseleave', handleEnd);
-
-        // Обработчики кнопок действий
-        actions.querySelector('.delete-btn').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            wrapper.classList.remove('swiped');
-            const confirmed = await showConfirm('Удалить эту запись?');
-            if (confirmed) {
-                diaryEntries = diaryEntries.filter(e => e.id !== entry.id);
-                saveAndRender();
-                showToast('Запись удалена', 'success');
-            }
-        });
-
-        actions.querySelector('.move-up-btn').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            wrapper.classList.remove('swiped');
-            const confirmed = await showConfirm('Поместить эту запись в начало списка?');
-            if (confirmed) {
-                const index = diaryEntries.findIndex(e => e.id === entry.id);
-                if (index !== -1) {
-                    const [movedEntry] = diaryEntries.splice(index, 1);
-                    movedEntry.updatedAt = Date.now();
-                    diaryEntries.unshift(movedEntry);
-                    saveAndRender();
-                    showToast('Запись перемещена в начало', 'success');
-                }
-            }
-        });
-
-        // Клик вне карточки — закрываем свайп
-        document.addEventListener('click', (e) => {
-            if (!wrapper.contains(e.target)) {
-                wrapper.classList.remove('swiped');
-            }
-        });
-
-        wrapper.appendChild(actions);
-        wrapper.appendChild(card);
-        list.appendChild(wrapper);
+        list.appendChild(card);
     });
 }
 
@@ -816,39 +703,30 @@ function closeConfirm(res) {
 // === 🗑️ МНОЖЕСТВЕННОЕ УДАЛЕНИЕ ===
 function enterMultiDeleteMode(firstEntryId) {
     multiDeleteMode = true;
+    document.body.classList.add('multi-delete-active');
     selectedEntries = [firstEntryId];
     updateDeleteButton();
-    
-    // Показываем кнопку отмены
     document.getElementById('cancel-multi-delete-btn').classList.remove('hidden');
     
-    // Добавляем класс selected на первую карточку
-    const firstWrapper = document.querySelector(`[data-entry-id="${firstEntryId}"]`);
-    if (firstWrapper) {
-        const firstCard = firstWrapper.querySelector('.entry-card');
-        if (firstCard) firstCard.classList.add('selected');
-    }
+    const firstCard = document.querySelector(`[data-entry-id="${firstEntryId}"]`);
+    if (firstCard) firstCard.classList.add('selected');
 }
 
 function exitMultiDeleteMode() {
     multiDeleteMode = false;
+    document.body.classList.remove('multi-delete-active');
     selectedEntries = [];
     const searchBtn = document.getElementById('search-btn');
     searchBtn.textContent = '🔍';
     searchBtn.classList.remove('multi-delete-mode');
     searchBtn.title = 'Поиск';
-    
-    // Скрываем кнопку отмены
     document.getElementById('cancel-multi-delete-btn').classList.add('hidden');
-    
-    // Убираем выделение со всех карточек
     document.querySelectorAll('.entry-card').forEach(card => card.classList.remove('selected'));
 }
 
 function toggleEntrySelection(entryId) {
     const index = selectedEntries.indexOf(entryId);
-    const wrapper = document.querySelector(`[data-entry-id="${entryId}"]`);
-    const card = wrapper ? wrapper.querySelector('.entry-card') : null;
+    const card = document.querySelector(`[data-entry-id="${entryId}"]`);
     
     if (index === -1) {
         selectedEntries.push(entryId);
@@ -1023,7 +901,6 @@ searchBtn.onclick = () => {
     setTimeout(() => searchInput.focus(), 50);
 };
 
-// Кнопка отмены режима множественного удаления
 document.getElementById('cancel-multi-delete-btn').onclick = exitMultiDeleteMode;
 
 document.getElementById('close-search-btn').onclick = () => {
@@ -1043,7 +920,7 @@ searchInput.addEventListener('input', (e) => {
     renderEntries();
 });
 
-// === 📂 БОКОВОЕ МЕНЮ ===
+// === 📂 БОКОВОЕ МЕНЮ (СО СВАЙПОМ ВЛЕВО ДЛЯ ЗАКРЫТИЯ) ===
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 
@@ -1062,10 +939,18 @@ document.getElementById('menu-btn').onclick = openSidebar;
 document.getElementById('close-sidebar-btn').onclick = closeSidebar;
 sidebarBackdrop.onclick = closeSidebar;
 
-let touchStartX = 0;
-sidebar.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+// Свайп влево для закрытия гамбургера
+let sidebarTouchStartX = 0;
+sidebar.addEventListener('touchstart', e => { 
+    sidebarTouchStartX = e.changedTouches[0].screenX; 
+}, { passive: true });
+
 sidebar.addEventListener('touchend', e => {
-    if (touchStartX - e.changedTouches[0].screenX > 50) closeSidebar();
+    const swipeDistance = sidebarTouchStartX - e.changedTouches[0].screenX;
+    // Если свайпнули влево более чем на 50px, закрываем меню
+    if (swipeDistance > 50) {
+        closeSidebar();
+    }
 }, { passive: true });
 
 // === 🪟 ОБРАБОТЧИКИ МОДАЛКИ ЗАПИСИ ===
@@ -1128,26 +1013,9 @@ document.getElementById('entry-date-display').onclick = () => {
 
 // === 📝 ШАБЛОНЫ ЗАПИСЕЙ ===
 const TEMPLATES = {
-    gratitude: `1. Сегодня я благодарен за...
-2. Мне помогло...
-3. Я рад, что...`,
-    
-    summary: `Что получилось сегодня:
-- 
-
-Что можно улучшить:
-- 
-
-Выводы:`,
-    
-    ideas: `Идеи и мысли:
-- 
-
-Планы на будущее:
-- 
-
-Мечты:`,
-    
+    gratitude: `1. Сегодня я благодарен за...\n2. Мне помогло...\n3. Я рад, что...`,
+    summary: `Что получилось сегодня:\n- \n\nЧто можно улучшить:\n- \n\nВыводы:`,
+    ideas: `Идеи и мысли:\n- \n\nПланы на будущее:\n- \n\nМечты:`,
     empty: ''
 };
 
@@ -1163,7 +1031,6 @@ function applyTemplate(templateKey) {
     const textInput = document.getElementById('entry-text');
     const templateText = TEMPLATES[templateKey];
     
-    // Если в поле уже есть текст, добавляем шаблон с отступом
     if (textInput.value.trim()) {
         textInput.value += '\n\n' + templateText;
     } else {
@@ -1173,7 +1040,7 @@ function applyTemplate(templateKey) {
     textInput.focus();
     textInput.scrollTop = textInput.scrollHeight;
     closeTemplatesModal();
-    scheduleDraftSave(); // Сохраняем черновик
+    scheduleDraftSave();
 }
 
 document.getElementById('templates-btn').onclick = openTemplatesModal;
@@ -1181,12 +1048,10 @@ document.getElementById('close-templates-modal').onclick = closeTemplatesModal;
 document.querySelector('#templates-modal .modal-backdrop').onclick = closeTemplatesModal;
 
 document.querySelectorAll('.template-item').forEach(btn => {
-    btn.onclick = () => {
-        applyTemplate(btn.dataset.template);
-    };
+    btn.onclick = () => applyTemplate(btn.dataset.template);
 });
 
-// === 😊 МОДАЛКА НАСТРОЕНИЯ (для записи) ===
+// === 😊 МОДАЛКА НАСТРОЕНИЯ ===
 function closeMoodModal() {
     const moodModal = document.getElementById('mood-modal');
     moodModal.classList.add('hidden');
@@ -1223,17 +1088,101 @@ document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.onclick = () => { applyTheme(btn.getAttribute('data-theme')); };
 });
 
-// === 💾 ЭКСПОРТ / ИМПОРТ ===
-document.getElementById('sidebar-export-btn').onclick = () => {
-    if (diaryEntries.length === 0) return showToast('Нет записей', 'error');
-    const blob = new Blob([JSON.stringify({ version: '2.0', entries: diaryEntries }, null, 2)], { type: 'application/json' });
+// === 💾 ОБЩИЙ МЕХАНИЗМ СКАЧИВАНИЯ ===
+function downloadFile(content, fileName, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `diary_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
     a.click();
-    showToast('Экспортировано', 'success');
-    closeSidebar();
+    a.remove();
+    // Освобождаем память после того, как скачивание запущено
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function getExportFileName(extension) {
+    const today = new Date().toISOString().split('T')[0];
+    return `my_diary_${today}.${extension}`;
+}
+
+// === 📦 ПОДМЕНЮ ЭКСПОРТ/ИМПОРТ ===
+document.getElementById('sidebar-export-import-toggle').onclick = () => {
+    document.getElementById('export-import-options').classList.toggle('hidden');
 };
+
+// === 📦 ЭКСПОРТ В JSON (для резервной копии и импорта обратно) ===
+document.getElementById('sidebar-export-btn').onclick = () => {
+    if (diaryEntries.length === 0) return showToast('Нет записей для экспорта', 'error');
+    const data = JSON.stringify({ version: '2.0', entries: diaryEntries }, null, 2);
+    downloadFile(data, getExportFileName('json'), 'application/json');
+    closeSidebar();
+    showToast(`Экспортировано записей: ${diaryEntries.length}`, 'success');
+};
+
+// === 📝 ЭКСПОРТ В MARKDOWN (для чтения и переноса) ===
+function escapeMarkdownText(text) {
+    if (!text) return '';
+    // Экранируем символы, которые Markdown мог бы превратить в разметку
+    return text.replace(/([\\`*_\[\]<>])/g, '\\$1');
+}
+
+function exportMarkdown() {
+    if (diaryEntries.length === 0) {
+        showToast('Нет записей для экспорта', 'error');
+        return;
+    }
+
+    // В архиве записи идут хронологически: от старых к новым.
+    // Сортируем именно по дате события, а не по дате редактирования.
+    const sorted = [...diaryEntries].sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    const lines = [
+        '# Мой дневник',
+        '',
+        `_Записей: ${sorted.length}_`,
+        `_Экспорт от ${new Date().toLocaleDateString('ru-RU')}_`,
+        ''
+    ];
+
+    sorted.forEach(entry => {
+        const d = new Date(entry.date);
+        const dateLabel = d.toLocaleDateString('ru-RU', {
+            day: '2-digit', month: 'long', year: 'numeric'
+        });
+
+        lines.push('---', '');
+        lines.push(`## ${dateLabel} ${entry.mood || ''}`.trim(), '');
+
+        if (entry.title) {
+            lines.push(`### ${escapeMarkdownText(entry.title)}`, '');
+        }
+
+        // Текст сохраняем как есть, чтобы работать с обычными абзацами и списками
+        lines.push(entry.content || '', '');
+
+        // Теги у нас уже начинаются с #, поэтому Markdown понимает их как заголовки.
+        // Выносим их отдельной строкой без решёток — как обычный текст-метку.
+        if (entry.tags && entry.tags.length > 0) {
+            const tagLabels = entry.tags.map(tag => tag.replace(/^#/, ''));
+            lines.push(`_Теги: ${tagLabels.join(', ')}_`, '');
+        }
+    });
+
+    downloadFile(
+        lines.join('\n'),
+        getExportFileName('md'),
+        'text/markdown;charset=utf-8'
+    );
+
+    closeSidebar();
+    showToast(`Экспорт в Markdown готов: ${sorted.length} записей`, 'success');
+}
+
+document.getElementById('sidebar-markdown-btn').onclick = exportMarkdown;
 
 document.getElementById('sidebar-import-btn').onclick = () => { document.getElementById('import-file').click(); };
 document.getElementById('import-file').onchange = (e) => {
@@ -1269,7 +1218,6 @@ function openChartModal() {
     closeSidebar();
     updateChartModalTitle();
     document.getElementById('chart-modal').classList.remove('hidden');
-    // Перерисовываем график после открытия, чтобы canvas получил размеры
     setTimeout(() => drawMoodChart(), 50);
 }
 
@@ -1305,70 +1253,37 @@ function openStatsModal() {
         return;
     }
     
-    // Подсчёт статистики
     const totalEntries = diaryEntries.length;
     const totalWords = diaryEntries.reduce((sum, entry) => sum + (entry.wordCount || 0), 0);
     const avgWords = Math.round(totalWords / totalEntries);
     
-    // Дни с записями
     const uniqueDays = new Set(diaryEntries.map(e => getDateKey(e.date)));
     const daysWithEntries = uniqueDays.size;
     
-    // Первая и последняя запись
     const sortedByDate = [...diaryEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
     const firstEntryDate = new Date(sortedByDate[0].date);
-    const lastEntryDate = new Date(sortedByDate[sortedByDate.length - 1].date);
     const daysSinceFirst = Math.floor((new Date() - firstEntryDate) / (1000 * 60 * 60 * 24));
     const activityPercent = daysSinceFirst > 0 ? Math.round((daysWithEntries / daysSinceFirst) * 100) : 0;
     
-    // Самое частое настроение
     const moodCounts = {};
     diaryEntries.forEach(entry => {
         moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
     });
     const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
     
-    // Самая длинная и самая короткая запись
     const longestEntry = [...diaryEntries].sort((a, b) => (b.wordCount || 0) - (a.wordCount || 0))[0];
     const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
-    
-    // Форматирование
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
     
-    // Рендер статистики
     document.getElementById('stats-body').innerHTML = `
-        <div class="stats-item">
-            <span class="stats-label">Всего записей</span>
-            <span class="stats-value large">${totalEntries}</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Всего слов</span>
-            <span class="stats-value">${totalWords.toLocaleString('ru-RU')}</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Средняя длина записи</span>
-            <span class="stats-value">${avgWords} слов</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Дней с записями</span>
-            <span class="stats-value">${daysWithEntries} из ${daysSinceFirst} (${activityPercent}%)</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Самое частое настроение</span>
-            <span class="stats-value">${topMood[0]} (${topMood[1]} ${topMood[1] === 1 ? 'раз' : 'раза'})</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Самая длинная запись</span>
-            <span class="stats-value">${longestEntry.wordCount || 0} слов</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Самая короткая запись</span>
-            <span class="stats-value">${shortestEntry.wordCount || 0} слов</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Первая запись</span>
-            <span class="stats-value">${firstDateStr}</span>
-        </div>
+        <div class="stats-item"><span class="stats-label">Всего записей</span><span class="stats-value large">${totalEntries}</span></div>
+        <div class="stats-item"><span class="stats-label">Всего слов</span><span class="stats-value">${totalWords.toLocaleString('ru-RU')}</span></div>
+        <div class="stats-item"><span class="stats-label">Средняя длина записи</span><span class="stats-value">${avgWords} слов</span></div>
+        <div class="stats-item"><span class="stats-label">Дней с записями</span><span class="stats-value">${daysWithEntries} из ${daysSinceFirst} (${activityPercent}%)</span></div>
+        <div class="stats-item"><span class="stats-label">Самое частое настроение</span><span class="stats-value">${topMood[0]} (${topMood[1]} ${topMood[1] === 1 ? 'раз' : 'раза'})</span></div>
+        <div class="stats-item"><span class="stats-label">Самая длинная запись</span><span class="stats-value">${longestEntry.wordCount || 0} слов</span></div>
+        <div class="stats-item"><span class="stats-label">Самая короткая запись</span><span class="stats-value">${shortestEntry.wordCount || 0} слов</span></div>
+        <div class="stats-item"><span class="stats-label">Первая запись</span><span class="stats-value">${firstDateStr}</span></div>
     `;
     
     document.getElementById('stats-modal').classList.remove('hidden');
@@ -1438,14 +1353,13 @@ function applyTagFilter(tag) {
 }
 
 function clearTagFilter() { activeTagFilter = null; renderEntries(); }
-
 function closeTagsModal() { document.getElementById('tags-modal').classList.add('hidden'); }
 
 document.getElementById('sidebar-tags-btn').onclick = openTagsModal;
 document.getElementById('close-tags-modal').onclick = closeTagsModal;
 document.querySelector('#tags-modal .modal-backdrop').onclick = closeTagsModal;
 
-// === 😊 ФИЛЬТР ПО НАСТРОЕНИЮ (НОВОЕ) ===
+// === 😊 ФИЛЬТР ПО НАСТРОЕНИЮ ===
 function initMoodFilterGrid() {
     const grid = document.getElementById('mood-filter-grid');
     grid.innerHTML = '';
@@ -1480,14 +1394,13 @@ function applyMoodFilter(emoji) {
 
 function clearMoodFilter() { activeMoodFilter = null; renderEntries(); }
 
-// Делегирование кликов для кнопок сброса фильтров
 document.getElementById('entries-list').addEventListener('click', (e) => {
     if (e.target.closest('#clear-tag-filter')) clearTagFilter();
     else if (e.target.closest('#clear-date-filter')) clearDateFilter();
     else if (e.target.closest('#clear-mood-filter')) clearMoodFilter();
 });
 
-// === 🔐 PIN: обработчики цифрового пада ===
+// === 🔐 PIN ===
 document.querySelectorAll('.pin-key[data-key]').forEach(key => {
     key.addEventListener('click', () => handlePinKey(key.dataset.key));
 });
@@ -1495,71 +1408,44 @@ document.querySelector('.pin-key-delete').addEventListener('click', handlePinDel
 document.getElementById('pin-skip-btn').onclick = skipPinSetup;
 document.getElementById('sidebar-reset-pin-btn').onclick = resetPin;
 
-// === 👉 ГЛОБАЛЬНЫЙ СВАЙП ВПРАВО (ОТМЕНА / НАЗАД ПО СОСТОЯНИЮ) ===
-let globalSwipeStartX = 0;
-let globalSwipeStartY = 0;
-let isGlobalSwiping = false;
+// === 👉 СВАЙП ВПРАВО ДЛЯ ОТМЕНЫ ВЫБОРА ===
+let cancelSwipeStartX = 0;
+let cancelSwipeStartY = 0;
+let isCancelSwiping = false;
 
 document.addEventListener('touchstart', (e) => {
-    // Игнорируем свайпы ТОЛЬКО внутри полей ввода
+    // Работает ТОЛЬКО в режиме множественного выбора
+    if (!multiDeleteMode) return;
+    // Игнорируем поля ввода
     if (e.target.closest('input, textarea')) return;
-    globalSwipeStartX = e.touches[0].clientX;
-    globalSwipeStartY = e.touches[0].clientY;
-    isGlobalSwiping = false;
+    
+    cancelSwipeStartX = e.touches[0].clientX;
+    cancelSwipeStartY = e.touches[0].clientY;
+    isCancelSwiping = false;
 }, { passive: true });
 
 document.addEventListener('touchmove', (e) => {
+    if (!multiDeleteMode) return;
     if (e.target.closest('input, textarea')) return;
+    
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
-    const deltaX = touchX - globalSwipeStartX;
-    const deltaY = touchY - globalSwipeStartY;
+    const deltaX = touchX - cancelSwipeStartX;
+    const deltaY = touchY - cancelSwipeStartY;
     
-    // Если движение горизонтальное и вправо более чем на 50px
-    if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 50) {
-        isGlobalSwiping = true;
-        // Убрали e.preventDefault(), чтобы убрать предупреждение браузера.
-        // Для закрытия модалки достаточно просто зафиксировать флаг isGlobalSwiping.
+    // Свайп строго вправо и горизонтальный
+    if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 120) {
+        isCancelSwiping = true;
     }
-}, { passive: true }); // <-- passive: true убирает предупреждение в консоли
+}, { passive: true });
 
-document.addEventListener('touchend', (e) => {
-    if (e.target.closest('input, textarea')) return;
-    if (!isGlobalSwiping) return;
+document.addEventListener('touchend', () => {
+    if (!multiDeleteMode) return;
+    if (!isCancelSwiping) return;
     
-    // Приоритет закрытия: от самых верхних слоев к нижним
-    // Используем строгую проверку по ID, это самый надежный способ
-    
-    if (!document.getElementById('confirm-modal').classList.contains('hidden')) {
-        closeConfirm(false);
-    }
-    else if (!document.getElementById('calendar-modal').classList.contains('hidden')) {
-        if (datePickerCallback) {
-            datePickerCallback = null;
-            document.querySelector('.calendar-modal-content').classList.remove('selecting-date');
-        }
-        closeCalendarScreen();
-    }
-    else if (!document.getElementById('entry-modal').classList.contains('hidden')) {
-        closeEntryForm();
-    }
-    else if (!document.getElementById('tags-modal').classList.contains('hidden')) {
-        closeTagsModal();
-    }
-    else if (!document.getElementById('stats-modal').classList.contains('hidden')) {
-        closeStatsModal();
-    }
-    else if (!document.getElementById('chart-modal').classList.contains('hidden')) {
-        closeChartModal();
-    }
-    else if (multiDeleteMode) {
-        exitMultiDeleteMode();
-    }
-    else if (document.getElementById('sidebar').classList.contains('open')) {
-        closeSidebar();
-    }
-    
-    isGlobalSwiping = false;
+    // Отменяем выбор
+    exitMultiDeleteMode();
+    isCancelSwiping = false;
 }, { passive: true });
 
 // === 🚀 ЗАПУСК ===
@@ -1568,5 +1454,5 @@ updateDailyQuote();
 loadEntries();
 renderCalendar();
 initMoodFilterGrid();
-initPinProtection(); // Показываем модалку PIN при загрузке
+initPinProtection();
 checkReminder();
