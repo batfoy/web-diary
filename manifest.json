@@ -1,6 +1,7 @@
 {
   "name": "Мой Веб-Дневник",
   "short_name": "Дневник",
+  "id": "/index.html",
   "description": "Личный дневник с тегами, фильтрами и защитой PIN-кодом",
   "start_url": "/index.html",
   "display": "standalone",
@@ -12,13 +13,22 @@
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Главный экран дневника"
     }
   ]
 }

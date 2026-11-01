@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#4CAF50">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png" type="image/png">
     <title>Мой Веб-Дневник</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -46,7 +47,6 @@
             </div>
             <div class="sidebar-divider"></div>
 
-            <!-- НОВОЕ: Фильтр по настроению -->
             <div class="sidebar-submenu">
                 <button id="sidebar-mood-filter-toggle" class="sidebar-menu-btn">😊 Настроение</button>
                 <div id="mood-filter-options" class="mood-filter-options hidden">
@@ -97,7 +97,7 @@
 
     <button id="fab-add" class="fab-button" title="Новая запись"><span>+</span></button>
 
-    <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ (для записи) -->
+    <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ -->
     <div id="mood-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content mood-modal-content">
@@ -112,13 +112,13 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content entry-modal-content">
             <div class="entry-modal-header">
-                <button class="modal-close-btn" id="close-entry-modal">✕</button>
+                <button id="save-close-btn" class="save-close-btn" title="Сохранить и закрыть">✓</button>
                 <div id="entry-date-display" class="date-picker-display">
                     <span class="date-picker-icon">📅</span>
                     <span id="entry-date-text">Сегодня</span>
                 </div>
-                <button id="save-check-btn" class="save-check-btn" title="Сохранить">✓</button>
                 <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">✏️</button>
+                <button id="header-delete-btn" class="header-delete-btn" title="Удалить запись">🗑️</button>
             </div>
             <div class="entry-title-row">
                 <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
@@ -128,7 +128,6 @@
                 <textarea id="entry-text" class="entry-text-input" placeholder="О чем вы хотите написать?" readonly></textarea>
             </div>
             <div class="entry-actions">
-                <button id="cancel-entry-btn" class="btn-danger">Удалить</button>
                 <div class="entry-actions-right">
                     <button id="templates-btn" class="btn-templates hidden">📝 Шаблоны</button>
                     <button id="insert-tag-btn" class="btn-tag hidden">#теги</button>
@@ -185,7 +184,7 @@
         </div>
     </div>
 
-    <!-- НОВОЕ: МОДАЛКА PIN-КОДА -->
+    <!-- МОДАЛКА PIN-КОДА -->
     <div id="pin-modal" class="modal hidden pin-modal">
         <div class="modal-backdrop pin-backdrop"></div>
         <div class="modal-content pin-modal-content">
@@ -227,7 +226,8 @@
             </div>
         </div>
     </div>
-        <!-- МОДАЛКА ГРАФИКА НАСТРОЕНИЙ -->
+
+    <!-- МОДАЛКА ГРАФИКА НАСТРОЕНИЙ -->
     <div id="chart-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content chart-modal-content">
@@ -246,7 +246,8 @@
             </div>
         </div>
     </div>
-        <!-- МОДАЛКА СТАТИСТИКИ -->
+
+    <!-- МОДАЛКА СТАТИСТИКИ -->
     <div id="stats-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content stats-modal-content">
@@ -258,7 +259,7 @@
         </div>
     </div>
 
-        <!-- МОДАЛКА ШАБЛОНОВ -->
+    <!-- МОДАЛКА ШАБЛОНОВ -->
     <div id="templates-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content templates-modal-content">
@@ -286,10 +287,11 @@
             </div>
         </div>
     </div>
+
     <div id="toast-container" class="toast-container"></div>
+
     <script src="db.js"></script>
     <script>
-        // Регистрация Service Worker для PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then((registration) => {

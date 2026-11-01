@@ -4,18 +4,19 @@ const STORAGE_KEY = 'my_web_diary_entries_v2';
 const PIN_KEY = 'my_web_diary_pin_v1';
 let currentCalendarDate = new Date();
 let searchQuery = '';
-let editingEntryId = null;
+let editingEntryId = null;       // id существующей записи (null для новой)
 let activeTagFilter = null;
 let activeDateFilter = null;
 let activeMoodFilter = null;
 let tempMood = '😐';
 let currentQuoteIndex = 0;
-const DRAFT_KEY = 'my_web_diary_draft_v1';
+const DRAFT_KEY = 'my_web_diary_draft_v1';       // черновик новой записи
+const DRAFT_PREFIX = 'my_web_diary_draft_entry_'; // префикс для черновиков существующих
 
 let multiDeleteMode = false;
 let selectedEntries = [];
 let datePickerCallback = null;
-let isEditing = false;
+let isEditing = false;           // true = поля редактируемые
 let draftSaveTimer = null;
 
 // PIN-код
@@ -74,17 +75,6 @@ function extractTags(text) {
     return matches ? [...new Set(matches.map(t => t.toLowerCase()))] : [];
 }
 
-function migrateEntriesTags() {
-    let needsSave = false;
-    diaryEntries.forEach(entry => {
-        if (!entry.tags || entry.tags.length === 0) {
-            entry.tags = extractTags(entry.content);
-            needsSave = true;
-        }
-    });
-    if (needsSave) localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryEntries));
-}
-
 function getMoodScore(emoji) {
     const found = MOODS.find(m => m.emoji === emoji);
     return found ? found.score : null;
@@ -110,6 +100,18 @@ function formatPrettyDate(dateKey) {
     yesterday.setDate(yesterday.getDate() - 1);
     if (dateKey === getDateKey(yesterday)) return 'Вчера';
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// Миграция тегов — теперь в IndexedDB, а не в localStorage
+async function migrateEntriesTags() {
+    let needsSave = false;
+    diaryEntries.forEach(entry => {
+        if (!entry.tags || entry.tags.length === 0) {
+            entry.tags = extractTags(entry.content);
+            needsSave = true;
+        }
+    });
+    if (needsSave) await saveAllToIndexedDB();
 }
 
 // === 🔐 PIN-КОД ===
@@ -312,30 +314,54 @@ function selectMoodForEntry(emoji) {
     moodModal.classList.remove('top-layer');
     const moodDisplay = document.getElementById('selected-mood-display');
     if (moodDisplay) moodDisplay.textContent = tempMood;
+    scheduleDraftSave();
 }
 
-// === 💾 ЧЕРНОВИК ===
+// === 💾 ЧЕРНОВИК (новые и существующие записи) ===
+function getDraftKey() {
+    return editingEntryId ? DRAFT_PREFIX + editingEntryId : DRAFT_KEY;
+}
+
 function saveDraft() {
-    if (editingEntryId) return;
-    const title = document.getElementById('entry-title').value.trim();
-    const text = document.getElementById('entry-text').value.trim();
-    if (!title && !text) { localStorage.removeItem(DRAFT_KEY); return; }
+    const titleEl = document.getElementById('entry-title');
+    const textEl = document.getElementById('entry-text');
+    if (!titleEl || !textEl) return;
+    const title = titleEl.value.trim();
+    const text = textEl.value.trim();
+
+    // Для новой записи: пустой черновик не сохраняем
+    if (!editingEntryId && !title && !text) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+    }
+    // Для существующей: если ничего не изменилось — не сохраняем
+    if (editingEntryId) {
+        const original = diaryEntries.find(e => e.id === editingEntryId);
+        if (original && original.title === title && original.content === text && original.mood === tempMood) {
+            localStorage.removeItem(getDraftKey());
+            return;
+        }
+    }
+
     const draft = {
         title, content: text, mood: tempMood,
-        dateKey: document.getElementById('entry-date-display').dataset.date,
+        dateKey: document.getElementById('entry-date-display')?.dataset.date,
         savedAt: Date.now()
     };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    localStorage.setItem(getDraftKey(), JSON.stringify(draft));
 }
 
 function loadDraft() {
-    const stored = localStorage.getItem(DRAFT_KEY);
+    const stored = localStorage.getItem(getDraftKey());
     if (!stored) return null;
     try { return JSON.parse(stored); }
-    catch (e) { localStorage.removeItem(DRAFT_KEY); return null; }
+    catch (e) { localStorage.removeItem(getDraftKey()); return null; }
 }
 
-function clearDraft() { localStorage.removeItem(DRAFT_KEY); }
+function clearDraft() {
+    localStorage.removeItem(getDraftKey());
+    if (!editingEntryId) localStorage.removeItem(DRAFT_KEY);
+}
 
 function scheduleDraftSave() {
     clearTimeout(draftSaveTimer);
@@ -343,12 +369,37 @@ function scheduleDraftSave() {
 }
 
 // === 📝 МОДАЛКА ЗАПИСИ ===
+
+// Определяет, какое состояние у модалки, и вешает соответствующий класс.
+function updateModalState() {
+    const modal = document.getElementById('entry-modal');
+    const titleVal = document.getElementById('entry-title').value.trim();
+    const textVal = document.getElementById('entry-text').value.trim();
+    const hasContent = !!(titleVal || textVal);
+
+    modal.classList.remove('state-new-empty', 'state-new-filled', 'state-view', 'state-edit');
+
+    if (editingEntryId) {
+        modal.classList.add(isEditing ? 'state-edit' : 'state-view');
+    } else {
+        modal.classList.add(hasContent ? 'state-new-filled' : 'state-new-empty');
+    }
+}
+
+// Обновляет иконки и доступность полей под текущее состояние
+// Обновляет иконки и доступность полей под текущее состояние
 function updateEditModeUI() {
     const modal = document.getElementById('entry-modal');
     const titleInput = document.getElementById('entry-title');
     const textInput = document.getElementById('entry-text');
     const insertTagBtn = document.getElementById('insert-tag-btn');
     const templatesBtn = document.getElementById('templates-btn');
+    const saveCloseBtn = document.getElementById('save-close-btn');
+    const headerDeleteBtn = document.getElementById('header-delete-btn');
+    const editModeBtn = document.getElementById('edit-mode-btn');
+
+    const isNewAndEmpty = !editingEntryId && !titleInput.value.trim() && !textInput.value.trim();
+    const hasContent = titleInput.value.trim() || textInput.value.trim();
 
     if (isEditing) {
         modal.classList.add('is-editing');
@@ -356,12 +407,38 @@ function updateEditModeUI() {
         textInput.removeAttribute('readonly');
         insertTagBtn.classList.remove('hidden');
         templatesBtn.classList.remove('hidden');
+        if (editModeBtn) editModeBtn.classList.add('hidden'); // Скрываем карандаш
+        
+        // Логика левой кнопки
+        if (isNewAndEmpty) {
+            saveCloseBtn.textContent = '←';
+            saveCloseBtn.title = 'Отмена (назад)';
+        } else {
+            saveCloseBtn.textContent = '✓';
+            saveCloseBtn.title = 'Сохранить и закрыть';
+        }
+
+        // ЛОГИКА КОРЗИНЫ: показываем, если это существующая запись ИЛИ если в новой записи уже есть текст
+        if (editingEntryId || hasContent) {
+            headerDeleteBtn.classList.remove('hidden');
+        } else {
+            headerDeleteBtn.classList.add('hidden');
+        }
+
     } else {
+        // Режим просмотра существующей записи
         modal.classList.remove('is-editing');
         titleInput.setAttribute('readonly', true);
         textInput.setAttribute('readonly', true);
         insertTagBtn.classList.add('hidden');
         templatesBtn.classList.add('hidden');
+        if (editModeBtn) editModeBtn.classList.remove('hidden'); // Показываем карандаш
+        
+        saveCloseBtn.textContent = '✕';
+        saveCloseBtn.title = 'Закрыть без изменений';
+        
+        // При просмотре корзина всегда видна
+        headerDeleteBtn.classList.remove('hidden');
     }
 }
 
@@ -371,45 +448,55 @@ function openEntryForm(entry = null) {
     const moodDisplay = document.getElementById('selected-mood-display');
     const titleInput = document.getElementById('entry-title');
     const textInput = document.getElementById('entry-text');
-    const cancelBtn = document.getElementById('cancel-entry-btn');
+    const saveCloseBtn = document.getElementById('save-close-btn');
 
     if (entry) {
+        // РЕДАКТИРОВАНИЕ существующей записи
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
         textInput.value = entry.content;
-        cancelBtn.textContent = 'Удалить';
-        cancelBtn.className = 'btn-danger';
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
         isEditing = false;
+        
+        saveCloseBtn.textContent = '✕';
+        saveCloseBtn.title = 'Закрыть без изменений';
     } else {
+        // НОВАЯ ЗАПИСЬ: Всегда начинаем с чистого листа
         editingEntryId = null;
-        cancelBtn.textContent = 'Очистить';
-        cancelBtn.className = 'btn-secondary';
-        const draft = loadDraft();
-        if (draft) {
-            titleInput.value = draft.title || '';
-            textInput.value = draft.content || '';
-            tempMood = draft.mood || '😐';
-            dateDisplay.dataset.date = draft.dateKey || getDateKey(new Date());
-            dateText.textContent = formatPrettyDate(dateDisplay.dataset.date);
-        } else {
-            titleInput.value = '';
-            textInput.value = '';
-            tempMood = '😐';
-            const todayKey = getDateKey(new Date());
-            dateDisplay.dataset.date = todayKey;
-            dateText.textContent = 'Сегодня';
-        }
+        titleInput.value = '';
+        textInput.value = '';
+        tempMood = '😐';
+        
+        const todayKey = getDateKey(new Date());
+        dateDisplay.dataset.date = todayKey;
+        dateText.textContent = 'Сегодня';
+        
         isEditing = true;
+        
+        saveCloseBtn.textContent = '←';
+        saveCloseBtn.title = 'Отмена (назад)';
+        
+        clearDraft();
     }
 
     moodDisplay.textContent = tempMood;
+    updateModalState();
     updateEditModeUI();
     document.getElementById('entry-modal').classList.remove('hidden');
+    
     if (isEditing && !entry) setTimeout(() => titleInput.focus(), 100);
+}
+
+// Вход в редактирование существующей записи (по клику на ✏️)
+function enterEditMode() {
+    if (!editingEntryId) return;
+    isEditing = true;
+    updateModalState();
+    updateEditModeUI();
+    document.getElementById('entry-title').focus();
 }
 
 function handleSaveEntry() {
@@ -418,7 +505,10 @@ function handleSaveEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const text = document.getElementById('entry-text').value.trim();
 
-    if (!text && !title) { showToast('Запись не может быть пустой', 'error'); return; }
+    if (!text && !title) {
+        showToast('Запись не может быть пустой', 'error');
+        return false;
+    }
 
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
     const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
@@ -427,33 +517,111 @@ function handleSaveEntry() {
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
         if (index !== -1) {
-            diaryEntries[index] = { 
-                ...diaryEntries[index], date: finalDate, title, content: text,
-                mood: tempMood, wordCount, tags, updatedAt: Date.now() 
+            diaryEntries[index] = {
+                ...diaryEntries[index],
+                date: finalDate,
+                title,
+                content: text,
+                mood: tempMood,
+                wordCount,
+                tags,
+                updatedAt: Date.now()
             };
         }
         showToast('Запись обновлена', 'success');
     } else {
         const newEntry = {
-            id: Date.now().toString(), date: finalDate, title, content: text,
-            mood: tempMood, wordCount, tags, updatedAt: Date.now()
+            id: Date.now().toString(),
+            date: finalDate,
+            title,
+            content: text,
+            mood: tempMood,
+            wordCount,
+            tags,
+            updatedAt: Date.now()
         };
         diaryEntries.unshift(newEntry);
         showToast('Запись сохранена', 'success');
-        clearDraft();
     }
 
+    clearDraft();
     isEditing = false;
+    updateModalState();
     updateEditModeUI();
     saveAndRender();
+    return true;
 }
 
 function closeEntryForm() {
     const titleInput = document.getElementById('entry-title');
     const textInput = document.getElementById('entry-text');
-    if (!editingEntryId && !titleInput.value.trim() && !textInput.value.trim()) clearDraft();
+
+    if (!editingEntryId && !titleInput.value.trim() && !textInput.value.trim()) {
+        clearDraft();
+    }
+
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
+    isEditing = false;
+}
+
+// Универсальная левая кнопка: поведение зависит от состояния
+function handleSaveCloseBtn() {
+    const modal = document.getElementById('entry-modal');
+
+    if (modal.classList.contains('state-new-empty')) {
+        closeEntryForm();
+        return;
+    }
+    if (modal.classList.contains('state-new-filled')) {
+        if (handleSaveEntry()) closeEntryForm();
+        return;
+    }
+    if (modal.classList.contains('state-view')) {
+        closeEntryForm();
+        return;
+    }
+    if (modal.classList.contains('state-edit')) {
+        if (handleSaveEntry()) closeEntryForm();
+        return;
+    }
+}
+
+// Универсальная обработка нажатия на корзину
+async function handleDeleteClick() {
+    if (editingEntryId) {
+        // 1. Удаление СУЩЕСТВУЮЩЕЙ записи
+        const confirmed = await showConfirm('Удалить эту запись?');
+        if (!confirmed) return;
+
+        const entryId = editingEntryId;
+        clearDraft();
+        closeEntryForm();
+        diaryEntries = diaryEntries.filter(e => e.id !== entryId);
+        saveAndRender();
+        showToast('Запись удалена', 'success');
+    } else {
+        // 2. Отмена создания НОВОЙ записи
+        const hasContent = document.getElementById('entry-title').value.trim() || document.getElementById('entry-text').value.trim();
+        
+        if (hasContent) {
+            // Если текст уже был введен, переспрашиваем для безопасности
+            const confirmed = await showConfirm('Отменить создание записи? Введенный текст будет потерян.');
+            if (!confirmed) return;
+        }
+        
+        // Просто очищаем черновик и закрываем модалку
+        clearDraft();
+        closeEntryForm();
+    }
+}
+
+// Клик по заголовку/тексту в режиме просмотра — вход в редактирование
+function handleViewClickToEdit() {
+    const modal = document.getElementById('entry-modal');
+    if (modal.classList.contains('state-view')) {
+        enterEditMode();
+    }
 }
 
 // === 📊 ГРАФИК ===
@@ -462,7 +630,7 @@ function drawMoodChart() {
     const chartModal = document.getElementById('chart-modal');
     if (chartModal && chartModal.classList.contains('hidden')) return;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
@@ -495,7 +663,7 @@ function drawMoodChart() {
         const y = yForScore(score);
         ctx.strokeStyle = grid; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width - right, y); ctx.stroke();
-        ctx.fillStyle = muted; 
+        ctx.fillStyle = muted;
         ctx.fillText(MOODS[score].emoji, 2, y);
     }
 
@@ -572,7 +740,7 @@ function renderEntries() {
             (entry.title && entry.title.toLowerCase().includes(query))
         );
     }
-    
+
     const sorted = [...filtered].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
     if (activeDateFilter) {
@@ -614,8 +782,8 @@ function renderEntries() {
         const dateObj = new Date(entry.updatedAt || entry.date);
         const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-        const tagsHtml = (entry.tags && entry.tags.length > 0) 
-            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>` 
+        const tagsHtml = (entry.tags && entry.tags.length > 0)
+            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>`
             : '';
 
         card.innerHTML = `
@@ -628,7 +796,6 @@ function renderEntries() {
             ${tagsHtml}
         `;
 
-        // Долгое нажатие для множественного удаления
         let pressTimer = null;
         let isLongPress = false;
 
@@ -661,7 +828,6 @@ function renderEntries() {
 }
 
 async function saveAndRender() {
-    // Сохраняем все записи в IndexedDB
     await saveAllToIndexedDB();
     renderEntries();
     drawMoodChart();
@@ -669,28 +835,19 @@ async function saveAndRender() {
 }
 
 async function loadEntries() {
-    // 1. Одноразовая миграция из localStorage (если есть старые данные)
     const migrated = await migrateFromLocalStorage();
     if (migrated) {
         showToast('Данные перенесены в новое хранилище', 'success');
     }
-    
-    // 2. Загружаем записи из IndexedDB
+
     try {
         diaryEntries = await dbGetAll();
     } catch (error) {
         console.error('Ошибка загрузки из IndexedDB:', error);
         diaryEntries = [];
     }
-    
-    // 3. Миграция тегов для старых записей (без #)
-    migrateEntriesTags();
-    
-    // 4. Если были изменения тегов — сохраняем обратно в IndexedDB
-    if (migrated || diaryEntries.some(e => !e.tags)) {
-        await saveAllToIndexedDB();
-    }
-    
+
+    await migrateEntriesTags();
     renderEntries();
 }
 
@@ -727,7 +884,7 @@ function enterMultiDeleteMode(firstEntryId) {
     selectedEntries = [firstEntryId];
     updateDeleteButton();
     document.getElementById('cancel-multi-delete-btn').classList.remove('hidden');
-    
+
     const firstCard = document.querySelector(`[data-entry-id="${firstEntryId}"]`);
     if (firstCard) firstCard.classList.add('selected');
 }
@@ -747,7 +904,7 @@ function exitMultiDeleteMode() {
 function toggleEntrySelection(entryId) {
     const index = selectedEntries.indexOf(entryId);
     const card = document.querySelector(`[data-entry-id="${entryId}"]`);
-    
+
     if (index === -1) {
         selectedEntries.push(entryId);
         if (card) card.classList.add('selected');
@@ -940,7 +1097,7 @@ searchInput.addEventListener('input', (e) => {
     renderEntries();
 });
 
-// === 📂 БОКОВОЕ МЕНЮ (СО СВАЙПОМ ВЛЕВО ДЛЯ ЗАКРЫТИЯ) ===
+// === 📂 БОКОВОЕ МЕНЮ ===
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 
@@ -959,131 +1116,17 @@ document.getElementById('menu-btn').onclick = openSidebar;
 document.getElementById('close-sidebar-btn').onclick = closeSidebar;
 sidebarBackdrop.onclick = closeSidebar;
 
-// Свайп влево для закрытия гамбургера
 let sidebarTouchStartX = 0;
-sidebar.addEventListener('touchstart', e => { 
-    sidebarTouchStartX = e.changedTouches[0].screenX; 
+sidebar.addEventListener('touchstart', e => {
+    sidebarTouchStartX = e.changedTouches[0].screenX;
 }, { passive: true });
 
 sidebar.addEventListener('touchend', e => {
     const swipeDistance = sidebarTouchStartX - e.changedTouches[0].screenX;
-    // Если свайпнули влево более чем на 50px, закрываем меню
     if (swipeDistance > 50) {
         closeSidebar();
     }
 }, { passive: true });
-
-// === 🪟 ОБРАБОТЧИКИ МОДАЛКИ ЗАПИСИ ===
-document.getElementById('fab-add').onclick = () => openEntryForm();
-document.getElementById('close-entry-modal').onclick = closeEntryForm;
-document.querySelector('#entry-modal .modal-backdrop').onclick = closeEntryForm;
-
-document.getElementById('edit-mode-btn').onclick = () => {
-    isEditing = true;
-    updateEditModeUI();
-    document.getElementById('entry-title').focus();
-};
-
-document.getElementById('selected-mood-display').onclick = () => {
-    if (isEditing) openMoodModal();
-};
-
-document.getElementById('insert-tag-btn').onclick = () => {
-    const textInput = document.getElementById('entry-text');
-    const currentText = textInput.value;
-    const suffix = (currentText.length > 0 && !currentText.endsWith(' ')) ? ' #' : '#';
-    textInput.value = currentText + suffix;
-    textInput.focus();
-    textInput.scrollTop = textInput.scrollHeight;
-};
-
-document.getElementById('cancel-entry-btn').onclick = async () => {
-    if (editingEntryId) {
-        const confirmed = await showConfirm('Удалить эту запись?');
-        if (confirmed) {
-            const entryId = editingEntryId;
-            closeEntryForm();
-            diaryEntries = diaryEntries.filter(e => e.id !== entryId);
-            saveAndRender();
-            showToast('Запись удалена', 'success');
-        }
-    } else {
-        const confirmed = await showConfirm('Очистить черновик?');
-        if (confirmed) {
-            clearDraft();
-            closeEntryForm();
-            showToast('Черновик очищен', 'success');
-        }
-    }
-};
-
-document.getElementById('save-check-btn').onclick = handleSaveEntry;
-
-document.getElementById('entry-title').addEventListener('input', scheduleDraftSave);
-document.getElementById('entry-text').addEventListener('input', scheduleDraftSave);
-
-document.getElementById('entry-date-display').onclick = () => {
-    openDatePicker((selectedDate) => {
-        const dateDisplay = document.getElementById('entry-date-display');
-        const dateText = document.getElementById('entry-date-text');
-        dateDisplay.dataset.date = selectedDate;
-        dateText.textContent = formatPrettyDate(selectedDate);
-    });
-};
-
-// === 📝 ШАБЛОНЫ ЗАПИСЕЙ ===
-const TEMPLATES = {
-    gratitude: `1. Сегодня я благодарен за...\n2. Мне помогло...\n3. Я рад, что...`,
-    summary: `Что получилось сегодня:\n- \n\nЧто можно улучшить:\n- \n\nВыводы:`,
-    ideas: `Идеи и мысли:\n- \n\nПланы на будущее:\n- \n\nМечты:`,
-    empty: ''
-};
-
-function openTemplatesModal() {
-    document.getElementById('templates-modal').classList.remove('hidden');
-}
-
-function closeTemplatesModal() {
-    document.getElementById('templates-modal').classList.add('hidden');
-}
-
-function applyTemplate(templateKey) {
-    const textInput = document.getElementById('entry-text');
-    const templateText = TEMPLATES[templateKey];
-    
-    if (textInput.value.trim()) {
-        textInput.value += '\n\n' + templateText;
-    } else {
-        textInput.value = templateText;
-    }
-    
-    textInput.focus();
-    textInput.scrollTop = textInput.scrollHeight;
-    closeTemplatesModal();
-    scheduleDraftSave();
-}
-
-document.getElementById('templates-btn').onclick = openTemplatesModal;
-document.getElementById('close-templates-modal').onclick = closeTemplatesModal;
-document.querySelector('#templates-modal .modal-backdrop').onclick = closeTemplatesModal;
-
-document.querySelectorAll('.template-item').forEach(btn => {
-    btn.onclick = () => applyTemplate(btn.dataset.template);
-});
-
-// === 😊 МОДАЛКА НАСТРОЕНИЯ ===
-function closeMoodModal() {
-    const moodModal = document.getElementById('mood-modal');
-    moodModal.classList.add('hidden');
-    moodModal.classList.remove('top-layer');
-}
-document.getElementById('close-mood-modal').onclick = closeMoodModal;
-document.querySelector('#mood-modal .modal-backdrop').onclick = closeMoodModal;
-
-// === ❓ CONFIRM ===
-document.getElementById('confirm-ok').onclick = () => closeConfirm(true);
-document.getElementById('confirm-cancel').onclick = () => closeConfirm(false);
-document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeConfirm(false);
 
 // === 🎨 ТЕМЫ ===
 document.getElementById('sidebar-theme-toggle').onclick = () => {
@@ -1108,7 +1151,7 @@ document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.onclick = () => { applyTheme(btn.getAttribute('data-theme')); };
 });
 
-// === 💾 ОБЩИЙ МЕХАНИЗМ СКАЧИВАНИЯ ===
+// === 💾 СКАЧИВАНИЕ ===
 function downloadFile(content, fileName, mimeType) {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -1118,7 +1161,6 @@ function downloadFile(content, fileName, mimeType) {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    // Освобождаем память после того, как скачивание запущено
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -1127,12 +1169,11 @@ function getExportFileName(extension) {
     return `my_diary_${today}.${extension}`;
 }
 
-// === 📦 ПОДМЕНЮ ЭКСПОРТ/ИМПОРТ ===
+// === 📦 ЭКСПОРТ / ИМПОРТ ===
 document.getElementById('sidebar-export-import-toggle').onclick = () => {
     document.getElementById('export-import-options').classList.toggle('hidden');
 };
 
-// === 📦 ЭКСПОРТ В JSON (для резервной копии и импорта обратно) ===
 document.getElementById('sidebar-export-btn').onclick = () => {
     if (diaryEntries.length === 0) return showToast('Нет записей для экспорта', 'error');
     const data = JSON.stringify({ version: '2.0', entries: diaryEntries }, null, 2);
@@ -1141,10 +1182,8 @@ document.getElementById('sidebar-export-btn').onclick = () => {
     showToast(`Экспортировано записей: ${diaryEntries.length}`, 'success');
 };
 
-// === 📝 ЭКСПОРТ В MARKDOWN (для чтения и переноса) ===
 function escapeMarkdownText(text) {
     if (!text) return '';
-    // Экранируем символы, которые Markdown мог бы превратить в разметку
     return text.replace(/([\\`*_\[\]<>])/g, '\\$1');
 }
 
@@ -1154,11 +1193,7 @@ function exportMarkdown() {
         return;
     }
 
-    // В архиве записи идут хронологически: от старых к новым.
-    // Сортируем именно по дате события, а не по дате редактирования.
-    const sorted = [...diaryEntries].sort(
-        (a, b) => new Date(a.date) - new Date(b.date)
-    );
+    const sorted = [...diaryEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const lines = [
         '# Мой дневник',
@@ -1181,11 +1216,8 @@ function exportMarkdown() {
             lines.push(`### ${escapeMarkdownText(entry.title)}`, '');
         }
 
-        // Текст сохраняем как есть, чтобы работать с обычными абзацами и списками
         lines.push(entry.content || '', '');
 
-        // Теги у нас уже начинаются с #, поэтому Markdown понимает их как заголовки.
-        // Выносим их отдельной строкой без решёток — как обычный текст-метку.
         if (entry.tags && entry.tags.length > 0) {
             const tagLabels = entry.tags.map(tag => tag.replace(/^#/, ''));
             lines.push(`_Теги: ${tagLabels.join(', ')}_`, '');
@@ -1225,7 +1257,7 @@ document.getElementById('import-file').onchange = (e) => {
     e.target.value = '';
 };
 
-// === 🔔 НАПОМИНАНИЕ ===
+// === 🔔 НАПОМИНАНИЕ (кнопки) ===
 document.getElementById('reminder-later-btn').onclick = closeReminder;
 document.getElementById('reminder-write-btn').onclick = openNewEntryFromReminder;
 document.querySelector('#reminder-modal .modal-backdrop').onclick = closeReminder;
@@ -1233,7 +1265,7 @@ document.querySelector('#reminder-modal .modal-backdrop').onclick = closeReminde
 // === 💬 ЦИТАТА ===
 document.querySelector('.quote-section').onclick = nextQuote;
 
-// === 📊 ГРАФИК НАСТРОЕНИЙ (МОДАЛКА) ===
+// === 📊 ГРАФИК (модалка) ===
 function openChartModal() {
     closeSidebar();
     updateChartModalTitle();
@@ -1266,35 +1298,35 @@ document.getElementById('next-month-chart').onclick = () => changeChartMonth(1);
 // === 📈 СТАТИСТИКА ===
 function openStatsModal() {
     closeSidebar();
-    
+
     if (diaryEntries.length === 0) {
         document.getElementById('stats-body').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px 0;">Пока нет записей.<br>Начните вести дневник!</p>';
         document.getElementById('stats-modal').classList.remove('hidden');
         return;
     }
-    
+
     const totalEntries = diaryEntries.length;
     const totalWords = diaryEntries.reduce((sum, entry) => sum + (entry.wordCount || 0), 0);
     const avgWords = Math.round(totalWords / totalEntries);
-    
+
     const uniqueDays = new Set(diaryEntries.map(e => getDateKey(e.date)));
     const daysWithEntries = uniqueDays.size;
-    
+
     const sortedByDate = [...diaryEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
     const firstEntryDate = new Date(sortedByDate[0].date);
-    const daysSinceFirst = Math.floor((new Date() - firstEntryDate) / (1000 * 60 * 60 * 24));
-    const activityPercent = daysSinceFirst > 0 ? Math.round((daysWithEntries / daysSinceFirst) * 100) : 0;
-    
+    const daysSinceFirst = Math.max(1, Math.floor((new Date() - firstEntryDate) / (1000 * 60 * 60 * 24)));
+    const activityPercent = Math.round((daysWithEntries / daysSinceFirst) * 100);
+
     const moodCounts = {};
     diaryEntries.forEach(entry => {
         moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
     });
     const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
-    
+
     const longestEntry = [...diaryEntries].sort((a, b) => (b.wordCount || 0) - (a.wordCount || 0))[0];
     const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-    
+
     document.getElementById('stats-body').innerHTML = `
         <div class="stats-item"><span class="stats-label">Всего записей</span><span class="stats-value large">${totalEntries}</span></div>
         <div class="stats-item"><span class="stats-label">Всего слов</span><span class="stats-value">${totalWords.toLocaleString('ru-RU')}</span></div>
@@ -1305,7 +1337,7 @@ function openStatsModal() {
         <div class="stats-item"><span class="stats-label">Самая короткая запись</span><span class="stats-value">${shortestEntry.wordCount || 0} слов</span></div>
         <div class="stats-item"><span class="stats-label">Первая запись</span><span class="stats-value">${firstDateStr}</span></div>
     `;
-    
+
     document.getElementById('stats-modal').classList.remove('hidden');
 }
 
@@ -1420,7 +1452,7 @@ document.getElementById('entries-list').addEventListener('click', (e) => {
     else if (e.target.closest('#clear-mood-filter')) clearMoodFilter();
 });
 
-// === 🔐 PIN ===
+// === 🔐 PIN-ОБРАБОТЧИКИ ===
 document.querySelectorAll('.pin-key[data-key]').forEach(key => {
     key.addEventListener('click', () => handlePinKey(key.dataset.key));
 });
@@ -1434,11 +1466,9 @@ let cancelSwipeStartY = 0;
 let isCancelSwiping = false;
 
 document.addEventListener('touchstart', (e) => {
-    // Работает ТОЛЬКО в режиме множественного выбора
     if (!multiDeleteMode) return;
-    // Игнорируем поля ввода
     if (e.target.closest('input, textarea')) return;
-    
+
     cancelSwipeStartX = e.touches[0].clientX;
     cancelSwipeStartY = e.touches[0].clientY;
     isCancelSwiping = false;
@@ -1447,13 +1477,12 @@ document.addEventListener('touchstart', (e) => {
 document.addEventListener('touchmove', (e) => {
     if (!multiDeleteMode) return;
     if (e.target.closest('input, textarea')) return;
-    
+
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
     const deltaX = touchX - cancelSwipeStartX;
     const deltaY = touchY - cancelSwipeStartY;
-    
-    // Свайп строго вправо и горизонтальный
+
     if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 120) {
         isCancelSwiping = true;
     }
@@ -1462,15 +1491,139 @@ document.addEventListener('touchmove', (e) => {
 document.addEventListener('touchend', () => {
     if (!multiDeleteMode) return;
     if (!isCancelSwiping) return;
-    
-    // Отменяем выбор
+
     exitMultiDeleteMode();
     isCancelSwiping = false;
 }, { passive: true });
 
+// === 🪟 ОБРАБОТЧИКИ МОДАЛКИ ЗАПИСИ (ФИНАЛЬНЫЕ) ===
+
+// FAB — новая запись
+document.getElementById('fab-add').onclick = () => openEntryForm();
+
+// Левая кнопка (✕ / ✓ / ←) — вся логика в handleSaveCloseBtn
+document.getElementById('save-close-btn').onclick = handleSaveCloseBtn;
+
+// ✏️ — вход в редактирование существующей записи
+document.getElementById('edit-mode-btn').onclick = enterEditMode;
+
+// 🗑️ — удаление существующей записи
+document.getElementById('header-delete-btn').onclick = handleDeleteClick;
+
+// Клик по фону
+document.querySelector('#entry-modal .modal-backdrop').onclick = async () => {
+    const modal = document.getElementById('entry-modal');
+    if (modal.classList.contains('state-edit')) {
+        const confirmed = await showConfirm('Закрыть без сохранения? Изменения будут потеряны.');
+        if (!confirmed) return;
+        clearDraft();
+    }
+    closeEntryForm();
+};
+
+// Клик по заголовку/тексту в режиме просмотра — вход в редактирование
+document.getElementById('entry-title').addEventListener('click', handleViewClickToEdit);
+document.getElementById('entry-text').addEventListener('click', handleViewClickToEdit);
+
+// Смена настроения
+document.getElementById('selected-mood-display').onclick = () => {
+    const modal = document.getElementById('entry-modal');
+    const editable = modal.classList.contains('state-edit') || modal.classList.contains('state-new-filled') || modal.classList.contains('state-new-empty');
+    if (editable) openMoodModal();
+};
+
+// Ввод в поля — автосохранение черновика + смена состояния (стрелка → галочка)
+function onEntryFieldInput() {
+    updateModalState();
+    updateEditModeUI();
+    scheduleDraftSave();
+}
+document.getElementById('entry-title').addEventListener('input', onEntryFieldInput);
+document.getElementById('entry-text').addEventListener('input', onEntryFieldInput);
+
+// Кнопка #теги
+document.getElementById('insert-tag-btn').onclick = () => {
+    const textInput = document.getElementById('entry-text');
+    const currentText = textInput.value;
+    const suffix = (currentText.length > 0 && !currentText.endsWith(' ')) ? ' #' : '#';
+    textInput.value = currentText + suffix;
+    textInput.focus();
+    textInput.scrollTop = textInput.scrollHeight;
+    onEntryFieldInput();
+};
+
+// Выбор даты
+document.getElementById('entry-date-display').onclick = () => {
+    const modal = document.getElementById('entry-modal');
+    const editable = modal.classList.contains('state-edit') ||
+                     modal.classList.contains('state-new-filled') ||
+                     modal.classList.contains('state-new-empty');
+    if (!editable) return;
+    openDatePicker((selectedDate) => {
+        const dateDisplay = document.getElementById('entry-date-display');
+        const dateText = document.getElementById('entry-date-text');
+        dateDisplay.dataset.date = selectedDate;
+        dateText.textContent = formatPrettyDate(selectedDate);
+        scheduleDraftSave();
+    });
+};
+
+// === 📝 ШАБЛОНЫ ЗАПИСЕЙ ===
+const TEMPLATES = {
+    gratitude: `1. Сегодня я благодарен за...\n2. Мне помогло...\n3. Я рад, что...`,
+    summary: `Что получилось сегодня:\n- \n\nЧто можно улучшить:\n- \n\nВыводы:`,
+    ideas: `Идеи и мысли:\n- \n\nПланы на будущее:\n- \n\nМечты:`,
+    empty: ''
+};
+
+function openTemplatesModal() {
+    document.getElementById('templates-modal').classList.remove('hidden');
+}
+
+function closeTemplatesModal() {
+    document.getElementById('templates-modal').classList.add('hidden');
+}
+
+function applyTemplate(templateKey) {
+    const textInput = document.getElementById('entry-text');
+    const templateText = TEMPLATES[templateKey];
+
+    if (textInput.value.trim()) {
+        textInput.value += '\n\n' + templateText;
+    } else {
+        textInput.value = templateText;
+    }
+
+    textInput.focus();
+    textInput.scrollTop = textInput.scrollHeight;
+    closeTemplatesModal();
+    onEntryFieldInput();
+}
+
+document.getElementById('templates-btn').onclick = openTemplatesModal;
+document.getElementById('close-templates-modal').onclick = closeTemplatesModal;
+document.querySelector('#templates-modal .modal-backdrop').onclick = closeTemplatesModal;
+
+document.querySelectorAll('.template-item').forEach(btn => {
+    btn.onclick = () => applyTemplate(btn.dataset.template);
+});
+
+// === 😊 МОДАЛКА НАСТРОЕНИЯ (закрытие) ===
+function closeMoodModal() {
+    const moodModal = document.getElementById('mood-modal');
+    moodModal.classList.add('hidden');
+    moodModal.classList.remove('top-layer');
+}
+document.getElementById('close-mood-modal').onclick = closeMoodModal;
+document.querySelector('#mood-modal .modal-backdrop').onclick = closeMoodModal;
+
+// === ❓ CONFIRM ===
+document.getElementById('confirm-ok').onclick = () => closeConfirm(true);
+document.getElementById('confirm-cancel').onclick = () => closeConfirm(false);
+document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeConfirm(false);
+
 // === 🚀 ЗАПУСК ===
 async function initApp() {
-    // Сначала инициализируем базу данных
     try {
         await initDB();
         console.log('IndexedDB инициализирована');
@@ -1479,8 +1632,7 @@ async function initApp() {
         showToast('Ошибка хранилища данных', 'error');
         return;
     }
-    
-    // Затем запускаем всё остальное
+
     loadTheme();
     updateDailyQuote();
     await loadEntries();
