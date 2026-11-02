@@ -442,7 +442,8 @@ let autoSaveTimer = null;
 function saveCurrentEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
-    const htmlContent = editor.innerHTML.trim();
+    // Убираем невидимые символы-заполнители перед сохранением
+    const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
     const plainText = getPlainTextFromHTML(htmlContent);
     
     // Если нет ни заголовка, ни видимого текста — не сохраняем
@@ -592,7 +593,11 @@ function openEntryForm(entry = null) {
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
-        editor.innerHTML = entry.content || '';
+        // Загружаем контент и очищаем старые нерабочие шрифты
+        let content = entry.content || '';
+        content = content.replace(/font-family:\s*['"]?High Summit['"]?[^;]*;?/gi, '');
+        content = content.replace(/font-family:\s*['"]?Sunday['"]?[^;]*;?/gi, '');
+        editor.innerHTML = content;
         
         // === НОВОЕ: восстанавливаем сохранённый размер шрифта ===
         editor.style.fontSize = entry.fontSize || '';
@@ -644,7 +649,8 @@ function enterEditMode() {
 function handleSaveEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
-    const htmlContent = editor.innerHTML.trim();
+    // Убираем невидимые символы-заполнители перед сохранением
+    const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
     const plainText = getPlainTextFromHTML(htmlContent);
 
     if (!plainText && !title) {
@@ -1840,36 +1846,12 @@ if (colorPalette) {
     });
 }
 
-// === Специальная функция для применения шрифта (надежнее, чем execCommand) ===
-function applyFontStyle(fontFamilyString) {
-    const editor = document.getElementById('entry-text');
-    const selection = window.getSelection();
-    
-    if (!selection.rangeCount || selection.isCollapsed) {
-        showToast('Сначала выдели текст, к которому хочешь применить шрифт', 'info');
-        return;
-    }
-    
-    const range = selection.getRangeAt(0);
-    const selectedText = range.toString();
-    if (!selectedText.trim()) return;
-    
-    // Создаем span и применяем шрифт как inline-стиль
-    const span = document.createElement('span');
-    span.textContent = selectedText;
-    span.style.fontFamily = fontFamilyString; 
-    
-    // Заменяем выделенный текст на наш стилизованный span
-    range.deleteContents();
-    range.insertNode(span);
-    
-    // Выделяем новый span, чтобы можно было продолжить форматирование
-    range.selectNode(span);
-    selection.removeAllRanges();
-    selection.addRange(range);
-}
 
-// === Обработчики для всех кнопок форматирования в панели ===
+
+
+
+
+
 // === Функция глобального изменения размера шрифта (для H1-H5) ===
 function applyGlobalFontSize(sizeEm) {
     const editor = document.getElementById('entry-text');
@@ -1890,28 +1872,44 @@ function applyGlobalFontSize(sizeEm) {
     onEntryFieldInput();
 }
 
-// === Обработчики для всех кнопок форматирования в панели ===
+
+// === НАДЕЖНЫЕ ОБРАБОТЧИКИ ФОРМАТИРОВАНИЯ (Native API) ===
 document.querySelectorAll('.heading-btn, .font-style-btn').forEach(btn => {
-    btn.addEventListener('mousedown', (e) => e.preventDefault());
-    
+    // Предотвращаем потерю фокуса при нажатии на кнопку
+    btn.addEventListener('mousedown', (e) => {
+        e.preventDefault(); 
+    });
+
     btn.addEventListener('click', () => {
+        const editor = document.getElementById('entry-text');
+        editor.focus(); // Возвращаем фокус в редактор перед командой
+
         if (btn.dataset.command === 'formatBlock') {
-            // ИСПРАВЛЕНО: H4 = стандартный (1em), H5 = меньше стандартного (0.85em)
-            const sizes = { 
-                'H1': '2.2em', 
-                'H2': '1.8em', 
-                'H3': '1.4em', 
-                'H4': '1em',     // <-- Стандартный размер
-                'H5': '0.8em'   // <-- Меньше стандартного
-            };
-            applyGlobalFontSize(sizes[btn.dataset.value]);
-        } else if (btn.dataset.command) {
-            document.execCommand(btn.dataset.command, false, null);
-        } else if (btn.dataset.font) {
-            applyFontStyle(btn.dataset.font);
+            // H1-H5 применяем глобально (как мы уже настроили)
+            applyGlobalFontSize(btn.dataset.size);
+        } 
+        else if (btn.dataset.command === 'bold' || 
+                 btn.dataset.command === 'italic' || 
+                 btn.dataset.command === 'underline') {
+            
+            // Проверяем, применен ли стиль. Если НЕТ — применяем.
+            // Если ДА — ничего не делаем (чтобы стиль не сбрасывался при повторном нажатии)
+            const isApplied = document.queryCommandState(btn.dataset.command);
+            if (!isApplied) {
+                document.execCommand(btn.dataset.command, false, null);
+            }
+        } 
+        else if (btn.dataset.command === 'removeFormat') {
+            // НАДЕЖНЫЙ сброс ВСЕХ стилей (жирный, курсив, шрифты, цвета)
+            // Это возвращает текст к стандартному стилю браузера
+            document.execCommand('removeFormat', false, null);
+        } 
+        else if (btn.dataset.font) {
+            // Нативное применение шрифта к выделенному тексту или месту курсора
+            // Браузер сам корректно обернет текст в нужный тег
+            document.execCommand('fontName', false, btn.dataset.font);
         }
-        
-        document.getElementById('entry-text').focus();
+
         onEntryFieldInput();
     });
 });
