@@ -288,17 +288,40 @@ body {
     display: flex; align-items: center; justify-content: space-between;
     padding: 15px 20px 0 20px; gap: 10px;
 }
+
 .date-picker-display {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--mood-btn-bg); border: 1px solid var(--border-color);
-    border-radius: 8px; padding: 8px 14px; cursor: pointer;
-    font-size: 0.95em; color: var(--text-color);
-    transition: background-color 0.2s, transform 0.1s; user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Уменьшили отступ между иконкой и текстом */
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 10px; /* Уменьшили внутренние отступы для компактности */
+    cursor: pointer;
+    font-size: 0.85em; /* Уменьшили шрифт, как в entry-date-line */
+    color: var(--text-color);
+    transition: background-color 0.2s, transform 0.1s;
+    user-select: none;
+    flex-shrink: 0; /* Запрещаем блоку сжиматься меньше контента */
 }
-.date-picker-display:hover { background: var(--mood-btn-selected-bg); }
-.date-picker-display:active { transform: scale(0.97); }
-.date-picker-icon { font-size: 1.1em; }
-#entry-date-text { font-weight: 500; }
+
+.date-picker-display:hover { 
+    background: var(--mood-btn-selected-bg); 
+}
+
+.date-picker-display:active { 
+    transform: scale(0.97); 
+}
+
+.date-picker-icon { 
+    font-size: 1em; /* Иконка теперь пропорциональна уменьшенному тексту */
+    line-height: 1;
+}
+
+#entry-date-text { 
+    font-weight: 500; 
+    white-space: nowrap; /* Запрещаем перенос текста на новую строку */
+}
 
 .selected-mood-display { font-size: 2em; transition: transform 0.2s; }
 #entry-modal:not(.is-editing) .selected-mood-display { cursor: default; pointer-events: none; opacity: 1; }
@@ -603,3 +626,142 @@ body {
 }
 
 body.multi-delete-active { touch-action: pan-y; }
+
+/* ============================================
+   СОРТИРОВКА ЗАПИСЕЙ
+   ============================================ */
+
+.sort-options {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 15px;
+    background: var(--mood-btn-bg);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.sort-options.hidden {
+    display: none;
+}
+
+.sort-option-btn {
+    text-align: left;
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.95em;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.sort-option-btn:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+.sort-option-btn.selected {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+    font-weight: 600;
+}
+
+.entry-date-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.entry-edited {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    opacity: 0.85;
+}
+
+/* ============================================
+   КНОПКИ НАПОМИНАНИЯ (ГАРАНТИРОВАННЫЕ СТИЛИ)
+   ============================================ */
+.reminder-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--mood-btn-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--mood-btn-selected-bg);
+}
+
+/* ============================================
+   ПОДМЕНЮ PIN-КОДА
+   ============================================ */
+.pin-options {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 15px;
+    background: var(--mood-btn-bg);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.pin-options.hidden {
+    display: none;
+}
+
+.pin-option-btn {
+    text-align: left;
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.95em;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.pin-option-btn:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+.pin-option-btn.hidden {
+    display: none;
+}

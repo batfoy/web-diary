@@ -36,6 +36,17 @@
             <div class="sidebar-divider"></div>
             <button id="sidebar-stats-btn" class="sidebar-menu-btn">📈 Статистика</button>
             <div class="sidebar-divider"></div>
+            
+            <!-- НОВОЕ: Сортировка записей -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-sort-toggle" class="sidebar-menu-btn">↕️ Сортировать записи по...</button>
+                <div id="sort-options" class="sort-options hidden">
+                    <button class="sort-option-btn" data-sort="created">📅 Дате создания</button>
+                    <button class="sort-option-btn" data-sort="updated">🕒 Дате изменения</button>
+                </div>
+            </div>
+            <div class="sidebar-divider"></div>
+            
             <div class="sidebar-submenu">
                 <button id="sidebar-theme-toggle" class="sidebar-menu-btn">🎨 Тема</button>
                 <div id="theme-options" class="theme-options hidden">
@@ -69,7 +80,13 @@
             </div>
             <input type="file" id="import-file" accept=".json" style="display: none;">
             <div class="sidebar-divider"></div>
-            <button id="sidebar-reset-pin-btn" class="sidebar-menu-btn sidebar-pin-btn hidden">🔒 Сбросить PIN</button>
+            <div class="sidebar-submenu">
+                <button id="sidebar-pin-toggle" class="sidebar-menu-btn">🔐 PIN-код</button>
+                <div id="pin-options" class="pin-options hidden">
+                    <button id="sidebar-create-pin-btn" class="pin-option-btn hidden">🔒 Создать PIN-код</button>
+                    <button id="sidebar-reset-pin-btn" class="pin-option-btn hidden">🔓 Сбросить PIN-код</button>
+                </div>
+            </div>
         </div>
     </aside>
 

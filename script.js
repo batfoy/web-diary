@@ -8,16 +8,16 @@ let editingEntryId = null;       // id существующей записи (nu
 let activeTagFilter = null;
 let activeDateFilter = null;
 let activeMoodFilter = null;
+const SORT_KEY = 'my_web_diary_sort_mode_v1';
+let activeSortMode = localStorage.getItem(SORT_KEY) || 'created'; 
+// created | updated | mood
 let tempMood = '😐';
 let currentQuoteIndex = 0;
-const DRAFT_KEY = 'my_web_diary_draft_v1';       // черновик новой записи
-const DRAFT_PREFIX = 'my_web_diary_draft_entry_'; // префикс для черновиков существующих
 
 let multiDeleteMode = false;
 let selectedEntries = [];
 let datePickerCallback = null;
 let isEditing = false;           // true = поля редактируемые
-let draftSaveTimer = null;
 
 // PIN-код
 let pinInputBuffer = '';
@@ -102,6 +102,72 @@ function formatPrettyDate(dateKey) {
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// === ↕️ СОРТИРОВКА И ДАТЫ ===
+function getEntryCreatedTime(entry) {
+    return new Date(entry.date).getTime();
+}
+
+function getEntryUpdatedTime(entry) {
+    return entry.updatedAt || entry.editedAt || new Date(entry.date).getTime();
+}
+
+function sortEntriesForList(entries) {
+    const sorted = [...entries];
+
+    if (activeSortMode === 'updated') {
+        return sorted.sort((a, b) => getEntryUpdatedTime(b) - getEntryUpdatedTime(a));
+    }
+
+    
+
+    // По умолчанию — по дате создания / публикации
+    return sorted.sort((a, b) => getEntryCreatedTime(b) - getEntryCreatedTime(a));
+}
+
+function formatEditedDate(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const todayKey = getDateKey(new Date());
+    const editedKey = getDateKey(date);
+
+    if (editedKey === todayKey) return 'сегодня';
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (editedKey === getDateKey(yesterday)) return 'вчера';
+
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+    });
+}
+
+function getEditedLabelHtml(entry) {
+    if (!entry.editedAt) return '';
+    return `<span class="entry-edited">· изм. ${formatEditedDate(entry.editedAt)}</span>`;
+}
+
+function updateSortButtons() {
+    document.querySelectorAll('.sort-option-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.sort === activeSortMode);
+    });
+}
+
+function setSortMode(mode) {
+    activeSortMode = mode;
+    localStorage.setItem(SORT_KEY, mode);
+    updateSortButtons();
+    renderEntries();
+
+    const labels = {
+        created: 'Сортировка: по дате создания',
+        updated: 'Сортировка: по дате изменения'
+    };
+
+    showToast(labels[mode] || 'Сортировка изменена', 'info');
+}
+
 // Миграция тегов — теперь в IndexedDB, а не в localStorage
 async function migrateEntriesTags() {
     let needsSave = false;
@@ -117,12 +183,15 @@ async function migrateEntriesTags() {
 // === 🔐 PIN-КОД ===
 function initPinProtection() {
     const savedPin = localStorage.getItem(PIN_KEY);
-    updateResetPinButtonVisibility();
+    
     if (savedPin) {
+        // PIN установлен — просим ввести
         showPinModal('enter');
-    } else {
-        showPinModal('setup-new');
     }
+    // Если PIN не установлен — НЕ показываем модалку создания
+    // Пользователь сам создаст его через меню в гамбургере
+    
+    updatePinMenuVisibility();
 }
 
 function showPinModal(mode) {
@@ -202,7 +271,8 @@ function verifyPinInput() {
             pinSetupStage = null;
             isPinUnlocked = true;
             document.getElementById('pin-modal').classList.add('hidden');
-            updateResetPinButtonVisibility();
+            updatePinMenuVisibility();
+            //updateResetPinButtonVisibility();
             showToast('PIN-код установлен', 'success');
         } else {
             subtitle.classList.add('error');
@@ -246,15 +316,25 @@ async function resetPin() {
     const confirmed = await showConfirm('Сбросить PIN-код? Дневник останется без защиты.');
     if (confirmed) {
         localStorage.removeItem(PIN_KEY);
-        updateResetPinButtonVisibility();
+        updatePinMenuVisibility();
         showToast('PIN-код сброшен', 'success');
     }
 }
 
-function updateResetPinButtonVisibility() {
-    const btn = document.getElementById('sidebar-reset-pin-btn');
+function updatePinMenuVisibility() {
     const hasPin = !!localStorage.getItem(PIN_KEY);
-    btn.classList.toggle('hidden', !hasPin);
+    const createBtn = document.getElementById('sidebar-create-pin-btn');
+    const resetBtn = document.getElementById('sidebar-reset-pin-btn');
+    
+    if (hasPin) {
+        // PIN есть — показываем только "Сбросить"
+        createBtn.classList.add('hidden');
+        resetBtn.classList.remove('hidden');
+    } else {
+        // PIN нет — показываем только "Создать"
+        createBtn.classList.remove('hidden');
+        resetBtn.classList.add('hidden');
+    }
 }
 
 // === 📅 ЦИТАТА ДНЯ ===
@@ -314,58 +394,68 @@ function selectMoodForEntry(emoji) {
     moodModal.classList.remove('top-layer');
     const moodDisplay = document.getElementById('selected-mood-display');
     if (moodDisplay) moodDisplay.textContent = tempMood;
-    scheduleDraftSave();
 }
 
-// === 💾 ЧЕРНОВИК (новые и существующие записи) ===
-function getDraftKey() {
-    return editingEntryId ? DRAFT_PREFIX + editingEntryId : DRAFT_KEY;
-}
+// === 💾 АВТОСОХРАНЕНИЕ ЗАПИСИ ===
+let autoSaveTimer = null;
 
-function saveDraft() {
-    const titleEl = document.getElementById('entry-title');
-    const textEl = document.getElementById('entry-text');
-    if (!titleEl || !textEl) return;
-    const title = titleEl.value.trim();
-    const text = textEl.value.trim();
-
-    // Для новой записи: пустой черновик не сохраняем
-    if (!editingEntryId && !title && !text) {
-        localStorage.removeItem(DRAFT_KEY);
-        return;
-    }
-    // Для существующей: если ничего не изменилось — не сохраняем
-    if (editingEntryId) {
-        const original = diaryEntries.find(e => e.id === editingEntryId);
-        if (original && original.title === title && original.content === text && original.mood === tempMood) {
-            localStorage.removeItem(getDraftKey());
-            return;
+function saveCurrentEntry() {
+    const title = document.getElementById('entry-title').value.trim();
+    const text = document.getElementById('entry-text').value.trim();
+    
+    // Если нет текста — не сохраняем
+    if (!title && !text) return;
+    
+    const dateDisplay = document.getElementById('entry-date-display');
+    const dateInput = dateDisplay.dataset.date;
+    const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
+    const tags = extractTags(text);
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    const now = Date.now();
+    
+    if (!editingEntryId) {
+        // 1. Создаём НОВУЮ запись
+        const newEntry = {
+            id: now.toString(),
+            date: finalDate,          // <-- ИСПРАВЛЕНО: используем finalDate
+            createdAt: now,           // <-- Время создания
+            updatedAt: now,           // <-- Время последнего обновления (сейчас = созданию)
+            editedAt: null,           // <-- У новой записи пока нет изменений
+            title,
+            content: text,
+            mood: tempMood,
+            wordCount,
+            tags
+        };
+        
+        diaryEntries.unshift(newEntry);
+        editingEntryId = newEntry.id; // Теперь это уже существующая запись для последующих автосохранений
+        
+    } else {
+        // 2. Обновляем СУЩЕСТВУЮЩУЮ запись
+        const index = diaryEntries.findIndex(e => e.id === editingEntryId);
+        if (index !== -1) {
+            diaryEntries[index] = {
+                ...diaryEntries[index],
+                date: diaryEntries[index].date, // <-- Оставляем оригинальную дату публикации (не меняем!)
+                updatedAt: now,                 // <-- Обновляем время изменения
+                editedAt: now,                  // <-- Ставим метку, что запись редактировалась (для пометки "изм.")
+                title,
+                content: text,
+                mood: tempMood,
+                wordCount,
+                tags
+            };
         }
     }
-
-    const draft = {
-        title, content: text, mood: tempMood,
-        dateKey: document.getElementById('entry-date-display')?.dataset.date,
-        savedAt: Date.now()
-    };
-    localStorage.setItem(getDraftKey(), JSON.stringify(draft));
+    
+    // Сохраняем в IndexedDB и обновляем ВСЁ (список, календарь, график)
+    saveAndRender();
 }
 
-function loadDraft() {
-    const stored = localStorage.getItem(getDraftKey());
-    if (!stored) return null;
-    try { return JSON.parse(stored); }
-    catch (e) { localStorage.removeItem(getDraftKey()); return null; }
-}
-
-function clearDraft() {
-    localStorage.removeItem(getDraftKey());
-    if (!editingEntryId) localStorage.removeItem(DRAFT_KEY);
-}
-
-function scheduleDraftSave() {
-    clearTimeout(draftSaveTimer);
-    draftSaveTimer = setTimeout(saveDraft, 1000);
+function scheduleAutoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(saveCurrentEntry, 500); // Сохраняем через 0.5 секунды после последнего ввода
 }
 
 // === 📝 МОДАЛКА ЗАПИСИ ===
@@ -451,7 +541,7 @@ function openEntryForm(entry = null) {
     const saveCloseBtn = document.getElementById('save-close-btn');
 
     if (entry) {
-        // РЕДАКТИРОВАНИЕ существующей записи
+        // Открытие СУЩЕСТВУЮЩЕЙ записи для просмотра/редактирования
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
@@ -464,7 +554,7 @@ function openEntryForm(entry = null) {
         saveCloseBtn.textContent = '✕';
         saveCloseBtn.title = 'Закрыть без изменений';
     } else {
-        // НОВАЯ ЗАПИСЬ: Всегда начинаем с чистого листа
+        // Создание НОВОЙ записи — всегда чистая форма
         editingEntryId = null;
         titleInput.value = '';
         textInput.value = '';
@@ -478,8 +568,6 @@ function openEntryForm(entry = null) {
         
         saveCloseBtn.textContent = '←';
         saveCloseBtn.title = 'Отмена (назад)';
-        
-        clearDraft();
     }
 
     moodDisplay.textContent = tempMood;
@@ -510,41 +598,54 @@ function handleSaveEntry() {
         return false;
     }
 
+    const now = Date.now();
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-    const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
     const tags = extractTags(text);
 
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
+
         if (index !== -1) {
             diaryEntries[index] = {
                 ...diaryEntries[index],
-                date: finalDate,
+
+                // ВАЖНО: дата публикации остаётся прежней
+                date: diaryEntries[index].date,
+
                 title,
                 content: text,
                 mood: tempMood,
                 wordCount,
                 tags,
-                updatedAt: Date.now()
+
+                // дата изменения
+                updatedAt: now,
+                editedAt: now
             };
         }
+
         showToast('Запись обновлена', 'success');
     } else {
+        const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
+
         const newEntry = {
-            id: Date.now().toString(),
+            id: now.toString(),
             date: finalDate,
             title,
             content: text,
             mood: tempMood,
             wordCount,
             tags,
-            updatedAt: Date.now()
+            createdAt: now,
+            updatedAt: now,
+            editedAt: null
         };
+
         diaryEntries.unshift(newEntry);
+        editingEntryId = newEntry.id;
         showToast('Запись сохранена', 'success');
     }
 
-    clearDraft();
     isEditing = false;
     updateModalState();
     updateEditModeUI();
@@ -553,13 +654,6 @@ function handleSaveEntry() {
 }
 
 function closeEntryForm() {
-    const titleInput = document.getElementById('entry-title');
-    const textInput = document.getElementById('entry-text');
-
-    if (!editingEntryId && !titleInput.value.trim() && !textInput.value.trim()) {
-        clearDraft();
-    }
-
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
     isEditing = false;
@@ -590,28 +684,17 @@ function handleSaveCloseBtn() {
 // Универсальная обработка нажатия на корзину
 async function handleDeleteClick() {
     if (editingEntryId) {
-        // 1. Удаление СУЩЕСТВУЮЩЕЙ записи
+        // Удаление записи из IndexedDB
         const confirmed = await showConfirm('Удалить эту запись?');
         if (!confirmed) return;
 
         const entryId = editingEntryId;
-        clearDraft();
         closeEntryForm();
         diaryEntries = diaryEntries.filter(e => e.id !== entryId);
         saveAndRender();
         showToast('Запись удалена', 'success');
     } else {
-        // 2. Отмена создания НОВОЙ записи
-        const hasContent = document.getElementById('entry-title').value.trim() || document.getElementById('entry-text').value.trim();
-        
-        if (hasContent) {
-            // Если текст уже был введен, переспрашиваем для безопасности
-            const confirmed = await showConfirm('Отменить создание записи? Введенный текст будет потерян.');
-            if (!confirmed) return;
-        }
-        
-        // Просто очищаем черновик и закрываем модалку
-        clearDraft();
+        // Новая запись ещё не создана в IndexedDB — просто закрываем
         closeEntryForm();
     }
 }
@@ -741,7 +824,7 @@ function renderEntries() {
         );
     }
 
-    const sorted = [...filtered].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const sorted = sortEntriesForList(filtered);
 
     if (activeDateFilter) {
         const prettyDate = new Date(activeDateFilter + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -779,8 +862,13 @@ function renderEntries() {
         card.className = 'entry-card';
         card.dataset.entryId = entry.id;
 
-        const dateObj = new Date(entry.updatedAt || entry.date);
-        const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        const dateObj = new Date(entry.date);
+        const dateStr = dateObj.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+        const editedHtml = getEditedLabelHtml(entry);
 
         const tagsHtml = (entry.tags && entry.tags.length > 0)
             ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>`
@@ -788,7 +876,10 @@ function renderEntries() {
 
         card.innerHTML = `
             <div class="entry-header">
-                <span>${dateStr}</span>
+                <span class="entry-date-line">
+                    <span>${dateStr}</span>
+                    ${editedHtml}
+                </span>
                 <span style="font-size:1.2em">${entry.mood}</span>
             </div>
             ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
@@ -1095,6 +1186,19 @@ document.getElementById('close-search-btn').onclick = () => {
 searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value;
     renderEntries();
+});
+
+// === ↕️ МЕНЮ СОРТИРОВКИ ===
+document.getElementById('sidebar-sort-toggle').onclick = () => {
+    document.getElementById('sort-options').classList.toggle('hidden');
+    updateSortButtons();
+};
+
+document.querySelectorAll('.sort-option-btn').forEach(btn => {
+    btn.onclick = () => {
+        setSortMode(btn.dataset.sort);
+        closeSidebar();
+    };
 });
 
 // === 📂 БОКОВОЕ МЕНЮ ===
@@ -1458,6 +1562,17 @@ document.querySelectorAll('.pin-key[data-key]').forEach(key => {
 });
 document.querySelector('.pin-key-delete').addEventListener('click', handlePinDelete);
 document.getElementById('pin-skip-btn').onclick = skipPinSetup;
+// === 🔐 МЕНЮ PIN-КОДА ===
+document.getElementById('sidebar-pin-toggle').onclick = () => {
+    document.getElementById('pin-options').classList.toggle('hidden');
+};
+
+document.getElementById('sidebar-create-pin-btn').onclick = () => {
+    closeSidebar();
+    showPinModal('setup-new');
+};
+
+document.getElementById('sidebar-reset-pin-btn').onclick = resetPin;
 document.getElementById('sidebar-reset-pin-btn').onclick = resetPin;
 
 // === 👉 СВАЙП ВПРАВО ДЛЯ ОТМЕНЫ ВЫБОРА ===
@@ -1510,14 +1625,19 @@ document.getElementById('edit-mode-btn').onclick = enterEditMode;
 // 🗑️ — удаление существующей записи
 document.getElementById('header-delete-btn').onclick = handleDeleteClick;
 
-// Клик по фону
-document.querySelector('#entry-modal .modal-backdrop').onclick = async () => {
+// Клик по фону — всегда сохраняем изменения (защита от случайного закрытия)
+document.querySelector('#entry-modal .modal-backdrop').onclick = () => {
     const modal = document.getElementById('entry-modal');
-    if (modal.classList.contains('state-edit')) {
-        const confirmed = await showConfirm('Закрыть без сохранения? Изменения будут потеряны.');
-        if (!confirmed) return;
-        clearDraft();
+    
+    // Если есть несохранённые изменения — сохраняем их
+    if (modal.classList.contains('state-new-filled') || modal.classList.contains('state-edit')) {
+        if (handleSaveEntry()) {
+            closeEntryForm();
+        }
+        return;
     }
+    
+    // Если новая запись пустая или мы просто смотрим старую — просто закрываем
     closeEntryForm();
 };
 
@@ -1532,11 +1652,11 @@ document.getElementById('selected-mood-display').onclick = () => {
     if (editable) openMoodModal();
 };
 
-// Ввод в поля — автосохранение черновика + смена состояния (стрелка → галочка)
+// автосохранение
 function onEntryFieldInput() {
     updateModalState();
     updateEditModeUI();
-    scheduleDraftSave();
+    scheduleAutoSave(); // Автосохранение вместо черновика
 }
 document.getElementById('entry-title').addEventListener('input', onEntryFieldInput);
 document.getElementById('entry-text').addEventListener('input', onEntryFieldInput);
@@ -1564,7 +1684,6 @@ document.getElementById('entry-date-display').onclick = () => {
         const dateText = document.getElementById('entry-date-text');
         dateDisplay.dataset.date = selectedDate;
         dateText.textContent = formatPrettyDate(selectedDate);
-        scheduleDraftSave();
     });
 };
 
@@ -1635,6 +1754,7 @@ async function initApp() {
 
     loadTheme();
     updateDailyQuote();
+    updateSortButtons();
     await loadEntries();
     renderCalendar();
     initMoodFilterGrid();
