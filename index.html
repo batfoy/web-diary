@@ -142,12 +142,96 @@
                 <span id="selected-mood-display" class="selected-mood-display">😐</span>
             </div>
             <div class="entry-form">
-                <textarea id="entry-text" class="entry-text-input" placeholder="О чем вы хотите написать?" readonly></textarea>
+                <div id="entry-text" class="entry-text-input" contenteditable="true" data-placeholder="О чем вы хотите написать?"></div>
             </div>
-            <div class="entry-actions">
-                <div class="entry-actions-right">
-                    <button id="templates-btn" class="btn-templates hidden">📝 Шаблоны</button>
-                    <button id="insert-tag-btn" class="btn-tag hidden">#теги</button>
+            <!-- ПАНЕЛЬ ИНСТРУМЕНТОВ (TOOLBAR) -->
+            <div id="entry-toolbar" class="entry-toolbar hidden">
+                <!-- Верхняя панель инструментов (появляется при выборе инструмента) -->
+                <div id="toolbar-panel" class="toolbar-panel hidden">
+                    <!-- Панель эмодзи -->
+                    <div id="emoji-panel" class="toolbar-subpanel hidden">
+                        <div class="emoji-packs" id="emoji-packs"></div>
+                        <div class="emoji-grid" id="emoji-grid"></div>
+                        <button class="toolbar-panel-close-btn" id="close-toolbar-panel" title="Закрыть">✓</button>
+                    </div>
+                    <!-- Панель форматирования текста (Шрифт) -->
+                    <div id="text-panel" class="toolbar-subpanel hidden">
+                        <!-- Шапка панели -->
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Шрифт</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+
+                        <!-- Верхняя часть: Выравнивание (слева) и Заголовки (справа) -->
+                        <div class="text-panel-top-grid">
+                            <!-- Левый блок инструментов (теперь кнопки в ряд и растягиваются) -->
+                            <div class="text-tools-left">
+                                <button class="text-tool-btn" id="btn-h-align" title="Выравнивание по горизонтали">
+                                    <svg id="icon-align-left" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                                </button>
+                                <!-- Иконка УМЕНЬШЕНИЯ интервала (стрелки сходятся к центру) -->
+                                <button class="text-tool-btn" id="btn-line-decrease" title="Уменьшить межстрочный интервал">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6v12"></path><path d="M20 6v12"></path><path d="M12 9l-3-3"></path><path d="M12 9l3-3"></path><path d="M12 15l-3 3"></path><path d="M12 15l3 3"></path></svg>
+                                </button>
+                                <!-- Иконка УВЕЛИЧЕНИЯ интервала (стрелки расходятся от центра) -->
+                                <button class="text-tool-btn" id="btn-line-increase" title="Увеличить межстрочный интервал">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6v12"></path><path d="M20 6v12"></path><path d="M12 3l-3 3"></path><path d="M12 3l3 3"></path><path d="M12 21l-3-3"></path><path d="M12 21l3-3"></path></svg>
+                                </button>
+                            </div>
+
+                            <!-- Правый блок: Размеры шрифта (Заголовки) -->
+                            <!-- Правый блок: заголовки (теперь 5 кнопок с горизонтальным скроллом) -->
+                            <div class="text-tools-right">
+                                <button class="heading-btn" data-command="formatBlock" data-value="H1">H1</button>
+                                <button class="heading-btn" data-command="formatBlock" data-value="H2">H2</button>
+                                <button class="heading-btn" data-command="formatBlock" data-value="H3">H3</button>
+                                <button class="heading-btn" data-command="formatBlock" data-value="H4">H4</button>
+                                <button class="heading-btn" data-command="formatBlock" data-value="H5">H5</button>
+                            </div>
+                        </div>
+
+                        <!-- Средняя часть: Палитра цветов (35 кружков) -->
+                        <div class="color-palette-container">
+                            <div class="color-palette" id="color-palette">
+                                <!-- Кружки будут сгенерированы через JS -->
+                            </div>
+                        </div>
+
+                        
+                      
+                        <!-- Нижняя часть: Стили шрифта (с визуальным предпросмотром) -->
+                        <div class="font-styles-container">
+                            <button class="font-style-btn" data-command="removeFormat" style="font-weight: normal; font-style: normal; font-family: inherit;">Default</button>
+                            <button class="font-style-btn" data-command="bold" style="font-weight: bold; font-family: inherit;">Bold</button>
+                            <button class="font-style-btn" data-command="italic" style="font-style: italic; font-family: inherit;">Italic</button>
+                            <button class="font-style-btn" data-font="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive; font-weight: 700; font-size: 1.1em;">Dancing Script</button>
+                            <button class="font-style-btn" data-font="'Pacifico', cursive" style="font-family: 'Pacifico', cursive; font-size: 1.1em;">High Summit</button>
+                            <button class="font-style-btn" data-font="'Great Vibes', cursive" style="font-family: 'Great Vibes', cursive; font-size: 1.1em;">Sunday</button>
+                        </div>
+                    </div>
+                    <div id="list-panel" class="toolbar-subpanel hidden">
+                        <p style="text-align:center; color:var(--text-muted);">Списки — скоро</p>
+                        <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                    </div>
+                    <div id="table-panel" class="toolbar-subpanel hidden">
+                        <p style="text-align:center; color:var(--text-muted);">Таблицы — скоро</p>
+                        <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                    </div>
+                    <div id="bg-panel" class="toolbar-subpanel hidden">
+                        <p style="text-align:center; color:var(--text-muted);">Фон записи — скоро</p>
+                        <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                    </div>
+                </div>
+
+                <!-- Основная панель кнопок -->
+                <div class="toolbar-buttons">
+                    <button class="toolbar-btn" id="toolbar-templates-btn" title="Шаблоны">📝</button>
+                    <button class="toolbar-btn" id="toolbar-bg-btn" title="Фон записи">🎨</button>
+                    <button class="toolbar-btn" id="toolbar-emoji-btn" title="Эмодзи">😊</button>
+                    <button class="toolbar-btn" id="toolbar-tag-btn" title="Теги">#</button>
+                    <button class="toolbar-btn" id="toolbar-text-btn" title="Текст">Aa</button>
+                    <button class="toolbar-btn" id="toolbar-list-btn" title="Список">☰</button>
+                    <button class="toolbar-btn" id="toolbar-table-btn" title="Таблица">⊞</button>
                 </div>
             </div>
         </div>
@@ -276,6 +360,20 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА ЭМОДЗИ -->
+    <div id="emoji-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content emoji-modal-content">
+            <div class="entry-modal-header">
+                <h2>😊 Выберите эмодзи</h2>
+                <button class="modal-close-btn" id="close-emoji-modal">✕</button>
+            </div>
+            <!-- Панель паков эмодзи -->
+            <div class="emoji-packs" id="emoji-packs"></div>
+            <!-- Сетка эмодзи -->
+            <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+    </div>
     <!-- МОДАЛКА ШАБЛОНОВ -->
     <div id="templates-modal" class="modal hidden">
         <div class="modal-backdrop"></div>

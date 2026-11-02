@@ -102,21 +102,36 @@ async function migrateFromLocalStorage() {
     return false;
 }
 
+
 // Массовое сохранение всех записей (используется при миграции и импорте)
 async function saveAllToIndexedDB() {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    
-    // Сначала очищаем хранилище
-    store.clear();
-    
-    // Затем записываем все текущие записи
-    for (const entry of diaryEntries) {
-        store.put(entry);
+    // ПРОВЕРКА: база данных должна быть инициализирована
+    if (!db) {
+        console.warn('IndexedDB не инициализирована, пропускаем сохранение');
+        return;
     }
     
-    return new Promise((resolve, reject) => {
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
-    });
+    try {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        // Сначала очищаем хранилище
+        store.clear();
+        
+        // Затем записываем все текущие записи
+        for (const entry of diaryEntries) {
+            store.put(entry);
+        }
+        
+        return new Promise((resolve, reject) => {
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => {
+                console.error('Ошибка транзакции IndexedDB:', transaction.error);
+                reject(transaction.error);
+            };
+        });
+    } catch (error) {
+        console.error('Ошибка при сохранении в IndexedDB:', error);
+        // Не прерываем выполнение приложения, просто логируем ошибку
+    }
 }

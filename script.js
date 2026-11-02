@@ -67,12 +67,52 @@ const QUOTES = [
     { text: "Каждый ребенок — художник. Трудность в том, чтобы остаться художником, выйдя из детского возраста.", author: "Пабло Пикассо" },
     { text: "Вы никогда не пересечете океан, если не наберетесь мужества потерять берег из виду.", author: "Христофор Колумб" }
 ];
+// === 😊 ПАКИ ЭМОДЗИ (Поддержка текста и картинок) ===
+const EMOJI_PACKS = [
+    {
+        id: 'standard',
+        name: 'Стандартные',
+        icon: '😀',
+        emojis: [
+            '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃',
+            '😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
+            '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔',
+            '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔',
+            '👍','👎','👏','🙌','👋','🤚','✋','🖖','👌','🤌',
+            '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
+            '🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🍒','🍑',
+            '⚽','🏀','🎮','🎲','🎵','🎶','🔥','💧','💰','🎁'
+        ]
+    },
+    {
+        id: 'custom_halloween',
+        name: 'Хэллоуин (Тест)',
+        icon: '🎃',
+        emojis: [
+            // Пример использования картинки вместо текста
+            { type: 'img', src: 'https://img.icons8.com/color/96/pumpkin-lantern.png', alt: 'тыква' },
+            { type: 'img', src: 'https://img.icons8.com/color/96/ghost.png', alt: 'призрак' },
+            { type: 'img', src: 'https://img.icons8.com/color/96/skull.png', alt: 'череп' },
+            { type: 'img', src: 'https://img.icons8.com/color/96/bat.png', alt: 'летучая мышь' },
+            // Можно смешивать с обычными эмодзи
+            '🧙', '🧛', '🧟', '🕸️', '🌕'
+        ]
+    }
+];
 
 // === 🛠️ ВСПОМОГАТЕЛЬНЫЕ ===
-function extractTags(text) {
+function extractTags(htmlContent) {
+    const text = getPlainTextFromHTML(htmlContent);
     if (!text) return [];
     const matches = text.match(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g);
     return matches ? [...new Set(matches.map(t => t.toLowerCase()))] : [];
+}
+
+// Получает обычный текст из HTML-контента (игнорирует картинки и теги)
+function getPlainTextFromHTML(html) {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.textContent || tempDiv.innerText || '';
 }
 
 function getMoodScore(emoji) {
@@ -401,35 +441,41 @@ let autoSaveTimer = null;
 
 function saveCurrentEntry() {
     const title = document.getElementById('entry-title').value.trim();
-    const text = document.getElementById('entry-text').value.trim();
+    const editor = document.getElementById('entry-text');
+    const htmlContent = editor.innerHTML.trim();
+    const plainText = getPlainTextFromHTML(htmlContent);
     
-    // Если нет текста — не сохраняем
-    if (!title && !text) return;
+    // Если нет ни заголовка, ни видимого текста — не сохраняем
+    if (!title && !plainText) return;
     
     const dateDisplay = document.getElementById('entry-date-display');
     const dateInput = dateDisplay.dataset.date;
     const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
-    const tags = extractTags(text);
-    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    const tags = extractTags(htmlContent); // Теперь работает с HTML
+    const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length; // Считаем только реальные слова
     const now = Date.now();
+
+    // === НОВОЕ: сохраняем размер шрифта из контейнера ===
+    const fontSize = editor.style.fontSize || '';
     
     if (!editingEntryId) {
         // 1. Создаём НОВУЮ запись
         const newEntry = {
             id: now.toString(),
-            date: finalDate,          // <-- ИСПРАВЛЕНО: используем finalDate
-            createdAt: now,           // <-- Время создания
-            updatedAt: now,           // <-- Время последнего обновления (сейчас = созданию)
-            editedAt: null,           // <-- У новой записи пока нет изменений
+            date: finalDate,
+            createdAt: now,
+            updatedAt: now,
+            editedAt: null,
             title,
-            content: text,
+            content: htmlContent, // <-- ВАЖНО: сохраняем HTML, а не обычный текст
             mood: tempMood,
             wordCount,
-            tags
+            tags,
+            fontSize
         };
         
         diaryEntries.unshift(newEntry);
-        editingEntryId = newEntry.id; // Теперь это уже существующая запись для последующих автосохранений
+        editingEntryId = newEntry.id; // Теперь это уже существующая запись
         
     } else {
         // 2. Обновляем СУЩЕСТВУЮЩУЮ запись
@@ -437,14 +483,15 @@ function saveCurrentEntry() {
         if (index !== -1) {
             diaryEntries[index] = {
                 ...diaryEntries[index],
-                date: diaryEntries[index].date, // <-- Оставляем оригинальную дату публикации (не меняем!)
-                updatedAt: now,                 // <-- Обновляем время изменения
-                editedAt: now,                  // <-- Ставим метку, что запись редактировалась (для пометки "изм.")
+                date: diaryEntries[index].date, // Оставляем оригинальную дату публикации
+                updatedAt: now,
+                editedAt: now,
                 title,
-                content: text,
+                content: htmlContent, // <-- ВАЖНО: сохраняем HTML
                 mood: tempMood,
                 wordCount,
-                tags
+                tags,
+                fontSize
             };
         }
     }
@@ -464,7 +511,9 @@ function scheduleAutoSave() {
 function updateModalState() {
     const modal = document.getElementById('entry-modal');
     const titleVal = document.getElementById('entry-title').value.trim();
-    const textVal = document.getElementById('entry-text').value.trim();
+    
+    // ИСПРАВЛЕНО: используем textContent вместо value для div
+    const textVal = document.getElementById('entry-text').textContent.trim(); 
     const hasContent = !!(titleVal || textVal);
 
     modal.classList.remove('state-new-empty', 'state-new-filled', 'state-view', 'state-edit');
@@ -477,29 +526,25 @@ function updateModalState() {
 }
 
 // Обновляет иконки и доступность полей под текущее состояние
-// Обновляет иконки и доступность полей под текущее состояние
 function updateEditModeUI() {
     const modal = document.getElementById('entry-modal');
     const titleInput = document.getElementById('entry-title');
-    const textInput = document.getElementById('entry-text');
-    const insertTagBtn = document.getElementById('insert-tag-btn');
-    const templatesBtn = document.getElementById('templates-btn');
+    const textInput = document.getElementById('entry-text'); // Это теперь div
     const saveCloseBtn = document.getElementById('save-close-btn');
     const headerDeleteBtn = document.getElementById('header-delete-btn');
     const editModeBtn = document.getElementById('edit-mode-btn');
 
-    const isNewAndEmpty = !editingEntryId && !titleInput.value.trim() && !textInput.value.trim();
-    const hasContent = titleInput.value.trim() || textInput.value.trim();
+    // ИСПРАВЛЕНО: используем getPlainTextFromHTML для div вместо .value
+    const plainText = getPlainTextFromHTML(textInput.innerHTML).trim();
+    const isNewAndEmpty = !editingEntryId && !titleInput.value.trim() && !plainText;
+    const hasContent = titleInput.value.trim() || plainText;
 
     if (isEditing) {
         modal.classList.add('is-editing');
         titleInput.removeAttribute('readonly');
-        textInput.removeAttribute('readonly');
-        insertTagBtn.classList.remove('hidden');
-        templatesBtn.classList.remove('hidden');
-        if (editModeBtn) editModeBtn.classList.add('hidden'); // Скрываем карандаш
+        textInput.setAttribute('contenteditable', 'true'); // Разрешаем редактирование div
+        if (editModeBtn) editModeBtn.classList.add('hidden');
         
-        // Логика левой кнопки
         if (isNewAndEmpty) {
             saveCloseBtn.textContent = '←';
             saveCloseBtn.title = 'Отмена (назад)';
@@ -508,7 +553,6 @@ function updateEditModeUI() {
             saveCloseBtn.title = 'Сохранить и закрыть';
         }
 
-        // ЛОГИКА КОРЗИНЫ: показываем, если это существующая запись ИЛИ если в новой записи уже есть текст
         if (editingEntryId || hasContent) {
             headerDeleteBtn.classList.remove('hidden');
         } else {
@@ -516,19 +560,22 @@ function updateEditModeUI() {
         }
 
     } else {
-        // Режим просмотра существующей записи
         modal.classList.remove('is-editing');
         titleInput.setAttribute('readonly', true);
-        textInput.setAttribute('readonly', true);
-        insertTagBtn.classList.add('hidden');
-        templatesBtn.classList.add('hidden');
-        if (editModeBtn) editModeBtn.classList.remove('hidden'); // Показываем карандаш
+        textInput.setAttribute('contenteditable', 'false'); // Запрещаем редактирование div при просмотре
+        if (editModeBtn) editModeBtn.classList.remove('hidden');
         
         saveCloseBtn.textContent = '✕';
         saveCloseBtn.title = 'Закрыть без изменений';
-        
-        // При просмотре корзина всегда видна
         headerDeleteBtn.classList.remove('hidden');
+    }
+
+    // Показываем toolbar только в режиме редактирования
+    const toolbar = document.getElementById('entry-toolbar');
+    if (isEditing) {
+        toolbar.classList.remove('hidden');
+    } else {
+        toolbar.classList.add('hidden');
     }
 }
 
@@ -539,13 +586,17 @@ function openEntryForm(entry = null) {
     const titleInput = document.getElementById('entry-title');
     const textInput = document.getElementById('entry-text');
     const saveCloseBtn = document.getElementById('save-close-btn');
+    const editor = document.getElementById('entry-text');
 
     if (entry) {
-        // Открытие СУЩЕСТВУЮЩЕЙ записи для просмотра/редактирования
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
-        textInput.value = entry.content;
+        editor.innerHTML = entry.content || '';
+        
+        // === НОВОЕ: восстанавливаем сохранённый размер шрифта ===
+        editor.style.fontSize = entry.fontSize || '';
+        
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
@@ -554,10 +605,13 @@ function openEntryForm(entry = null) {
         saveCloseBtn.textContent = '✕';
         saveCloseBtn.title = 'Закрыть без изменений';
     } else {
-        // Создание НОВОЙ записи — всегда чистая форма
         editingEntryId = null;
         titleInput.value = '';
-        textInput.value = '';
+        editor.innerHTML = '';
+        
+        // === НОВОЕ: сбрасываем размер для новой записи ===
+        editor.style.fontSize = '';
+        
         tempMood = '😐';
         
         const todayKey = getDateKey(new Date());
@@ -588,59 +642,57 @@ function enterEditMode() {
 }
 
 function handleSaveEntry() {
-    const dateDisplay = document.getElementById('entry-date-display');
-    const dateInput = dateDisplay.dataset.date;
     const title = document.getElementById('entry-title').value.trim();
-    const text = document.getElementById('entry-text').value.trim();
+    const editor = document.getElementById('entry-text');
+    const htmlContent = editor.innerHTML.trim();
+    const plainText = getPlainTextFromHTML(htmlContent);
 
-    if (!text && !title) {
+    if (!plainText && !title) {
         showToast('Запись не может быть пустой', 'error');
         return false;
     }
 
+    const dateDisplay = document.getElementById('entry-date-display');
+    const dateInput = dateDisplay.dataset.date;
+    const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
+    const tags = extractTags(htmlContent);
+    const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
     const now = Date.now();
-    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-    const tags = extractTags(text);
+
+    // === НОВОЕ: сохраняем размер шрифта ===
+    const fontSize = editor.style.fontSize || '';
 
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
-
         if (index !== -1) {
             diaryEntries[index] = {
                 ...diaryEntries[index],
-
-                // ВАЖНО: дата публикации остаётся прежней
-                date: diaryEntries[index].date,
-
+                date: diaryEntries[index].date, // Дата публикации не меняется
+                updatedAt: now,
+                editedAt: now,
                 title,
-                content: text,
+                content: htmlContent, // <-- ВАЖНО: сохраняем HTML
                 mood: tempMood,
                 wordCount,
                 tags,
-
-                // дата изменения
-                updatedAt: now,
-                editedAt: now
+                fontSize
             };
         }
-
         showToast('Запись обновлена', 'success');
     } else {
-        const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
-
         const newEntry = {
             id: now.toString(),
             date: finalDate,
+            createdAt: now,
+            updatedAt: now,
+            editedAt: null,
             title,
-            content: text,
+            content: htmlContent, // <-- ВАЖНО: сохраняем HTML
             mood: tempMood,
             wordCount,
             tags,
-            createdAt: now,
-            updatedAt: now,
-            editedAt: null
+            fontSize
         };
-
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
         showToast('Запись сохранена', 'success');
@@ -654,6 +706,7 @@ function handleSaveEntry() {
 }
 
 function closeEntryForm() {
+    // Просто закрываем модалку — автосохранение уже всё сохранило в IndexedDB
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
     isEditing = false;
@@ -862,17 +915,20 @@ function renderEntries() {
         card.className = 'entry-card';
         card.dataset.entryId = entry.id;
 
+        // Дата берем из date (дата создания), а не updatedAt
         const dateObj = new Date(entry.date);
-        const dateStr = dateObj.toLocaleDateString('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
+        const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         const editedHtml = getEditedLabelHtml(entry);
 
-        const tagsHtml = (entry.tags && entry.tags.length > 0)
-            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>`
+        const tagsHtml = (entry.tags && entry.tags.length > 0) 
+            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>` 
             : '';
+
+        // === ИСПРАВЛЕНИЕ: Очищаем HTML для красивого текстового превью ===
+        const plainContent = getPlainTextFromHTML(entry.content);
+        // Обрезаем текст, если он длиннее 120 символов, чтобы карточка была аккуратной
+        const previewText = plainContent.length > 120 ? plainContent.substring(0, 120) + '...' : plainContent;
+        const displayText = previewText || '<span style="color:var(--text-muted); font-style:italic;">(Запись без текста)</span>';
 
         card.innerHTML = `
             <div class="entry-header">
@@ -883,9 +939,11 @@ function renderEntries() {
                 <span style="font-size:1.2em">${entry.mood}</span>
             </div>
             ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
-            <div class="entry-text">${escapeHtml(entry.content)}</div>
+            <div class="entry-text">${escapeHtml(displayText)}</div>
             ${tagsHtml}
         `;
+
+        // ... далее идет код с pressTimer и обработчиками кликов (оставь его без изменений) ...
 
         let pressTimer = null;
         let isLongPress = false;
@@ -919,7 +977,16 @@ function renderEntries() {
 }
 
 async function saveAndRender() {
-    await saveAllToIndexedDB();
+    try {
+        // Сохраняем все записи в IndexedDB
+        await saveAllToIndexedDB();
+    } catch (error) {
+        console.error('Не удалось сохранить в IndexedDB:', error);
+        // Не прерываем выполнение, просто показываем уведомление
+        showToast('Ошибка сохранения данных', 'error');
+    }
+    
+    // Обновляем интерфейс независимо от результата сохранения
     renderEntries();
     drawMoodChart();
     renderCalendar();
@@ -1616,6 +1683,384 @@ document.addEventListener('touchend', () => {
 // FAB — новая запись
 document.getElementById('fab-add').onclick = () => openEntryForm();
 
+// === 🛠️ TOOLBAR (ПАНЕЛЬ ИНСТРУМЕНТОВ) ===
+document.getElementById('toolbar-bg-btn').onclick = () => {
+    openToolbarPanel('bg-panel');
+};
+
+document.getElementById('toolbar-emoji-btn').onclick = () => {
+    // Если панель эмодзи уже открыта — закрываем, иначе открываем
+    if (activeToolbarPanel === 'emoji-panel') {
+        closeToolbarPanel();
+    } else {
+        openToolbarPanel('emoji-panel');
+    }
+};
+
+document.getElementById('toolbar-tag-btn').onclick = () => {
+    insertEmojiAtCursor('#');
+};
+
+document.getElementById('toolbar-templates-btn').onclick = openTemplatesModal;
+
+document.getElementById('toolbar-text-btn').onclick = () => {
+    if (activeToolbarPanel === 'text-panel') {
+        closeToolbarPanel();
+    } else {
+        openToolbarPanel('text-panel');
+    }
+};
+
+document.getElementById('toolbar-list-btn').onclick = () => {
+    if (activeToolbarPanel === 'list-panel') {
+        closeToolbarPanel();
+    } else {
+        openToolbarPanel('list-panel');
+    }
+};
+
+document.getElementById('toolbar-table-btn').onclick = () => {
+    if (activeToolbarPanel === 'table-panel') {
+        closeToolbarPanel();
+    } else {
+        openToolbarPanel('table-panel');
+    }
+};
+
+// === 🛑 ЗАКРЫТИЕ ПАНЕЛИ ИНСТРУМЕНТОВ ПРИ КЛИКЕ ВНЕ ЕЁ ===
+// Если панель открыта, и мы кликаем в поле текста или заголовка — закрываем её
+document.getElementById('entry-text').addEventListener('click', () => {
+    if (activeToolbarPanel) {
+        closeToolbarPanel();
+    }
+});
+
+document.getElementById('entry-title').addEventListener('click', () => {
+    if (activeToolbarPanel) {
+        closeToolbarPanel();
+    }
+});
+
+// Также закрываем панель, если кликнули по темному фону модалки
+document.querySelector('#entry-modal .modal-backdrop').addEventListener('click', () => {
+    if (activeToolbarPanel) {
+        closeToolbarPanel();
+    }
+});
+
+// === 😊 ПАНЕЛЬ ЭМОДЗИ В ТУЛБАРЕ ===
+let currentEmojiPackId = 'standard';
+let activeToolbarPanel = null;
+
+function openToolbarPanel(panelId) {
+    const panel = document.getElementById('toolbar-panel');
+    
+    // Скрываем все подпанели
+    document.querySelectorAll('.toolbar-subpanel').forEach(p => p.classList.add('hidden'));
+    
+    // Показываем нужную
+    const targetPanel = document.getElementById(panelId);
+    if (targetPanel) {
+        targetPanel.classList.remove('hidden');
+        panel.classList.remove('hidden');
+        activeToolbarPanel = panelId;
+        
+        // Подсвечиваем активную кнопку тулбара
+        document.querySelectorAll('.toolbar-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`[onclick*="${panelId}"], #toolbar-${panelId.replace('-panel', '')}-btn`);
+        if (activeBtn) activeBtn.classList.add('active');
+        
+        // Если это панель эмодзи — рендерим содержимое
+        if (panelId === 'emoji-panel') {
+            renderEmojiPacks();
+            renderEmojiGrid(currentEmojiPackId);
+        }
+    }
+}
+
+function closeToolbarPanel() {
+    const panel = document.getElementById('toolbar-panel');
+    panel.classList.add('hidden');
+    document.querySelectorAll('.toolbar-subpanel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.toolbar-btn').forEach(btn => btn.classList.remove('active'));
+    activeToolbarPanel = null;
+}
+
+// Универсальная функция вставки эмодзи (текст или картинка) в позицию курсора
+function insertEmojiAtCursor(emojiData) {
+    const editor = document.getElementById('entry-text');
+    editor.focus();
+    
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    let nodeToInsert;
+
+    if (typeof emojiData === 'string') {
+        nodeToInsert = document.createTextNode(emojiData);
+    } else if (emojiData.type === 'img') {
+        nodeToInsert = document.createElement('img');
+        nodeToInsert.src = emojiData.src;
+        nodeToInsert.alt = emojiData.alt || 'emoji';
+        nodeToInsert.className = 'inline-emoji';
+        nodeToInsert.contentEditable = "false";
+    }
+
+    range.deleteContents();
+    range.insertNode(nodeToInsert);
+    range.setStartAfter(nodeToInsert);
+    range.setEndAfter(nodeToInsert);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    onEntryFieldInput();
+}
+
+// === 🅰️ УПРАВЛЕНИЕ ПАНЕЛЬЮ ШРИФТА (ВСТРОЕННАЯ ПАНЕЛЬ) ===
+
+// 1. Генерация палитры цветов (если она есть в HTML)
+const colorPalette = document.getElementById('color-palette');
+if (colorPalette) {
+    const textColors = [
+        '#000000', '#434343', '#666666', '#999999', '#cccccc', '#ffffff',
+        '#ff0000', '#ff6600', '#ffcc00', '#33cc33', '#0066ff', '#9933ff'
+    ];
+    colorPalette.innerHTML = '';
+    textColors.forEach(color => {
+        const circle = document.createElement('div');
+        circle.className = 'color-circle';
+        circle.style.backgroundColor = color;
+        circle.style.border = color === '#ffffff' ? '1px solid #ccc' : '2px solid transparent';
+        circle.onclick = () => {
+            document.execCommand('foreColor', false, color);
+            onEntryFieldInput();
+        };
+        colorPalette.appendChild(circle);
+    });
+}
+
+// === Специальная функция для применения шрифта (надежнее, чем execCommand) ===
+function applyFontStyle(fontFamilyString) {
+    const editor = document.getElementById('entry-text');
+    const selection = window.getSelection();
+    
+    if (!selection.rangeCount || selection.isCollapsed) {
+        showToast('Сначала выдели текст, к которому хочешь применить шрифт', 'info');
+        return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    const selectedText = range.toString();
+    if (!selectedText.trim()) return;
+    
+    // Создаем span и применяем шрифт как inline-стиль
+    const span = document.createElement('span');
+    span.textContent = selectedText;
+    span.style.fontFamily = fontFamilyString; 
+    
+    // Заменяем выделенный текст на наш стилизованный span
+    range.deleteContents();
+    range.insertNode(span);
+    
+    // Выделяем новый span, чтобы можно было продолжить форматирование
+    range.selectNode(span);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+// === Обработчики для всех кнопок форматирования в панели ===
+// === Функция глобального изменения размера шрифта (для H1-H5) ===
+function applyGlobalFontSize(sizeEm) {
+    const editor = document.getElementById('entry-text');
+    editor.style.fontSize = sizeEm;
+    
+    // Очищаем локальные размеры у всех внутренних элементов
+    const children = editor.querySelectorAll('*');
+    children.forEach(child => {
+        child.style.fontSize = '';
+        // Если там случайно остались теги h1-h5 от старого formatBlock, превращаем их в обычный текст
+        if (['H1', 'H2', 'H3', 'H4', 'H5'].includes(child.tagName)) {
+            const textNode = document.createTextNode(child.textContent);
+            child.replaceWith(textNode);
+        }
+    });
+    
+    editor.focus();
+    onEntryFieldInput();
+}
+
+// === Обработчики для всех кнопок форматирования в панели ===
+document.querySelectorAll('.heading-btn, .font-style-btn').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    
+    btn.addEventListener('click', () => {
+        if (btn.dataset.command === 'formatBlock') {
+            // ИСПРАВЛЕНО: H4 = стандартный (1em), H5 = меньше стандартного (0.85em)
+            const sizes = { 
+                'H1': '2.2em', 
+                'H2': '1.8em', 
+                'H3': '1.4em', 
+                'H4': '1em',     // <-- Стандартный размер
+                'H5': '0.8em'   // <-- Меньше стандартного
+            };
+            applyGlobalFontSize(sizes[btn.dataset.value]);
+        } else if (btn.dataset.command) {
+            document.execCommand(btn.dataset.command, false, null);
+        } else if (btn.dataset.font) {
+            applyFontStyle(btn.dataset.font);
+        }
+        
+        document.getElementById('entry-text').focus();
+        onEntryFieldInput();
+    });
+});
+
+
+
+// === Глобальное изменение межстрочного интервала ===
+function changeLineHeight(multiplier) {
+    const editor = document.getElementById('entry-text');
+    editor.focus();
+    
+    // Получаем текущий интервал самого редактора, по умолчанию 1.5
+    let currentLH = editor.style.lineHeight;
+    let currentVal = currentLH ? parseFloat(currentLH) : 1.5;
+    
+    // Рассчитываем новое значение с плавным шагом и ограничениями (от 0.9 до 2.5)
+    let newVal = Math.max(0.9, Math.min(2.5, currentVal + multiplier));
+    
+    // 1. Применяем интервал ко всему редактору глобально
+    editor.style.lineHeight = newVal;
+    
+    // 2. Очищаем локальные интервалы у всех внутренних элементов (абзацев, заголовков),
+    // чтобы они не перебивали глобальную настройку и текст был равномерным
+    const children = editor.querySelectorAll('*');
+    children.forEach(child => {
+        child.style.lineHeight = '';
+    });
+
+    onEntryFieldInput();
+}
+
+// === Глобальное выравнивание текста (Лево -> Центр -> Право -> По ширине) ===
+let currentHAlignState = 0; // 0: left, 1: center, 2: right, 3: justify
+const hAlignBtn = document.getElementById('btn-h-align');
+
+const alignIcons = [
+    // 0: Лево
+    '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>',
+    // 1: Центр
+    '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="17" y1="10" x2="7" y2="10"></line><line x1="17" y1="14" x2="7" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>',
+    // 2: Право
+    '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>',
+    // 3: По ширине (Justify)
+    '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>'
+];
+
+const alignValues = ['left', 'center', 'right', 'justify'];
+
+if (hAlignBtn) {
+    hAlignBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    
+    hAlignBtn.addEventListener('click', () => {
+        currentHAlignState = (currentHAlignState + 1) % 4; // Цикл из 4 состояний
+        const newAlign = alignValues[currentHAlignState];
+        
+        hAlignBtn.innerHTML = alignIcons[currentHAlignState];
+        
+        const editor = document.getElementById('entry-text');
+        editor.style.textAlign = newAlign;
+        
+        // Очищаем локальное выравнивание у всех внутренних элементов
+        const children = editor.querySelectorAll('*');
+        children.forEach(child => {
+            child.style.textAlign = '';
+        });
+        
+        editor.focus();
+        onEntryFieldInput();
+    });
+}
+
+// === Обработчики кнопок интервала (исправленные, без дублирования) ===
+const btnLineDecrease = document.getElementById('btn-line-decrease');
+const btnLineIncrease = document.getElementById('btn-line-increase');
+
+if (btnLineDecrease) {
+    btnLineDecrease.addEventListener('mousedown', (e) => e.preventDefault());
+    btnLineDecrease.addEventListener('click', () => changeLineHeight(-0.1)); // Шаг 0.1 для плавности
+}
+
+if (btnLineIncrease) {
+    btnLineIncrease.addEventListener('mousedown', (e) => e.preventDefault());
+    btnLineIncrease.addEventListener('click', () => changeLineHeight(0.1));
+}
+
+//EMODJI
+
+function renderEmojiPacks() {
+    const packsContainer = document.getElementById('emoji-packs');
+    packsContainer.innerHTML = '';
+    
+    EMOJI_PACKS.forEach(pack => {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-pack-btn';
+        btn.textContent = pack.icon;
+        btn.title = pack.name;
+        btn.dataset.packId = pack.id;
+        
+        if (pack.id === currentEmojiPackId) {
+            btn.classList.add('selected');
+        }
+        
+        btn.onclick = () => {
+            currentEmojiPackId = pack.id;
+            renderEmojiPacks();
+            renderEmojiGrid(pack.id);
+        };
+        
+        packsContainer.appendChild(btn);
+    });
+}
+
+function renderEmojiGrid(packId) {
+    const grid = document.getElementById('emoji-grid');
+    grid.innerHTML = '';
+    
+    const pack = EMOJI_PACKS.find(p => p.id === packId);
+    if (!pack) return;
+    
+    pack.emojis.forEach(emojiData => {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-item';
+        btn.type = 'button';
+        
+        if (typeof emojiData === 'string') {
+            btn.textContent = emojiData;
+        } else if (emojiData.type === 'img') {
+            const img = document.createElement('img');
+            img.src = emojiData.src;
+            img.alt = emojiData.alt;
+            img.style.height = '1.5em';
+            img.style.verticalAlign = 'middle';
+            btn.appendChild(img);
+        }
+        
+        btn.onclick = () => {
+            insertEmojiAtCursor(emojiData);
+            // НЕ закрываем панель — пользователь может выбрать ещё эмодзи
+        };
+        
+        grid.appendChild(btn);
+    });
+}
+
+// Обработчик закрытия панели по галочке
+document.getElementById('close-toolbar-panel').onclick = closeToolbarPanel;
+
+//--------------------------------------------------------------------------------//
+
 // Левая кнопка (✕ / ✓ / ←) — вся логика в handleSaveCloseBtn
 document.getElementById('save-close-btn').onclick = handleSaveCloseBtn;
 
@@ -1661,16 +2106,7 @@ function onEntryFieldInput() {
 document.getElementById('entry-title').addEventListener('input', onEntryFieldInput);
 document.getElementById('entry-text').addEventListener('input', onEntryFieldInput);
 
-// Кнопка #теги
-document.getElementById('insert-tag-btn').onclick = () => {
-    const textInput = document.getElementById('entry-text');
-    const currentText = textInput.value;
-    const suffix = (currentText.length > 0 && !currentText.endsWith(' ')) ? ' #' : '#';
-    textInput.value = currentText + suffix;
-    textInput.focus();
-    textInput.scrollTop = textInput.scrollHeight;
-    onEntryFieldInput();
-};
+
 
 // Выбор даты
 document.getElementById('entry-date-display').onclick = () => {
@@ -1706,20 +2142,30 @@ function closeTemplatesModal() {
 function applyTemplate(templateKey) {
     const textInput = document.getElementById('entry-text');
     const templateText = TEMPLATES[templateKey];
-
-    if (textInput.value.trim()) {
-        textInput.value += '\n\n' + templateText;
+    
+    // ИСПРАВЛЕНО: используем getPlainTextFromHTML вместо .value
+    const currentText = getPlainTextFromHTML(textInput.innerHTML);
+    
+    // Если в поле уже есть текст, добавляем шаблон с отступом
+    let textToInsert;
+    if (currentText.trim()) {
+        textToInsert = '\n\n' + templateText;
     } else {
-        textInput.value = templateText;
+        textToInsert = templateText;
     }
-
+    
+    // Используем универсальную функцию вставки (работает с курсором)
+    insertEmojiAtCursor(textToInsert);
+    
+    // Фокус и прокрутка вниз
     textInput.focus();
     textInput.scrollTop = textInput.scrollHeight;
+    
     closeTemplatesModal();
     onEntryFieldInput();
 }
 
-document.getElementById('templates-btn').onclick = openTemplatesModal;
+document.getElementById('toolbar-templates-btn').onclick = openTemplatesModal;
 document.getElementById('close-templates-modal').onclick = closeTemplatesModal;
 document.querySelector('#templates-modal .modal-backdrop').onclick = closeTemplatesModal;
 

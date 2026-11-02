@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Dancing+Script:wght@700&family=Pacifico&family=Great+Vibes&family=Satisfy&display=swap');
 /* ============================================
    1. СБРОС И ПЕРЕМЕННЫЕ ТЕМ
    ============================================ */
@@ -375,30 +376,48 @@ body {
     background: transparent; font-size: 1.3em; font-weight: 600;
     color: var(--text-color); padding: 5px 0; outline: none; transition: border-color 0.2s;
 }
+/* ============================================
+   ПОЛЕ ВВОДА (RICH TEXT)
+   ============================================ */
 .entry-text-input {
-    flex: 1; width: 100%; border: none; background: transparent;
-    font-size: 1em; color: var(--text-color); resize: none; outline: none;
-    line-height: 1.6; font-family: inherit;
-}
-
-.entry-actions {
-    padding: 15px 20px; border-top: 1px solid var(--border-color);
-    display: flex; align-items: center; flex-shrink: 0;
-}
-.entry-actions-right {
-    display: flex;
-    gap: 10px;
+    flex: 1;
     width: 100%;
-    justify-content: flex-end;
+    border: none;
+    background: transparent;
+    font-size: 1em;
+    color: var(--text-color);
+    outline: none;
+    line-height: 1.6;
+    font-family: inherit;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    min-height: 150px;
 }
 
-.btn-templates {
-    background: transparent; border: 1px solid var(--accent-color);
-    color: var(--accent-color); border-radius: 20px;
-    padding: 8px 16px; font-size: 0.9em; font-weight: 600;
-    cursor: pointer; transition: background-color 0.2s, color 0.2s;
+/* Стили для пустого поля (имитация placeholder) */
+.entry-text-input:empty:before {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    pointer-events: none;
+    display: block; /* Для Firefox */
 }
-.btn-templates:hover { background: var(--accent-color); color: white; }
+
+/* Стили для встроенных эмодзи-картинок */
+.entry-text-input img.inline-emoji {
+    height: 1.3em; /* Размер как у крупного текста */
+    width: auto;
+    vertical-align: middle;
+    margin: 0 2px;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Отключаем редактирование самой картинки, чтобы её нельзя было случайно растянуть */
+.entry-text-input img[contenteditable="false"] {
+    cursor: default;
+}
+
 
 .btn-tag {
     background: transparent; border: 1px solid var(--accent-color);
@@ -764,4 +783,758 @@ body.multi-delete-active { touch-action: pan-y; }
 
 .pin-option-btn.hidden {
     display: none;
+}
+
+/* ============================================
+   ПАНЕЛЬ ИНСТРУМЕНТОВ (TOOLBAR)
+   ============================================ */
+.entry-toolbar {
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.entry-toolbar.hidden {
+    display: none;
+}
+
+/* Верхняя панель инструментов (выезжает над основным тулбаром) */
+.toolbar-panel {
+    position: relative;
+    max-height: 50vh;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    animation: slideUp 0.25s ease-out;
+}
+
+.toolbar-panel.hidden {
+    display: none;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Подпанели инструментов */
+.toolbar-subpanel {
+    position: relative;
+    padding: 10px;
+}
+
+.toolbar-subpanel.hidden {
+    display: none;
+}
+
+/* Кнопка закрытия панели (галочка) */
+.toolbar-panel-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+    z-index: 10;
+}
+
+.toolbar-panel-close-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.1);
+}
+
+/* Основная панель кнопок */
+.toolbar-buttons {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.toolbar-buttons::-webkit-scrollbar {
+    height: 4px;
+}
+
+.toolbar-buttons::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.toolbar-btn {
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: background-color 0.2s, transform 0.1s, border-color 0.2s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.toolbar-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+/* Стили для панели эмодзи внутри тулбара */
+.toolbar-subpanel .emoji-packs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 0;
+    padding-right: 50px; /* Отступ для кнопки закрытия */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.toolbar-subpanel .emoji-packs::-webkit-scrollbar {
+    height: 3px;
+}
+
+.toolbar-subpanel .emoji-packs::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.toolbar-subpanel .emoji-pack-btn {
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 1.4em;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.toolbar-subpanel .emoji-pack-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-subpanel .emoji-pack-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-subpanel .emoji-pack-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-subpanel .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    padding: 10px 0;
+    max-height: 35vh;
+    overflow-y: auto;
+}
+
+.toolbar-subpanel .emoji-item {
+    font-size: 1.6em;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 0;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s, transform 0.1s;
+}
+
+.toolbar-subpanel .emoji-item:hover {
+    background: var(--mood-btn-selected-bg);
+    transform: scale(1.2);
+}
+
+.toolbar-subpanel .emoji-item:active {
+    transform: scale(0.9);
+}
+
+@media (max-width: 480px) {
+    .toolbar-subpanel .emoji-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+    .toolbar-subpanel .emoji-item {
+        font-size: 1.4em;
+    }
+}
+
+/* ============================================
+   МОДАЛКА ЭМОДЗИ
+   ============================================ */
+.emoji-modal-content {
+    padding: 0;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.emoji-modal-content .entry-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.emoji-modal-content .entry-modal-header h2 {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+/* Панель паков эмодзи */
+.emoji-packs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 15px;
+    background: var(--mood-btn-bg);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.emoji-packs::-webkit-scrollbar {
+    height: 3px;
+}
+
+.emoji-packs::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.emoji-pack-btn {
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 1.4em;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.emoji-pack-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.emoji-pack-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.emoji-pack-btn:active {
+    transform: scale(0.95);
+}
+
+/* Сетка эмодзи */
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    padding: 15px;
+    overflow-y: auto;
+    max-height: 50vh;
+}
+
+.emoji-item {
+    font-size: 1.6em;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s, transform 0.1s;
+}
+
+.emoji-item:hover {
+    background: var(--mood-btn-selected-bg);
+    transform: scale(1.2);
+}
+
+.emoji-item:active {
+    transform: scale(0.9);
+}
+
+@media (max-width: 480px) {
+    .emoji-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+    .emoji-item {
+        font-size: 1.4em;
+    }
+}
+
+/* ============================================
+   ПАНЕЛЬ ФОРМАТИРОВАНИЯ ТЕКСТА
+   ============================================ */
+.text-formatting-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.text-format-btn {
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    user-select: none;
+}
+
+.text-format-btn:hover { 
+    background: var(--mood-btn-selected-bg); 
+    border-color: var(--accent-color); 
+}
+
+.text-format-btn:active { 
+    transform: scale(0.95); 
+}
+
+/* Скрываем стандартный input type="color", оставляем только красивую кнопку */
+.hidden-color-input { 
+    display: none; 
+}
+
+.color-picker-label {
+    cursor: pointer;
+}
+
+/* ============================================
+   МОДАЛКА ФОРМАТИРОВАНИЯ ТЕКСТА
+   ============================================ */
+.text-format-modal-content {
+    padding: 0;
+    max-width: 500px;
+}
+
+.format-section {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.format-section:last-child {
+    border-bottom: none;
+}
+
+.format-section-title {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+/* Цвета текста */
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+}
+
+.color-btn {
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.2s;
+}
+
+.color-btn:hover {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+}
+
+.color-btn:active {
+    transform: scale(0.95);
+}
+
+.color-btn.selected {
+    border-color: var(--accent-color);
+}
+
+/* Выравнивание текста */
+.align-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.align-btn {
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 1.3em;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.align-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.align-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+/* Стили шрифта */
+.style-grid {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+}
+
+.style-grid::-webkit-scrollbar {
+    height: 4px;
+}
+
+.style-grid::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.style-btn {
+    background: var(--mood-btn-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.style-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.style-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+/* Размеры шрифта (H1-H5) */
+.size-btn {
+    font-size: 1em;
+}
+
+/* Жирность шрифта */
+.weight-btn {
+    font-size: 1em;
+}
+
+/* Принудительно убираем жирность у заголовков внутри поля ввода, 
+   оставляя только изменение размера, как ты и просил */
+#entry-text :is(h1, h2, h3, h4, h5) {
+    font-weight: normal !important;
+    margin: 0;
+    line-height: inherit;
+}
+
+/* Делаем нижнюю панель стилей прокручиваемой, если кнопки не влезают */
+.font-styles-container {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.font-styles-container::-webkit-scrollbar {
+    height: 4px;
+}
+.font-styles-container::-webkit-scrollbar-thumb {
+    background: #bdbdbd;
+    border-radius: 2px;
+}
+
+/* Убираем жирный шрифт с самих кнопок, чтобы они выглядели аккуратно */
+/* Нижняя часть: Стили шрифта (КНОПКИ) */
+.font-styles-container {
+    display: flex;
+    gap: 6px;
+    padding: 12px 15px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.font-styles-container::-webkit-scrollbar {
+    height: 4px;
+}
+.font-styles-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.font-style-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.font-style-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.font-style-btn:active {
+    transform: scale(0.95);
+}
+
+/* ВАЖНО: Это правило остается! Оно убирает жирность у заголовков ВНУТРИ текста записи, 
+   но НЕ влияет на сами кнопки панели инструментов */
+#entry-text :is(h1, h2, h3, h4, h5) {
+    font-weight: normal !important;
+    margin: 0;
+    line-height: inherit;
+}
+
+/* ============================================
+   ПАНЕЛЬ ШРИФТА (ВСТРОЕННАЯ ПАНЕЛЬ #text-panel)
+   ============================================ */
+
+/* Шапка панели */
+.text-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--mood-btn-bg);
+}
+
+.text-panel-title {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* Верхняя сетка: Выравнивание + Заголовки */
+.text-panel-top-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Левый блок: инструменты выравнивания и интервалов */
+.text-tools-left {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+}
+
+.text-tool-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex: 1;
+}
+
+.text-tool-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.text-tool-btn:active {
+    transform: scale(0.95);
+}
+
+/* Правый блок: размеры шрифта (H1-H5) с прокруткой */
+.text-tools-right {
+    display: flex;
+    gap: 6px;
+    flex: 1.5;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.text-tools-right::-webkit-scrollbar {
+    height: 4px;
+}
+.text-tools-right::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* Кнопки H1-H5: только размер, БЕЗ жирности */
+.heading-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-weight: normal !important; /* КЛЮЧЕВОЕ: убираем жирность */
+}
+
+.heading-btn:nth-child(1) { font-size: 1.4em; }
+.heading-btn:nth-child(2) { font-size: 1.25em; }
+.heading-btn:nth-child(3) { font-size: 1.1em; }
+.heading-btn:nth-child(4) { font-size: 1em; }
+.heading-btn:nth-child(5) { font-size: 0.85em; text-transform: uppercase; }
+
+.heading-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+.heading-btn:active {
+    transform: scale(0.95);
+}
+
+/* Палитра цветов */
+.color-palette-container {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.color-palette {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.color-palette::-webkit-scrollbar {
+    height: 4px;
+}
+.color-palette::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.color-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s, border-color 0.2s;
+}
+
+.color-circle:hover {
+    transform: scale(1.15);
+    border-color: var(--accent-color);
+}
+
+.color-circle:active {
+    transform: scale(0.95);
+}
+
+/* Нижняя часть: Стили шрифта (Default, Жирный, Курсив и т.д.) */
+.font-styles-container {
+    display: flex;
+    gap: 6px;
+    padding: 12px 15px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.font-styles-container::-webkit-scrollbar {
+    height: 4px;
+}
+.font-styles-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+
+
+/* ВАЖНО: Убираем жирность у самих заголовков, которые создаются внутри текста */
+#entry-text :is(h1, h2, h3, h4, h5) {
+    font-weight: normal !important;
+    margin: 0;
+    line-height: inherit;
 }
