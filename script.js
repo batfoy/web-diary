@@ -439,71 +439,64 @@ function selectMoodForEntry(emoji) {
 // === 💾 АВТОСОХРАНЕНИЕ ЗАПИСИ ===
 let autoSaveTimer = null;
 
-function saveCurrentEntry() {
+async function saveCurrentEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
-    // Убираем невидимые символы-заполнители перед сохранением
     const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
     const plainText = getPlainTextFromHTML(htmlContent);
+    const hasImage = editor.querySelector('img.inline-emoji') !== null;
     
-    // Если нет ни заголовка, ни видимого текста — не сохраняем
-    if (!title && !plainText) return;
+    // Если нет заголовка, текста И картинок — не сохраняем
+    if (!title && !plainText && !hasImage) return;
     
     const dateDisplay = document.getElementById('entry-date-display');
     const dateInput = dateDisplay.dataset.date;
     const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
-    const tags = extractTags(htmlContent); // Теперь работает с HTML
-    const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length; // Считаем только реальные слова
+    const tags = extractTags(htmlContent);
+    const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
     const now = Date.now();
-
-    // === НОВОЕ: сохраняем размер шрифта из контейнера ===
     const fontSize = editor.style.fontSize || '';
+    const lineHeight = editor.style.lineHeight || '';
     
     if (!editingEntryId) {
-        // 1. Создаём НОВУЮ запись
         const newEntry = {
-            id: now.toString(),
-            date: finalDate,
-            createdAt: now,
-            updatedAt: now,
-            editedAt: null,
-            title,
-            content: htmlContent, // <-- ВАЖНО: сохраняем HTML, а не обычный текст
-            mood: tempMood,
-            wordCount,
-            tags,
-            fontSize
+            id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
+            title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
+            lineHeight
         };
-        
         diaryEntries.unshift(newEntry);
-        editingEntryId = newEntry.id; // Теперь это уже существующая запись
-        
+        editingEntryId = newEntry.id;
     } else {
-        // 2. Обновляем СУЩЕСТВУЮЩУЮ запись
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
         if (index !== -1) {
             diaryEntries[index] = {
-                ...diaryEntries[index],
-                date: diaryEntries[index].date, // Оставляем оригинальную дату публикации
-                updatedAt: now,
-                editedAt: now,
-                title,
-                content: htmlContent, // <-- ВАЖНО: сохраняем HTML
-                mood: tempMood,
-                wordCount,
-                tags,
-                fontSize
+                ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
+                title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
+                lineHeight
             };
         }
     }
     
-    // Сохраняем в IndexedDB и обновляем ВСЁ (список, календарь, график)
-    saveAndRender();
+    // Точечное обновление в IndexedDB (без await приложение не упадет, но с await надежнее)
+    const currentEntry = diaryEntries.find(e => e.id === editingEntryId);
+    if (currentEntry) {
+        await dbPut(currentEntry);
+    }
+    
+    // Обновляем только интерфейс
+    renderEntries();
+    renderCalendar();
+    drawMoodChart();
 }
 
 function scheduleAutoSave() {
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(saveCurrentEntry, 500); // Сохраняем через 0.5 секунды после последнего ввода
+    autoSaveTimer = setTimeout(() => {
+        saveCurrentEntry().catch(err => {
+            console.error('Автосохранение не удалось:', err);
+            // Опционально: showToast('Ошибка автосохранения', 'error');
+        });
+    }, 500);
 }
 
 // === 📝 МОДАЛКА ЗАПИСИ ===
@@ -512,10 +505,12 @@ function scheduleAutoSave() {
 function updateModalState() {
     const modal = document.getElementById('entry-modal');
     const titleVal = document.getElementById('entry-title').value.trim();
+    const editor = document.getElementById('entry-text');
+    const plainText = getPlainTextFromHTML(editor.innerHTML).trim();
     
-    // ИСПРАВЛЕНО: используем textContent вместо value для div
-    const textVal = document.getElementById('entry-text').textContent.trim(); 
-    const hasContent = !!(titleVal || textVal);
+    // Проверяем наличие текста, заголовка ИЛИ картинки-эмодзи
+    const hasImage = editor.querySelector('img.inline-emoji') !== null;
+    const hasContent = !!(titleVal || plainText || hasImage);
 
     modal.classList.remove('state-new-empty', 'state-new-filled', 'state-view', 'state-edit');
 
@@ -601,6 +596,7 @@ function openEntryForm(entry = null) {
         
         // === НОВОЕ: восстанавливаем сохранённый размер шрифта ===
         editor.style.fontSize = entry.fontSize || '';
+        editor.style.lineHeight = entry.lineHeight || '';
         
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
@@ -616,6 +612,7 @@ function openEntryForm(entry = null) {
         
         // === НОВОЕ: сбрасываем размер для новой записи ===
         editor.style.fontSize = '';
+        editor.style.lineHeight = '';
         
         tempMood = '😐';
         
@@ -646,14 +643,14 @@ function enterEditMode() {
     document.getElementById('entry-title').focus();
 }
 
-function handleSaveEntry() {
+async function handleSaveEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
-    // Убираем невидимые символы-заполнители перед сохранением
     const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
     const plainText = getPlainTextFromHTML(htmlContent);
+    const hasImage = editor.querySelector('img.inline-emoji') !== null;
 
-    if (!plainText && !title) {
+    if (!plainText && !title && !hasImage) {
         showToast('Запись не может быть пустой', 'error');
         return false;
     }
@@ -664,40 +661,24 @@ function handleSaveEntry() {
     const tags = extractTags(htmlContent);
     const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
     const now = Date.now();
-
-    // === НОВОЕ: сохраняем размер шрифта ===
     const fontSize = editor.style.fontSize || '';
+    const lineHeight = editor.style.lineHeight || '';
 
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
         if (index !== -1) {
             diaryEntries[index] = {
-                ...diaryEntries[index],
-                date: diaryEntries[index].date, // Дата публикации не меняется
-                updatedAt: now,
-                editedAt: now,
-                title,
-                content: htmlContent, // <-- ВАЖНО: сохраняем HTML
-                mood: tempMood,
-                wordCount,
-                tags,
-                fontSize
+                ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
+                title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
+                lineHeight
             };
         }
         showToast('Запись обновлена', 'success');
     } else {
         const newEntry = {
-            id: now.toString(),
-            date: finalDate,
-            createdAt: now,
-            updatedAt: now,
-            editedAt: null,
-            title,
-            content: htmlContent, // <-- ВАЖНО: сохраняем HTML
-            mood: tempMood,
-            wordCount,
-            tags,
-            fontSize
+            id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
+            title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
+            lineHeight
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -707,19 +688,27 @@ function handleSaveEntry() {
     isEditing = false;
     updateModalState();
     updateEditModeUI();
-    saveAndRender();
+
+    const currentEntry = diaryEntries.find(e => e.id === editingEntryId);
+    if (currentEntry) {
+        await dbPut(currentEntry);
+    }
+    
+    renderEntries();
+    renderCalendar();
+    drawMoodChart();
     return true;
 }
 
 function closeEntryForm() {
-    // Просто закрываем модалку — автосохранение уже всё сохранило в IndexedDB
+    closeToolbarPanel(); // Гарантированно закрываем открытые панели инструментов
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
     isEditing = false;
 }
 
 // Универсальная левая кнопка: поведение зависит от состояния
-function handleSaveCloseBtn() {
+async function handleSaveCloseBtn() {
     const modal = document.getElementById('entry-modal');
 
     if (modal.classList.contains('state-new-empty')) {
@@ -727,7 +716,7 @@ function handleSaveCloseBtn() {
         return;
     }
     if (modal.classList.contains('state-new-filled')) {
-        if (handleSaveEntry()) closeEntryForm();
+        if (await handleSaveEntry()) closeEntryForm();
         return;
     }
     if (modal.classList.contains('state-view')) {
@@ -735,25 +724,46 @@ function handleSaveCloseBtn() {
         return;
     }
     if (modal.classList.contains('state-edit')) {
-        if (handleSaveEntry()) closeEntryForm();
+        if (await handleSaveEntry()) closeEntryForm();
         return;
     }
 }
 
+// Клик по фону — всегда сохраняем изменения (защита от случайного закрытия)
+document.querySelector('#entry-modal .modal-backdrop').onclick = async () => {
+    const modal = document.getElementById('entry-modal');
+    
+    if (modal.classList.contains('state-new-filled') || modal.classList.contains('state-edit')) {
+        if (await handleSaveEntry()) {
+            closeEntryForm();
+        }
+        return;
+    }
+    
+    closeEntryForm();
+};
+
 // Универсальная обработка нажатия на корзину
 async function handleDeleteClick() {
     if (editingEntryId) {
-        // Удаление записи из IndexedDB
         const confirmed = await showConfirm('Удалить эту запись?');
         if (!confirmed) return;
 
         const entryId = editingEntryId;
         closeEntryForm();
+        
+        // 1. Реальное удаление из IndexedDB
+        await dbDelete(entryId);
+        
+        // 2. Удаление из массива в памяти
         diaryEntries = diaryEntries.filter(e => e.id !== entryId);
-        saveAndRender();
+        
+        // 3. Обновление интерфейса
+        renderEntries();
+        renderCalendar();
+        drawMoodChart();
         showToast('Запись удалена', 'success');
     } else {
-        // Новая запись ещё не создана в IndexedDB — просто закрываем
         closeEntryForm();
     }
 }
@@ -1094,8 +1104,17 @@ async function deleteSelectedEntries() {
     const count = selectedEntries.length;
     const confirmed = await showConfirm(`Удалить ${count} ${count === 1 ? 'запись' : count < 5 ? 'записи' : 'записей'}?`);
     if (confirmed) {
+        // Точечное удаление всех выбранных записей из IndexedDB
+        await Promise.all(selectedEntries.map(id => dbDelete(id)));
+        
+        // Удаление из массива в памяти
         diaryEntries = diaryEntries.filter(e => !selectedEntries.includes(e.id));
-        saveAndRender();
+        
+        // Обновление интерфейса
+        renderEntries();
+        renderCalendar();
+        drawMoodChart();
+        
         exitMultiDeleteMode();
         showToast(`Удалено: ${count}`, 'success');
     }
@@ -1258,6 +1277,15 @@ document.getElementById('close-search-btn').onclick = () => {
 
 searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value;
+    
+    // Сбрасываем режим множественного выбора, если он был активен
+    if (multiDeleteMode) exitMultiDeleteMode();
+    
+    // Сбрасываем остальные фильтры, чтобы поиск работал глобально
+    activeTagFilter = null;
+    activeDateFilter = null;
+    activeMoodFilter = null;
+    
     renderEntries();
 });
 
@@ -1646,7 +1674,6 @@ document.getElementById('sidebar-create-pin-btn').onclick = () => {
 };
 
 document.getElementById('sidebar-reset-pin-btn').onclick = resetPin;
-document.getElementById('sidebar-reset-pin-btn').onclick = resetPin;
 
 // === 👉 СВАЙП ВПРАВО ДЛЯ ОТМЕНЫ ВЫБОРА ===
 let cancelSwipeStartX = 0;
@@ -1747,12 +1774,7 @@ document.getElementById('entry-title').addEventListener('click', () => {
     }
 });
 
-// Также закрываем панель, если кликнули по темному фону модалки
-document.querySelector('#entry-modal .modal-backdrop').addEventListener('click', () => {
-    if (activeToolbarPanel) {
-        closeToolbarPanel();
-    }
-});
+
 
 // === 😊 ПАНЕЛЬ ЭМОДЗИ В ТУЛБАРЕ ===
 let currentEmojiPackId = 'standard';
@@ -1850,69 +1872,148 @@ if (colorPalette) {
 
 
 
-
-
-// === Функция глобального изменения размера шрифта (для H1-H5) ===
+// === ГЛОБАЛЬНОЕ ИЗМЕНЕНИЕ РАЗМЕРА ШРИФТА (ДЛЯ КНОПОК H1-H5) ===
 function applyGlobalFontSize(sizeEm) {
     const editor = document.getElementById('entry-text');
+
+    // 1. Сохраняем текущую позицию курсора (исправление от Дипсика)
+    const selection = window.getSelection();
+    let savedRange = null;
+    if (selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
+        savedRange = selection.getRangeAt(0).cloneRange();
+    }
+
+    // 2. Применяем глобальный размер к самому контейнеру
     editor.style.fontSize = sizeEm;
-    
-    // Очищаем локальные размеры у всех внутренних элементов
+
+    // 3. Очищаем inline-размеры у всех дочерних элементов, 
+    // чтобы они гарантированно наследовали новый глобальный размер.
+    // Мы НЕ трогаем теги H1-H5 и НЕ удаляем их style (чтобы сохранить text-align!)
     const children = editor.querySelectorAll('*');
     children.forEach(child => {
         child.style.fontSize = '';
-        // Если там случайно остались теги h1-h5 от старого formatBlock, превращаем их в обычный текст
-        if (['H1', 'H2', 'H3', 'H4', 'H5'].includes(child.tagName)) {
-            const textNode = document.createTextNode(child.textContent);
-            child.replaceWith(textNode);
-        }
     });
-    
+
+    // 4. Восстанавливаем фокус и позицию курсора (исправление от Дипсика)
     editor.focus();
+    if (savedRange) {
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+    }
+
     onEntryFieldInput();
 }
 
+// Привязываем обработчики к кнопкам H1-H5
+document.querySelectorAll('.heading-btn').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault()); // Сохраняем фокус в редакторе
+    
+    btn.addEventListener('click', () => {
+        const size = btn.dataset.size;
+        if (size) {
+            applyGlobalFontSize(size);
+        }
+    });
+});
 
-// === НАДЕЖНЫЕ ОБРАБОТЧИКИ ФОРМАТИРОВАНИЯ (Native API) ===
-document.querySelectorAll('.heading-btn, .font-style-btn').forEach(btn => {
-    // Предотвращаем потерю фокуса при нажатии на кнопку
+// === УМНЫЕ ПРЕСЕТЫ ШРИФТОВ (С УЧЕТОМ ВЫДЕЛЕНИЯ ИЛИ ВСЕЙ ЗАПИСИ) ===
+
+function applyFontPreset(presetName) {
+    const editor = document.getElementById('entry-text');
+    editor.focus();
+    
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    // Словарь строгих пресетов
+    const presets = {
+        'default': { family: "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", weight: '400', style: 'normal' },
+        'bold': { family: "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", weight: '700', style: 'normal' },
+        'italic': { family: "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", weight: '400', style: 'italic' },
+        'dancing': { family: "'Dancing Script', cursive", weight: '400', style: 'normal' },
+        'pacifico': { family: "'Pacifico', cursive", weight: '400', style: 'normal' },
+        'greatvibes': { family: "'Great Vibes', cursive", weight: '400', style: 'normal' }
+    };
+
+    const p = presets[presetName];
+    if (!p) return;
+
+    if (selection.isCollapsed) {
+        // === ВАРИАНТ 1: Текст НЕ выделен. Применяем ко ВСЕЙ записи. ===
+        
+        // 1. Задаем стиль самому контейнеру (для будущего ввода, если запись пустая)
+        editor.style.fontFamily = p.family;
+        editor.style.fontWeight = p.weight;
+        editor.style.fontStyle = p.style;
+
+        // 2. Проходим по всем существующим элементам внутри записи и явно задаем им этот стиль.
+        // Это гарантирует, что стиль сохранится в HTML и перебьет старые настройки.
+        const children = editor.querySelectorAll('*');
+        children.forEach(child => {
+            child.style.fontFamily = p.family;
+            child.style.fontWeight = p.weight;
+            child.style.fontStyle = p.style;
+        });
+        
+        // 3. Если редактор совершенно пустой, добавляем невидимый символ с этим стилем, 
+        // чтобы при начале печати стиль сразу применился.
+        if (children.length === 0) {
+            const span = document.createElement('span');
+            span.style.fontFamily = p.family;
+            span.style.fontWeight = p.weight;
+            span.style.fontStyle = p.style;
+            span.innerHTML = '\u200B'; // Невидимый символ
+            
+            editor.appendChild(span);
+            
+            const newRange = document.createRange();
+            newRange.setStart(span.firstChild, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        }
+
+    } else {
+        // === ВАРИАНТ 2: Текст ВЫДЕЛЕН. Применяем только к выделенному фрагменту. ===
+        
+        const range = selection.getRangeAt(0);
+        const span = document.createElement('span');
+        
+        span.style.fontFamily = p.family;
+        span.style.fontWeight = p.weight;
+        span.style.fontStyle = p.style;
+        span.style.textDecoration = 'none';
+        span.style.color = ''; // Сбрасываем цвет, чтобы не было конфликтов
+
+        const selectedText = range.toString();
+        span.textContent = selectedText;
+        
+        range.deleteContents();
+        range.insertNode(span);
+        
+        // Выделяем новый span, чтобы можно было сразу применить другой стиль поверх
+        range.selectNode(span);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    onEntryFieldInput();
+}
+
+// Привязываем кнопки к новой функции
+document.querySelectorAll('.font-style-btn').forEach(btn => {
     btn.addEventListener('mousedown', (e) => {
-        e.preventDefault(); 
+        e.preventDefault(); // Сохраняем фокус в редакторе
     });
 
     btn.addEventListener('click', () => {
-        const editor = document.getElementById('entry-text');
-        editor.focus(); // Возвращаем фокус в редактор перед командой
-
-        if (btn.dataset.command === 'formatBlock') {
-            // H1-H5 применяем глобально (как мы уже настроили)
-            applyGlobalFontSize(btn.dataset.size);
-        } 
-        else if (btn.dataset.command === 'bold' || 
-                 btn.dataset.command === 'italic' || 
-                 btn.dataset.command === 'underline') {
-            
-            // Проверяем, применен ли стиль. Если НЕТ — применяем.
-            // Если ДА — ничего не делаем (чтобы стиль не сбрасывался при повторном нажатии)
-            const isApplied = document.queryCommandState(btn.dataset.command);
-            if (!isApplied) {
-                document.execCommand(btn.dataset.command, false, null);
-            }
-        } 
-        else if (btn.dataset.command === 'removeFormat') {
-            // НАДЕЖНЫЙ сброс ВСЕХ стилей (жирный, курсив, шрифты, цвета)
-            // Это возвращает текст к стандартному стилю браузера
-            document.execCommand('removeFormat', false, null);
-        } 
-        else if (btn.dataset.font) {
-            // Нативное применение шрифта к выделенному тексту или месту курсора
-            // Браузер сам корректно обернет текст в нужный тег
-            document.execCommand('fontName', false, btn.dataset.font);
+        const preset = btn.dataset.preset;
+        if (preset) {
+            applyFontPreset(preset);
         }
-
-        onEntryFieldInput();
     });
 });
+
 
 
 
@@ -1921,9 +2022,9 @@ function changeLineHeight(multiplier) {
     const editor = document.getElementById('entry-text');
     editor.focus();
     
-    // Получаем текущий интервал самого редактора, по умолчанию 1.5
+    // Получаем текущий интервал самого редактора, по умолчанию 1.6
     let currentLH = editor.style.lineHeight;
-    let currentVal = currentLH ? parseFloat(currentLH) : 1.5;
+    let currentVal = currentLH ? parseFloat(currentLH) : 1.6;
     
     // Рассчитываем новое значение с плавным шагом и ограничениями (от 0.9 до 2.5)
     let newVal = Math.max(0.9, Math.min(2.5, currentVal + multiplier));
@@ -1941,7 +2042,7 @@ function changeLineHeight(multiplier) {
     onEntryFieldInput();
 }
 
-// === Глобальное выравнивание текста (Лево -> Центр -> Право -> По ширине) ===
+// === Глобальное выравнивание текста (Явная установка стилей) ===
 let currentHAlignState = 0; // 0: left, 1: center, 2: right, 3: justify
 const hAlignBtn = document.getElementById('btn-h-align');
 
@@ -1962,20 +2063,28 @@ if (hAlignBtn) {
     hAlignBtn.addEventListener('mousedown', (e) => e.preventDefault());
     
     hAlignBtn.addEventListener('click', () => {
-        currentHAlignState = (currentHAlignState + 1) % 4; // Цикл из 4 состояний
-        const newAlign = alignValues[currentHAlignState];
-        
-        hAlignBtn.innerHTML = alignIcons[currentHAlignState];
-        
         const editor = document.getElementById('entry-text');
-        editor.style.textAlign = newAlign;
         
-        // Очищаем локальное выравнивание у всех внутренних элементов
+        // 1. Переключаем состояние
+        currentHAlignState = (currentHAlignState + 1) % 4;
+        const newAlign = alignValues[currentHAlignState];
+
+        // 2. Явно ставим выравнивание самому контейнеру
+        editor.style.textAlign = newAlign;
+
+        // 3. Явно ставим выравнивание ВСЕМ блочным дочерним элементам (DIV, P, H1-H5, LI)
+        // Мы НЕ трогаем SPAN, чтобы не сломать стили шрифтов, которые мы применяли ранее
         const children = editor.querySelectorAll('*');
         children.forEach(child => {
-            child.style.textAlign = '';
+            const tag = child.tagName;
+            if (['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'LI'].includes(tag)) {
+                child.style.textAlign = newAlign;
+            }
         });
-        
+
+        // 4. Обновляем иконку на кнопке
+        hAlignBtn.innerHTML = alignIcons[currentHAlignState];
+
         editor.focus();
         onEntryFieldInput();
     });
@@ -2068,21 +2177,6 @@ document.getElementById('edit-mode-btn').onclick = enterEditMode;
 // 🗑️ — удаление существующей записи
 document.getElementById('header-delete-btn').onclick = handleDeleteClick;
 
-// Клик по фону — всегда сохраняем изменения (защита от случайного закрытия)
-document.querySelector('#entry-modal .modal-backdrop').onclick = () => {
-    const modal = document.getElementById('entry-modal');
-    
-    // Если есть несохранённые изменения — сохраняем их
-    if (modal.classList.contains('state-new-filled') || modal.classList.contains('state-edit')) {
-        if (handleSaveEntry()) {
-            closeEntryForm();
-        }
-        return;
-    }
-    
-    // Если новая запись пустая или мы просто смотрим старую — просто закрываем
-    closeEntryForm();
-};
 
 // Клик по заголовку/тексту в режиме просмотра — вход в редактирование
 document.getElementById('entry-title').addEventListener('click', handleViewClickToEdit);
@@ -2184,6 +2278,29 @@ document.querySelector('#mood-modal .modal-backdrop').onclick = closeMoodModal;
 document.getElementById('confirm-ok').onclick = () => closeConfirm(true);
 document.getElementById('confirm-cancel').onclick = () => closeConfirm(false);
 document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeConfirm(false);
+
+// === 📱 КЛАВИАТУРА: Подъем модалки над виртуальной клавиатурой (iOS Fallback) ===
+(function initKeyboardInset() {
+    if (!window.visualViewport) return;
+
+    const vv = window.visualViewport;
+
+    function updateKeyboardInset() {
+        // Вычисляем высоту клавиатуры
+        const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        document.documentElement.style.setProperty('--keyboard-inset', inset + 'px');
+    }
+
+    vv.addEventListener('resize', updateKeyboardInset);
+    vv.addEventListener('scroll', updateKeyboardInset);
+
+    // Сброс при закрытии клавиатуры
+    document.addEventListener('focusout', () => {
+        setTimeout(updateKeyboardInset, 100);
+    });
+
+    updateKeyboardInset();
+})();
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {

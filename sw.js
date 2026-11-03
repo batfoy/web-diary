@@ -1,53 +1,68 @@
-const CACHE_NAME = 'my-web-diary-v2.0';
+const CACHE_NAME = 'my-web-diary-v2.1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/script.js',
-  '/db.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './style.css',
+  './script.js',
+  './db.js',
+  './manifest.json',
+  './icon-192.png'
 ];
 
-// Установка Service Worker - кэшируем ресурсы
 self.addEventListener('install', (event) => {
+  // Немедленная активация нового Service Worker
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Кэширование ресурсов');
-        return cache.addAll(urlsToCache);
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache).catch(err => {
+          console.warn('Некоторые файлы не закэшировались (возможно, нет сети):', err);
+        });
       })
   );
 });
 
-// Активация - удаляем старые кэши
 self.addEventListener('activate', (event) => {
+  // Объединяем claim и очистку старого кэша в один Promise.all для надежности
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Удаление старого кэша:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log('Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
   );
 });
 
-// Перехват запросов - отдаём из кэша или из сети
 self.addEventListener('fetch', (event) => {
+  // Игнорируем не-GET запросы
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Если есть в кэше - возвращаем из кэша
+        // Если есть в кэше — отдаём сразу
         if (response) {
           return response;
         }
-        // Иначе - загружаем из сети
-        return fetch(event.request);
+        // Если нет в кэше — пытаемся получить из сети
+        return fetch(event.request).catch(() => {
+          // Offline fallback: если сети нет и этого нет в кэше, отдаём главную страницу
+          // Это позволяет PWA открываться даже без интернета
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+          // Для остальных ресурсов (картинки, шрифты) просто возвращаем undefined (браузер обработает как ошибку сети)
+        });
       })
   );
 });

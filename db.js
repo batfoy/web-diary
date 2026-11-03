@@ -1,3 +1,4 @@
+const LS_KEY = 'my_web_diary_entries_v2'; // Добавлено для миграции
 // === 🗄️ IndexedDB ОБЁРТКА ===
 const DB_NAME = 'MyWebDiaryDB';
 const DB_VERSION = 1;
@@ -77,7 +78,7 @@ function dbClear() {
 
 // Миграция из localStorage в IndexedDB
 async function migrateFromLocalStorage() {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(LS_KEY);
     if (!stored) return false;
     
     try {
@@ -91,7 +92,7 @@ async function migrateFromLocalStorage() {
             }
             
             // После успешной миграции удаляем данные из localStorage
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(LS_KEY);
             console.log('Миграция завершена успешно');
             return true;
         }

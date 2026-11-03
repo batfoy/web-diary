@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <meta name="theme-color" content="#4CAF50">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -181,12 +181,13 @@
 
                             <!-- Правый блок: Размеры шрифта (Заголовки) -->
                             <!-- Правый блок: заголовки (теперь 5 кнопок с горизонтальным скроллом) -->
+                            <!-- Правый блок: размеры шрифта для ВСЕГО текста -->
                             <div class="text-tools-right">
-                                <button class="heading-btn" data-command="formatBlock" data-value="H1">H1</button>
-                                <button class="heading-btn" data-command="formatBlock" data-value="H2">H2</button>
-                                <button class="heading-btn" data-command="formatBlock" data-value="H3">H3</button>
-                                <button class="heading-btn" data-command="formatBlock" data-value="H4">H4</button>
-                                <button class="heading-btn" data-command="formatBlock" data-value="H5">H5</button>
+                                <button class="heading-btn" data-size="2.2em" title="Очень крупный (H1)">H1</button>
+                                <button class="heading-btn" data-size="1.8em" title="Крупный (H2)">H2</button>
+                                <button class="heading-btn" data-size="1.5em" title="Средний (H3)">H3</button>
+                                <button class="heading-btn" data-size="1em" title="Стандартный (H4)">H4</button>
+                                <button class="heading-btn" data-size="0.8em" title="Мелкий (H5)">H5</button>
                             </div>
                         </div>
 
@@ -201,12 +202,13 @@
                       
                         <!-- Нижняя часть: Стили шрифта (с визуальным предпросмотром) -->
                         <div class="font-styles-container">
-                            <button class="font-style-btn" data-command="removeFormat" style="font-weight: normal; font-style: normal; font-family: inherit;">Default</button>
-                            <button class="font-style-btn" data-command="bold" style="font-weight: bold; font-family: inherit;">Bold</button>
-                            <button class="font-style-btn" data-command="italic" style="font-style: italic; font-family: inherit;">Italic</button>
-                            <button class="font-style-btn" data-font="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive; font-weight: 700; font-size: 1.1em;">Dancing Script</button>
-                            <button class="font-style-btn" data-font="'Pacifico', cursive" style="font-family: 'Pacifico', cursive; font-size: 1.1em;">Pacifico</button>
-                            <button class="font-style-btn" data-font="'Great Vibes', cursive" style="font-family: 'Great Vibes', cursive; font-size: 1.3em;">Great Vibes</button>
+                            <!-- Каждая кнопка теперь вызывает строгий пресет стилей -->
+                            <button class="font-style-btn" data-preset="default" style="font-family: 'Roboto', sans-serif; font-weight: 400; font-style: normal;">Default</button>
+                            <button class="font-style-btn" data-preset="bold" style="font-family: 'Roboto', sans-serif; font-weight: 700; font-style: normal;">Bold</button>
+                            <button class="font-style-btn" data-preset="italic" style="font-family: 'Roboto', sans-serif; font-weight: 400; font-style: italic;">Italic</button>
+                            <button class="font-style-btn" data-preset="dancing" style="font-family: 'Dancing Script', cursive; font-weight: 400; font-style: normal; font-size: 1.1em;">Dancing Script</button>
+                            <button class="font-style-btn" data-preset="pacifico" style="font-family: 'Pacifico', cursive; font-weight: 400; font-style: normal; font-size: 1.1em;">Pacifico</button>
+                            <button class="font-style-btn" data-preset="greatvibes" style="font-family: 'Great Vibes', cursive; font-weight: 400; font-style: normal; font-size: 1.3em;">Great Vibes</button>
                         </div>
                     </div>
                     <div id="list-panel" class="toolbar-subpanel hidden">
@@ -360,20 +362,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ЭМОДЗИ -->
-    <div id="emoji-modal" class="modal hidden">
-        <div class="modal-backdrop"></div>
-        <div class="modal-content emoji-modal-content">
-            <div class="entry-modal-header">
-                <h2>😊 Выберите эмодзи</h2>
-                <button class="modal-close-btn" id="close-emoji-modal">✕</button>
-            </div>
-            <!-- Панель паков эмодзи -->
-            <div class="emoji-packs" id="emoji-packs"></div>
-            <!-- Сетка эмодзи -->
-            <div class="emoji-grid" id="emoji-grid"></div>
-        </div>
-    </div>
     <!-- МОДАЛКА ШАБЛОНОВ -->
     <div id="templates-modal" class="modal hidden">
         <div class="modal-backdrop"></div>

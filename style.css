@@ -385,10 +385,11 @@ body {
     border: none;
     background: transparent;
     font-size: 1em;
+    font-weight: 400; /* <-- ЯВНО указываем обычную жирность (Regular) */
     color: var(--text-color);
     outline: none;
     line-height: 1.6;
-    font-family: inherit;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow-y: auto;
@@ -798,6 +799,19 @@ body.multi-delete-active { touch-action: pan-y; }
 
 .entry-toolbar.hidden {
     display: none;
+}
+
+/* === 📱 МОБИЛЬНАЯ АДАПТАЦИЯ ТУЛБАРА ПОД КЛАВИАТУРУ === */
+@media (max-width: 768px) {
+    .entry-toolbar {
+        /* Сдвигаем вверх только сам тулбар на высоту клавиатуры */
+        transform: translateY(calc(-1 * var(--keyboard-inset, 0px)));
+        transition: transform 0.2s ease-out;
+        
+        /* Гарантируем, что он останется поверх контента при сдвиге */
+        position: relative; 
+        z-index: 20; 
+    }
 }
 
 /* Верхняя панель инструментов (выезжает над основным тулбаром) */
@@ -1538,3 +1552,38 @@ body.multi-delete-active { touch-action: pan-y; }
     margin: 0;
     line-height: inherit;
 }
+
+/* ============================================
+   ПРЕСЕТЫ ШРИФТОВ (ЯВНОЕ ОПРЕДЕЛЕНИЕ)
+   ============================================ */
+.font-preset-default {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+.font-preset-bold {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: 700 !important;
+    font-style: normal !important;
+}
+.font-preset-italic {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
+}
+.font-preset-dancing {
+    font-family: 'Dancing Script', cursive !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+.font-preset-pacifico {
+    font-family: 'Pacifico', cursive !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+.font-preset-greatvibes {
+    font-family: 'Great Vibes', cursive !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+
