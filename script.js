@@ -457,12 +457,15 @@ async function saveCurrentEntry() {
     const now = Date.now();
     const fontSize = editor.style.fontSize || '';
     const lineHeight = editor.style.lineHeight || '';
+    const fontFamily = editor.style.fontFamily || '';
+    const fontWeight = editor.style.fontWeight || '';
+    const fontStyle = editor.style.fontStyle || '';
     
     if (!editingEntryId) {
         const newEntry = {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
             title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
-            lineHeight
+            lineHeight, fontFamily, fontWeight, fontStyle
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -472,7 +475,7 @@ async function saveCurrentEntry() {
             diaryEntries[index] = {
                 ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
                 title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
-                lineHeight
+                lineHeight, fontFamily, fontWeight, fontStyle
             };
         }
     }
@@ -597,6 +600,9 @@ function openEntryForm(entry = null) {
         // === НОВОЕ: восстанавливаем сохранённый размер шрифта ===
         editor.style.fontSize = entry.fontSize || '';
         editor.style.lineHeight = entry.lineHeight || '';
+        editor.style.fontFamily = entry.fontFamily || '';
+        editor.style.fontWeight = entry.fontWeight || '';
+        editor.style.fontStyle = entry.fontStyle || '';
         
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
@@ -613,6 +619,9 @@ function openEntryForm(entry = null) {
         // === НОВОЕ: сбрасываем размер для новой записи ===
         editor.style.fontSize = '';
         editor.style.lineHeight = '';
+        editor.style.fontFamily = '';
+        editor.style.fontWeight = '';
+        editor.style.fontStyle = '';
         
         tempMood = '😐';
         
@@ -663,6 +672,9 @@ async function handleSaveEntry() {
     const now = Date.now();
     const fontSize = editor.style.fontSize || '';
     const lineHeight = editor.style.lineHeight || '';
+    const fontFamily = editor.style.fontFamily || '';
+    const fontWeight = editor.style.fontWeight || '';
+    const fontStyle = editor.style.fontStyle || '';
 
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
@@ -670,7 +682,7 @@ async function handleSaveEntry() {
             diaryEntries[index] = {
                 ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
                 title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
-                lineHeight
+                lineHeight, fontFamily, fontWeight, fontStyle  
             };
         }
         showToast('Запись обновлена', 'success');
@@ -678,7 +690,7 @@ async function handleSaveEntry() {
         const newEntry = {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
             title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
-            lineHeight
+            lineHeight, fontFamily, fontWeight, fontStyle  
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -1847,23 +1859,96 @@ function insertEmojiAtCursor(emojiData) {
 
 // === 🅰️ УПРАВЛЕНИЕ ПАНЕЛЬЮ ШРИФТА (ВСТРОЕННАЯ ПАНЕЛЬ) ===
 
-// 1. Генерация палитры цветов (если она есть в HTML)
+// === 1. Генерация палитры цветов (Финальная, надежная версия) ===
 const colorPalette = document.getElementById('color-palette');
+let savedColorSelection = null; // Глобальная переменная для сохранения выделения
+
 if (colorPalette) {
     const textColors = [
-        '#000000', '#434343', '#666666', '#999999', '#cccccc', '#ffffff',
-        '#ff0000', '#ff6600', '#ffcc00', '#33cc33', '#0066ff', '#9933ff'
+        // --- ТЁМНЫЕ ---
+        '#000000', // чёрный
+        '#800000', // бордовый
+        '#800080', // пурпурный
+        '#006400', // тёмно-зелёный
+        '#000080', // тёмно-синий
+        '#ff0000', // красный
+        '#ff6600', // оранжевый
+        '#b8860b', // тёмно-золотой
+        '#9933ff', // фиолетовый
+        '#008080', // бирюзовый
+        '#0066ff', // синий
+        // --- СВЕТЛЫЕ ---
+        '#ffcc00', // жёлтый
+        '#33cc33', // зелёный
+        '#87ceeb', // светло-голубой
+        '#ffff99', // светло-жёлтый
+        '#ffb6c1', // светло-розовый
+        '#cccccc', // серый
+        '#ffffff'  // белый
     ];
+    
     colorPalette.innerHTML = '';
+    
     textColors.forEach(color => {
         const circle = document.createElement('div');
         circle.className = 'color-circle';
         circle.style.backgroundColor = color;
         circle.style.border = color === '#ffffff' ? '1px solid #ccc' : '2px solid transparent';
-        circle.onclick = () => {
-            document.execCommand('foreColor', false, color);
-            onEntryFieldInput();
-        };
+        circle.title = color;
+        circle.style.cursor = 'pointer';
+
+        // 1. Пассивно сохраняем выделение при касании (НЕ блокируем скролл!)
+        circle.addEventListener('touchstart', () => {
+            const selection = window.getSelection();
+            const editor = document.getElementById('entry-text');
+            if (selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
+                savedColorSelection = selection.getRangeAt(0).cloneRange();
+            }
+        }, { passive: true });
+
+        // 2. Для десктопа предотвращаем потерю фокуса при клике мышью
+        circle.addEventListener('mousedown', (e) => e.preventDefault());
+
+        // 3. Обработка клика/тапа
+        circle.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const editor = document.getElementById('entry-text');
+            const selection = window.getSelection();
+
+            // 4. Если на мобильном выделение сбросилось, восстанавливаем его из памяти
+            if (savedColorSelection && selection.toString().trim().length === 0) {
+                selection.removeAllRanges();
+                selection.addRange(savedColorSelection);
+            }
+
+            // 5. Проверяем наличие выделения
+            const hasSelectionInEditor = 
+                selection.rangeCount > 0 && 
+                editor.contains(selection.anchorNode) && 
+                selection.toString().trim().length > 0;
+
+            if (!hasSelectionInEditor) {
+                showToast('Сначала выделите текст, который хотите покрасить', 'info');
+                return;
+            }
+
+            const range = selection.getRangeAt(0);
+
+            // 6. НАДЕЖНАЯ РУЧНАЯ ОБЁРТКА (работает на 100% на всех мобильных устройствах)
+            // Избегаем багов execCommand на iOS Safari
+            const span = document.createElement('span');
+            span.style.color = color;
+            span.appendChild(range.extractContents()); // Перемещаем выделенный текст внутрь span
+            range.insertNode(span); // Вставляем span обратно в документ
+
+            // 7. Снимаем выделение и очищаем память
+            selection.removeAllRanges();
+            savedColorSelection = null;
+            
+            onEntryFieldInput(); // Триггерим автосохранение
+        });
+
         colorPalette.appendChild(circle);
     });
 }
@@ -2301,6 +2386,16 @@ document.querySelector('#confirm-modal .modal-backdrop').onclick = () => closeCo
 
     updateKeyboardInset();
 })();
+
+// === 🛡️ ЗАЩИТА ОТ «УСТАРЕВШЕГО» ВЫДЕЛЕНИЯ ===
+// Если пользователь коснулся экрана ВНЕ палитры цветов, сбрасываем сохраненное выделение
+document.addEventListener('touchstart', (e) => {
+    if (!e.target.closest('#color-palette')) {
+        if (typeof savedColorSelection !== 'undefined') {
+            savedColorSelection = null;
+        }
+    }
+}, { passive: true });
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {

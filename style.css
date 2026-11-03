@@ -1484,26 +1484,27 @@ body.multi-delete-active { touch-action: pan-y; }
 }
 
 /* Палитра цветов */
+/* Внешний контейнер: именно он скроллится */
 .color-palette-container {
     padding: 12px 15px;
     border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+    scrollbar-width: thin;
 }
 
+.color-palette-container::-webkit-scrollbar {
+    height: 4px;
+}
+.color-palette-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* Внутренний блок: просто flex, без своего скролла */
 .color-palette {
     display: flex;
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
-}
-
-.color-palette::-webkit-scrollbar {
-    height: 4px;
-}
-.color-palette::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 2px;
 }
 
 .color-circle {
@@ -1587,3 +1588,17 @@ body.multi-delete-active { touch-action: pan-y; }
     font-style: normal !important;
 }
 
+
+/* === 📱 ЗАЩИТА ТУЛБАРА ОТ СИСТЕМНОГО ВЫДЕЛЕНИЯ === */
+.entry-toolbar,
+.toolbar-panel,
+.toolbar-buttons,
+.toolbar-subpanel,
+.color-palette,
+.color-circle,
+.font-style-btn,
+.heading-btn {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* Критично для iOS: отключает меню при долгом нажатии */
+}
