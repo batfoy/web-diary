@@ -696,7 +696,20 @@ function enterEditMode() {
     isEditing = true;
     updateModalState();
     updateEditModeUI();
-    document.getElementById('entry-title').focus();
+
+    // Ставим курсор в КОНЕЦ текста (как в My Diary / Journey)
+    const editor = document.getElementById('entry-text');
+    editor.focus();
+
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false); // false = свернуть в конец
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // Прокручиваем вниз, чтобы курсор был виден
+    editor.scrollTop = editor.scrollHeight;
 }
 
 async function handleSaveEntry() {
@@ -2356,30 +2369,57 @@ document.getElementById('entry-text').addEventListener('click', (e) => {
 
 // 4. НАДЕЖНЫЙ ОБРАБОТЧИК ENTER ДЛЯ СПИСКОВ (с учётом Shift+Enter и чек-листов)
 document.getElementById('entry-text').addEventListener('keydown', (e) => {
-    // Shift+Enter — мягкий перенос внутри того же пункта, не перехватываем
     if (e.key !== 'Enter' || e.shiftKey) return;
 
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
 
-    // Находим текущий элемент списка
     const anchorNode = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
     const item = anchorNode ? anchorNode.closest('.custom-list-item') : null;
+    if (!item) return; // не в списке — обычный Enter
 
-    // Если мы НЕ в элементе списка — даём браузеру стандартный Enter
-    if (!item) return;
+    // Проверяем, пустая ли текущая строка списка (только \u200B или чекбокс без текста)
+    const textContent = item.textContent.replace(/\u200B/g, '').trim();
+    const isEmptyItem = textContent === '';
 
-    // Перехватываем Enter и создаём новую строку вручную
+    if (isEmptyItem) {
+        // === ВЫХОД ИЗ СПИСКА ===
+        e.preventDefault();
+
+        // Убираем список с этой строки
+        item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
+        item.removeAttribute('data-marker');
+        item.style.listStyleType = '';
+        item.style.paddingLeft = '';
+        item.style.display = '';
+
+        const cb = item.querySelector('.custom-checkbox-marker');
+        if (cb) cb.remove();
+
+        // Убираем \u200B в начале, ставим обычный текст
+        item.innerHTML = '';
+
+        // Ставим курсор внутрь
+        const range = document.createRange();
+        range.selectNodeContents(item);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        onEntryFieldInput();
+        return;
+    }
+
+    // === ОБЫЧНЫЙ ENTER В СПИСКЕ ===
     e.preventDefault();
 
     const newItem = document.createElement('div');
-    newItem.className = item.className; // Копируем классы (checkbox-item, number-item и т.д.)
+    newItem.className = item.className;
 
     if (item.dataset.marker) {
         newItem.dataset.marker = item.dataset.marker;
     }
 
-    // Если это чек-лист, добавляем новый пустой чекбокс
     if (item.classList.contains('checkbox-item')) {
         const cb = document.createElement('span');
         cb.className = 'custom-checkbox-marker';
@@ -2387,33 +2427,25 @@ document.getElementById('entry-text').addEventListener('keydown', (e) => {
         newItem.appendChild(cb);
     }
 
-    // Добавляем невидимый символ — чтобы курсор мог встать внутрь
     const textNode = document.createTextNode('\u200B');
     newItem.appendChild(textNode);
 
-    // Вставляем новую строку ПОСЛЕ текущей
     item.after(newItem);
 
-    // Ставим курсор в текстовую часть (после чекбокса/маркера)
     const range = document.createRange();
     const last = newItem.lastChild;
-
     if (last && last.nodeType === 3) {
-        // Последний узел — текстовый (\u200B) → ставим курсор после него
         range.setStart(last, 1);
     } else {
-        // На всякий случай — в конец нового элемента
         range.selectNodeContents(newItem);
         range.collapse(false);
     }
-
     range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
 
     onEntryFieldInput();
 });
-
 // === Глобальное изменение межстрочного интервала ===
 function changeLineHeight(multiplier) {
     const editor = document.getElementById('entry-text');
