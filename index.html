@@ -211,8 +211,18 @@
                             <button class="font-style-btn" data-preset="greatvibes" style="font-family: 'Great Vibes', cursive; font-weight: 400; font-style: normal; font-size: 1.3em;">Great Vibes</button>
                         </div>
                     </div>
+                    <!-- Панель списков (заменяем содержимое существующего блока) -->
                     <div id="list-panel" class="toolbar-subpanel hidden">
-                        <p style="text-align:center; color:var(--text-muted);">Списки — скоро</p>
+                        <div class="list-options-grid">
+                            <button class="list-option-btn" data-type="circle" title="Маркированный список">●</button>
+                            <button class="list-option-btn" data-type="asterisk" title="Список со звездочками">⭐</button>
+                            <button class="list-option-btn" data-type="heart" title="Список с сердечками">❤️</button>
+                            <button class="list-option-btn" data-type="thumbs" title="Список с пальцем">👌</button>
+                            <!-- Специальный класс для кнопки с цифрами, чтобы текст влезал аккуратно -->
+                            <button class="list-option-btn list-btn-number" data-type="number" title="Нумерованный список">123</button>
+                            <button class="list-option-btn" data-type="checkbox" title="Чек-лист">✅</button>
+                            <button class="list-option-btn" data-type="remove" title="Убрать список">🚫</button>
+                        </div>
                         <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
                     </div>
                     <div id="table-panel" class="toolbar-subpanel hidden">

@@ -443,16 +443,26 @@ async function saveCurrentEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
     const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
-    const plainText = getPlainTextFromHTML(htmlContent);
+
+    // Удаляем пустые <div> (без текста и без картинок)
+    const temp = document.createElement('div');
+    temp.innerHTML = htmlContent;
+    temp.querySelectorAll('div').forEach(div => {
+        if (div.textContent.replace(/\u200B/g, '').trim() === '' && !div.querySelector('img')) {
+            div.remove();
+        }
+    });
+    const cleanedHtml = temp.innerHTML;   // ← используем ДАЛЬШЕ
+
+    const plainText = getPlainTextFromHTML(cleanedHtml);       // ← по cleanedHtml
     const hasImage = editor.querySelector('img.inline-emoji') !== null;
-    
-    // Если нет заголовка, текста И картинок — не сохраняем
+
     if (!title && !plainText && !hasImage) return;
-    
+
     const dateDisplay = document.getElementById('entry-date-display');
     const dateInput = dateDisplay.dataset.date;
     const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
-    const tags = extractTags(htmlContent);
+    const tags = extractTags(cleanedHtml);                     // ← по cleanedHtml
     const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
     const now = Date.now();
     const fontSize = editor.style.fontSize || '';
@@ -460,11 +470,12 @@ async function saveCurrentEntry() {
     const fontFamily = editor.style.fontFamily || '';
     const fontWeight = editor.style.fontWeight || '';
     const fontStyle = editor.style.fontStyle || '';
-    
+
     if (!editingEntryId) {
         const newEntry = {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
-            title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
+            title, content: cleanedHtml,                        // ← cleanedHtml
+            mood: tempMood, wordCount, tags, fontSize,
             lineHeight, fontFamily, fontWeight, fontStyle
         };
         diaryEntries.unshift(newEntry);
@@ -474,19 +485,18 @@ async function saveCurrentEntry() {
         if (index !== -1) {
             diaryEntries[index] = {
                 ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
-                title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
+                title, content: cleanedHtml,                    // ← cleanedHtml
+                mood: tempMood, wordCount, tags, fontSize,
                 lineHeight, fontFamily, fontWeight, fontStyle
             };
         }
     }
-    
-    // Точечное обновление в IndexedDB (без await приложение не упадет, но с await надежнее)
+
     const currentEntry = diaryEntries.find(e => e.id === editingEntryId);
     if (currentEntry) {
         await dbPut(currentEntry);
     }
-    
-    // Обновляем только интерфейс
+
     renderEntries();
     renderCalendar();
     drawMoodChart();
@@ -583,7 +593,6 @@ function openEntryForm(entry = null) {
     const dateText = document.getElementById('entry-date-text');
     const moodDisplay = document.getElementById('selected-mood-display');
     const titleInput = document.getElementById('entry-title');
-    const textInput = document.getElementById('entry-text');
     const saveCloseBtn = document.getElementById('save-close-btn');
     const editor = document.getElementById('entry-text');
 
@@ -591,46 +600,84 @@ function openEntryForm(entry = null) {
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
-        // Загружаем контент и очищаем старые нерабочие шрифты
         let content = entry.content || '';
         content = content.replace(/font-family:\s*['"]?High Summit['"]?[^;]*;?/gi, '');
         content = content.replace(/font-family:\s*['"]?Sunday['"]?[^;]*;?/gi, '');
         editor.innerHTML = content;
-        
-        // === НОВОЕ: восстанавливаем сохранённый размер шрифта ===
+
+        // === НОРМАЛИЗАЦИЯ ===
+
+        // 1. Обычная: "1<br>2<br>3" → "<div>1</div><div>2</div><div>3</div>"
+        if (!editor.querySelector('div, p, h1, h2, h3, h4, h5, li') && editor.innerHTML.trim()) {
+            const parts = editor.innerHTML.split(/<br\s*\/?>/i);
+            if (parts.length > 1) {
+                editor.innerHTML = parts.map(p => `<div>${p || '<br>'}</div>`).join('');
+            }
+        }
+
+        // 2. Агрессивная: разбиваем <br> внутри div, где нет вложенных div
+        //    (переносим class и data-marker в первый новый div)
+        editor.querySelectorAll('div').forEach(div => {
+            if (!div.querySelector('div, p, h1, h2, h3, h4, h5, li') && div.innerHTML.includes('<br')) {
+                const parts = div.innerHTML.split(/<br\s*\/?>/i);
+                if (parts.length > 1) {
+                    const frag = document.createDocumentFragment();
+                    parts.forEach((p, i) => {
+                        const newDiv = document.createElement('div');
+                        newDiv.innerHTML = p || '<br>';
+                        if (i === 0) {
+                            newDiv.className = div.className;
+                            if (div.dataset.marker) newDiv.dataset.marker = div.dataset.marker;
+                        }
+                        frag.appendChild(newDiv);
+                    });
+                    div.replaceWith(frag);
+                }
+            }
+        });
+
+        // 3. Восстанавливаем \u200B в начале каждого элемента списка
+        editor.querySelectorAll('.custom-list-item').forEach(item => {
+            if (!item.firstChild || item.firstChild.nodeType !== 3 || !item.firstChild.textContent.startsWith('\u200B')) {
+                item.insertBefore(document.createTextNode('\u200B'), item.firstChild);
+            }
+        });
+
+        // === КОНЕЦ НОРМАЛИЗАЦИИ ===
+
+        // Восстанавливаем шрифты
         editor.style.fontSize = entry.fontSize || '';
         editor.style.lineHeight = entry.lineHeight || '';
         editor.style.fontFamily = entry.fontFamily || '';
         editor.style.fontWeight = entry.fontWeight || '';
         editor.style.fontStyle = entry.fontStyle || '';
-        
+
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
         isEditing = false;
-        
+
         saveCloseBtn.textContent = '✕';
         saveCloseBtn.title = 'Закрыть без изменений';
     } else {
         editingEntryId = null;
         titleInput.value = '';
         editor.innerHTML = '';
-        
-        // === НОВОЕ: сбрасываем размер для новой записи ===
+
         editor.style.fontSize = '';
         editor.style.lineHeight = '';
         editor.style.fontFamily = '';
         editor.style.fontWeight = '';
         editor.style.fontStyle = '';
-        
+
         tempMood = '😐';
-        
+
         const todayKey = getDateKey(new Date());
         dateDisplay.dataset.date = todayKey;
         dateText.textContent = 'Сегодня';
-        
+
         isEditing = true;
-        
+
         saveCloseBtn.textContent = '←';
         saveCloseBtn.title = 'Отмена (назад)';
     }
@@ -639,7 +686,7 @@ function openEntryForm(entry = null) {
     updateModalState();
     updateEditModeUI();
     document.getElementById('entry-modal').classList.remove('hidden');
-    
+
     if (isEditing && !entry) setTimeout(() => titleInput.focus(), 100);
 }
 
@@ -656,7 +703,18 @@ async function handleSaveEntry() {
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
     const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
-    const plainText = getPlainTextFromHTML(htmlContent);
+
+    // Удаляем пустые <div> (без текста и без картинок)
+    const temp = document.createElement('div');
+    temp.innerHTML = htmlContent;
+    temp.querySelectorAll('div').forEach(div => {
+        if (div.textContent.replace(/\u200B/g, '').trim() === '' && !div.querySelector('img')) {
+            div.remove();
+        }
+    });
+    const cleanedHtml = temp.innerHTML;   // ← используем ДАЛЬШЕ
+
+    const plainText = getPlainTextFromHTML(cleanedHtml);       // ← по cleanedHtml
     const hasImage = editor.querySelector('img.inline-emoji') !== null;
 
     if (!plainText && !title && !hasImage) {
@@ -667,7 +725,7 @@ async function handleSaveEntry() {
     const dateDisplay = document.getElementById('entry-date-display');
     const dateInput = dateDisplay.dataset.date;
     const finalDate = new Date(dateInput + 'T12:00:00').toISOString();
-    const tags = extractTags(htmlContent);
+    const tags = extractTags(cleanedHtml);                     // ← по cleanedHtml
     const wordCount = plainText.split(/\s+/).filter(w => w.length > 0).length;
     const now = Date.now();
     const fontSize = editor.style.fontSize || '';
@@ -681,16 +739,20 @@ async function handleSaveEntry() {
         if (index !== -1) {
             diaryEntries[index] = {
                 ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
-                title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
-                lineHeight, fontFamily, fontWeight, fontStyle  
+                title, content: cleanedHtml,                    // ← cleanedHtml
+                mood: tempMood, wordCount, tags, fontSize,
+                lineHeight, fontFamily, fontWeight, fontStyle
             };
+            showToast('Запись обновлена', 'success');
+        } else {
+            showToast('Запись не найдена', 'error');
         }
-        showToast('Запись обновлена', 'success');
     } else {
         const newEntry = {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
-            title, content: htmlContent, mood: tempMood, wordCount, tags, fontSize,
-            lineHeight, fontFamily, fontWeight, fontStyle  
+            title, content: cleanedHtml,                        // ← cleanedHtml
+            mood: tempMood, wordCount, tags, fontSize,
+            lineHeight, fontFamily, fontWeight, fontStyle
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -705,7 +767,7 @@ async function handleSaveEntry() {
     if (currentEntry) {
         await dbPut(currentEntry);
     }
-    
+
     renderEntries();
     renderCalendar();
     drawMoodChart();
@@ -1115,21 +1177,27 @@ async function deleteSelectedEntries() {
     if (selectedEntries.length === 0) return;
     const count = selectedEntries.length;
     const confirmed = await showConfirm(`Удалить ${count} ${count === 1 ? 'запись' : count < 5 ? 'записи' : 'записей'}?`);
-    if (confirmed) {
+    if (!confirmed) return;
+
+    try {
         // Точечное удаление всех выбранных записей из IndexedDB
         await Promise.all(selectedEntries.map(id => dbDelete(id)));
-        
-        // Удаление из массива в памяти
-        diaryEntries = diaryEntries.filter(e => !selectedEntries.includes(e.id));
-        
-        // Обновление интерфейса
-        renderEntries();
-        renderCalendar();
-        drawMoodChart();
-        
-        exitMultiDeleteMode();
-        showToast(`Удалено: ${count}`, 'success');
+    } catch (err) {
+        console.error('Ошибка массового удаления:', err);
+        showToast('Не удалось удалить записи. Попробуйте ещё раз.', 'error');
+        return; // не выходим из режима выбора — пользователь может повторить
     }
+
+    // Удаление из массива в памяти
+    diaryEntries = diaryEntries.filter(e => !selectedEntries.includes(e.id));
+
+    // Обновление интерфейса
+    renderEntries();
+    renderCalendar();
+    drawMoodChart();
+
+    exitMultiDeleteMode();
+    showToast(`Удалено: ${count}`, 'success');
 }
 
 // === 📅 КАЛЕНДАРЬ ===
@@ -1838,32 +1906,45 @@ function insertEmojiAtCursor(emojiData) {
     let nodeToInsert;
 
     if (typeof emojiData === 'string') {
-        nodeToInsert = document.createTextNode(emojiData);
+        nodeToInsert = document.createTextNode(emojiData + ' ');
+        range.deleteContents();
+        range.insertNode(nodeToInsert);
+        range.setStartAfter(nodeToInsert);
+        range.setEndAfter(nodeToInsert);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
     } else if (emojiData.type === 'img') {
         nodeToInsert = document.createElement('img');
         nodeToInsert.src = emojiData.src;
         nodeToInsert.alt = emojiData.alt || 'emoji';
         nodeToInsert.className = 'inline-emoji';
         nodeToInsert.contentEditable = "false";
-    }
+        
+        const spacer = document.createTextNode('\u200B');
 
-    range.deleteContents();
-    range.insertNode(nodeToInsert);
-    range.setStartAfter(nodeToInsert);
-    range.setEndAfter(nodeToInsert);
-    selection.removeAllRanges();
-    selection.addRange(range);
+        range.deleteContents();
+        range.insertNode(nodeToInsert);
+        range.insertNode(spacer);
+
+        range.setStartAfter(spacer);
+        range.setEndAfter(spacer);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
 
     onEntryFieldInput();
 }
 
+
 // === 🅰️ УПРАВЛЕНИЕ ПАНЕЛЬЮ ШРИФТА (ВСТРОЕННАЯ ПАНЕЛЬ) ===
 
 // === 1. Генерация палитры цветов (Финальная, надежная версия) ===
-const colorPalette = document.getElementById('color-palette');
-let savedColorSelection = null; // Глобальная переменная для сохранения выделения
+let savedColorSelection = null; // Глобальная переменная — ДО if, чтобы touchstart её видел
 
+const colorPalette = document.getElementById('color-palette');
 if (colorPalette) {
+    // ... внутри if: используем savedColorSelection без let
     const textColors = [
         // --- ТЁМНЫЕ ---
         '#000000', // чёрный
@@ -2100,7 +2181,238 @@ document.querySelectorAll('.font-style-btn').forEach(btn => {
 });
 
 
+// === 📝 ЛОГИКА СПИСКОВ (ФИНАЛЬНАЯ, С ЗАЩИТОЙ ОТ МОБИЛЬНЫХ БАГОВ) ===
+function applyListStyle(type) {
+    const editor = document.getElementById('entry-text');
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
 
+    // Защита от заголовка
+    if (!editor.contains(selection.anchorNode)) {
+        showToast('Списки можно создавать только в основном тексте записи', 'info');
+        return;
+    }
+
+    // Находим текущий блок, в котором стоит курсор
+    let node = selection.anchorNode;
+    while (node && node !== editor) {
+        if (node.nodeType === 1 && ['DIV', 'P', 'LI'].includes(node.tagName)) {
+            break;
+        }
+        node = node.parentNode;
+    }
+
+    // Если курсор не в блоке — создаём блок (после нормализации в openEntryForm это редкость)
+    // Если курсор не в блоке — оборачиваем текущую строку или создаём блок
+    if (!node || node === editor) {
+        const isEmpty = editor.textContent.replace(/\u200B/g, '').trim() === '';
+
+        if (isEmpty) {
+            // Пустой редактор — создаём <div> с \u200B и ставим курсор ВНУТРЬ
+            const div = document.createElement('div');
+            div.textContent = '\u200B';
+            editor.innerHTML = '';
+            editor.appendChild(div);
+            node = div;
+
+            const range = document.createRange();
+            range.setStart(div.firstChild, 1);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            // Есть текст, но не в <div> — оборачиваем текущий текстовый узел
+            const anchor = selection.anchorNode;
+            if (anchor && anchor.nodeType === 3 && anchor.parentNode === editor) {
+                const div = document.createElement('div');
+                editor.insertBefore(div, anchor);
+                div.appendChild(anchor);
+                node = div;
+            } else {
+                // Фоллбэк
+                node = document.createElement('div');
+                node.textContent = '\u200B';
+                editor.appendChild(node);
+            }
+        }
+    }
+
+    // Определяем «семейство» типа списка
+    function getFamily(el) {
+        if (!el || !el.classList) return null;
+        if (el.classList.contains('checkbox-item')) return 'checkbox';
+        if (el.classList.contains('number-item')) return 'number';
+        const marker = el.getAttribute('data-marker');
+        if (marker === '❤️') return 'heart';
+        if (marker === '⭐') return 'asterisk';
+        if (marker === '👌') return 'thumbs';
+        if (marker === '●') return 'circle';
+        return null;
+    }
+
+    // Собираем «локальный список» — подряд идущие .custom-list-item того же типа
+    const currentFamily = getFamily(node);
+    const siblings = [node];
+
+    let prev = node.previousElementSibling;
+    while (prev && prev.classList && prev.classList.contains('custom-list-item')) {
+        if (getFamily(prev) !== currentFamily) break;
+        siblings.push(prev);
+        prev = prev.previousElementSibling;
+    }
+
+    let next = node.nextElementSibling;
+    while (next && next.classList && next.classList.contains('custom-list-item')) {
+        if (getFamily(next) !== currentFamily) break;
+        siblings.push(next);
+        next = next.nextElementSibling;
+    }
+
+    // Применяем новый тип ко всем найденным строкам
+    siblings.forEach(item => {
+        // 1. Очистка
+        item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
+        item.removeAttribute('data-marker');
+        item.style.listStyleType = '';
+        item.style.paddingLeft = '';
+        item.style.display = '';
+
+        const oldCheckbox = item.querySelector('.custom-checkbox-marker');
+        if (oldCheckbox) oldCheckbox.remove();
+
+        // 2. Применяем новый тип
+        item.classList.add('custom-list-item');
+        if (type === 'remove') {
+            // Полностью убираем список с этой строки
+            item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
+            item.removeAttribute('data-marker');
+            item.style.listStyleType = '';
+            item.style.paddingLeft = '';
+            item.style.display = '';
+
+            const oldCb = item.querySelector('.custom-checkbox-marker');
+            if (oldCb) oldCb.remove();
+
+            // Убираем \u200B в начале
+            if (item.firstChild && item.firstChild.nodeType === 3) {
+                item.firstChild.textContent = item.firstChild.textContent.replace(/^\u200B/, '');
+            }
+
+            return; // переходим к следующему item
+        }
+
+        if (type === 'checkbox') {
+            item.classList.add('checkbox-item');
+            const cb = document.createElement('span');
+            cb.className = 'custom-checkbox-marker';
+            cb.contentEditable = 'false';
+            item.prepend(cb);
+        } else if (type === 'number') {
+            item.classList.add('number-item');
+        } else {
+            const markers = {
+                'circle': '●',
+                'asterisk': '⭐',
+                'heart': '❤️',
+                'thumbs': '👌'
+            };
+            item.setAttribute('data-marker', markers[type]);
+        }
+
+        // 3. Гарантируем \u200B в начале — чтобы курсор встал после ::before
+        if (!item.firstChild || item.firstChild.nodeType !== 3 || !item.firstChild.textContent.startsWith('\u200B')) {
+            item.insertBefore(document.createTextNode('\u200B'), item.firstChild);
+        }
+    });
+
+    editor.focus();
+    closeToolbarPanel();
+    onEntryFieldInput();
+}
+
+// 2. Привязка кликов по кнопкам меню
+document.querySelectorAll('.list-option-btn').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => {
+        applyListStyle(btn.dataset.type);
+    });
+});
+
+// 3. ДЕЛЕГИРОВАННЫЙ обработчик для клика по чекбоксу
+document.getElementById('entry-text').addEventListener('click', (e) => {
+    const cb = e.target.closest('.custom-checkbox-marker');
+    if (!cb) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    cb.classList.toggle('checked');
+    const item = cb.closest('.custom-list-item');
+    if (item) {
+        item.classList.toggle('checked');
+    }
+    onEntryFieldInput();
+});
+
+// 4. НАДЕЖНЫЙ ОБРАБОТЧИК ENTER ДЛЯ СПИСКОВ (с учётом Shift+Enter и чек-листов)
+document.getElementById('entry-text').addEventListener('keydown', (e) => {
+    // Shift+Enter — мягкий перенос внутри того же пункта, не перехватываем
+    if (e.key !== 'Enter' || e.shiftKey) return;
+
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+
+    // Находим текущий элемент списка
+    const anchorNode = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
+    const item = anchorNode ? anchorNode.closest('.custom-list-item') : null;
+
+    // Если мы НЕ в элементе списка — даём браузеру стандартный Enter
+    if (!item) return;
+
+    // Перехватываем Enter и создаём новую строку вручную
+    e.preventDefault();
+
+    const newItem = document.createElement('div');
+    newItem.className = item.className; // Копируем классы (checkbox-item, number-item и т.д.)
+
+    if (item.dataset.marker) {
+        newItem.dataset.marker = item.dataset.marker;
+    }
+
+    // Если это чек-лист, добавляем новый пустой чекбокс
+    if (item.classList.contains('checkbox-item')) {
+        const cb = document.createElement('span');
+        cb.className = 'custom-checkbox-marker';
+        cb.contentEditable = 'false';
+        newItem.appendChild(cb);
+    }
+
+    // Добавляем невидимый символ — чтобы курсор мог встать внутрь
+    const textNode = document.createTextNode('\u200B');
+    newItem.appendChild(textNode);
+
+    // Вставляем новую строку ПОСЛЕ текущей
+    item.after(newItem);
+
+    // Ставим курсор в текстовую часть (после чекбокса/маркера)
+    const range = document.createRange();
+    const last = newItem.lastChild;
+
+    if (last && last.nodeType === 3) {
+        // Последний узел — текстовый (\u200B) → ставим курсор после него
+        range.setStart(last, 1);
+    } else {
+        // На всякий случай — в конец нового элемента
+        range.selectNodeContents(newItem);
+        range.collapse(false);
+    }
+
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    onEntryFieldInput();
+});
 
 // === Глобальное изменение межстрочного интервала ===
 function changeLineHeight(multiplier) {

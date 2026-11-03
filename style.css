@@ -1602,3 +1602,110 @@ body.multi-delete-active { touch-action: pan-y; }
     user-select: none;
     -webkit-touch-callout: none; /* Критично для iOS: отключает меню при долгом нажатии */
 }
+
+/* === 📝 СТИЛИ ДЛЯ ПАНЕЛИ СПИСКОВ === */
+.list-options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding-right: 40px;
+}
+
+.list-option-btn {
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 0;
+    font-size: 1.5em;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Специальный стиль для кнопки с цифрами, чтобы "123" смотрелось аккуратно */
+.list-btn-number {
+    font-size: 1.1em;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.list-option-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+/* === 📝 СТИЛИ ДЛЯ СПИСКОВ ВНУТРИ ТЕКСТА === */
+.custom-list-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    width: 100%; /* ФИКС: предотвращает расширение блока за пределы экрана */
+    box-sizing: border-box;
+}
+
+/* Маркеры (Кружочки, сердечки и т.д.) */
+.custom-list-item[data-marker]::before {
+    content: attr(data-marker);
+    margin-right: 8px;
+    flex-shrink: 0;
+    user-select: none;
+    line-height: 1.6;
+    font-size: 1.4em; /* ФИКС: увеличено для лучшей видимости */
+}
+
+/* Нумерованный список через CSS-счетчики */
+#entry-text {
+    counter-reset: list-counter;
+}
+.custom-list-item.number-item {
+    counter-increment: list-counter;
+}
+.custom-list-item.number-item::before {
+    content: counter(list-counter) ".";
+    margin-right: 8px;
+    flex-shrink: 0;
+    user-select: none;
+    line-height: 1.6;
+    min-width: 24px;
+    text-align: right;
+    font-size: 1em; /* Цифры обычного размера */
+}
+
+/* === ✅ ИНТЕРАКТИВНЫЙ ЧЕКБОКС === */
+.custom-checkbox-marker {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    margin-right: 8px;
+    margin-top: 3px;
+    flex-shrink: 0; /* ФИКС: чекбокс всегда слева и не сжимается */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    user-select: none;
+    background: transparent;
+}
+
+.custom-checkbox-marker.checked {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.custom-checkbox-marker.checked::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.custom-list-item.checkbox-item.checked {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
