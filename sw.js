@@ -1,10 +1,11 @@
-const CACHE_NAME = 'my-web-diary-v2.1';
+const CACHE_NAME = 'my-web-diary-v2.8';
 const urlsToCache = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './db.js',
+  './purify.min.js',
   './manifest.json',
   './icon-192.png'
 ];

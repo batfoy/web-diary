@@ -603,7 +603,10 @@ function openEntryForm(entry = null) {
         let content = entry.content || '';
         content = content.replace(/font-family:\s*['"]?High Summit['"]?[^;]*;?/gi, '');
         content = content.replace(/font-family:\s*['"]?Sunday['"]?[^;]*;?/gi, '');
-        editor.innerHTML = content;
+        editor.innerHTML = DOMPurify.sanitize(content, {
+            ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a'],
+            ALLOWED_ATTR: ['class', 'style', 'data-marker', 'src', 'alt', 'contenteditable', 'href', 'target', 'rel']
+        });
 
         // === НОРМАЛИЗАЦИЯ ===
 
@@ -855,13 +858,7 @@ async function handleDeleteClick() {
     }
 }
 
-// Клик по заголовку/тексту в режиме просмотра — вход в редактирование
-function handleViewClickToEdit() {
-    const modal = document.getElementById('entry-modal');
-    if (modal.classList.contains('state-view')) {
-        enterEditMode();
-    }
-}
+
 
 // === 📊 ГРАФИК ===
 function drawMoodChart() {
@@ -1545,7 +1542,16 @@ document.getElementById('import-file').onchange = (e) => {
             if (!data.entries) throw new Error();
             const existing = new Set(diaryEntries.map(x => x.id));
             let count = 0;
-            data.entries.forEach(entry => { if (!existing.has(entry.id)) { diaryEntries.push(entry); count++; } });
+            data.entries.forEach(entry => {
+                if (!existing.has(entry.id)) {
+                    entry.content = DOMPurify.sanitize(entry.content || '', {
+                        ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a'],
+                        ALLOWED_ATTR: ['class', 'style', 'data-marker', 'src', 'alt', 'contenteditable', 'href', 'target', 'rel']
+                    });
+                    diaryEntries.push(entry);
+                    count++;
+                }
+            });
             saveAndRender();
             showToast(`Импортировано: ${count}`, 'success');
             closeSidebar();
@@ -2607,10 +2613,6 @@ document.getElementById('edit-mode-btn').onclick = enterEditMode;
 document.getElementById('header-delete-btn').onclick = handleDeleteClick;
 
 
-// Клик по заголовку/тексту в режиме просмотра — вход в редактирование
-document.getElementById('entry-title').addEventListener('click', handleViewClickToEdit);
-document.getElementById('entry-text').addEventListener('click', handleViewClickToEdit);
-
 // Смена настроения
 document.getElementById('selected-mood-display').onclick = () => {
     const modal = document.getElementById('entry-modal');
@@ -2740,6 +2742,64 @@ document.addEventListener('touchstart', (e) => {
         }
     }
 }, { passive: true });
+
+// === АВТООТКРЫТИЕ ПАНЕЛИ ШРИФТА ПРИ ВЫДЕЛЕНИИ ===
+document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection();
+    const editor = document.getElementById('entry-text');
+    const modal = document.getElementById('entry-modal');
+
+    // Проверяем, что модалка открыта и мы в режиме редактирования
+    if (!modal || modal.classList.contains('hidden') || !isEditing) return;
+
+    // Проверяем, что есть непустое выделение ВНУТРИ редактора
+    const hasSelection = selection.rangeCount > 0 && 
+                         !selection.isCollapsed && 
+                         selection.toString().trim().length > 0 &&
+                         editor.contains(selection.anchorNode);
+
+    if (hasSelection) {
+        // Если панель еще не открыта — открываем
+        if (activeToolbarPanel !== 'text-panel') {
+            openToolbarPanel('text-panel');
+        }
+    }
+});
+
+
+// === 🔗 АВТОССЫЛКИ ПРИ ВСТАВКЕ URL ===
+document.getElementById('entry-text').addEventListener('paste', (e) => {
+    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+    if (!pasted) return;
+
+    // Проверяем, что вставили именно URL (http/https)
+    const isUrl = /^https?:\/\/\S+$/i.test(pasted.trim());
+    if (!isUrl) return; // обычный текст — пусть вставляется как есть
+
+    e.preventDefault();
+
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+
+    // Создаём <a>
+    const a = document.createElement('a');
+    a.href = pasted.trim();
+    a.textContent = pasted.trim();
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.color = 'var(--accent-color)';
+    a.style.textDecoration = 'underline';
+
+    range.insertNode(a);
+    range.setStartAfter(a);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    onEntryFieldInput();
+});
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {
