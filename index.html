@@ -141,7 +141,7 @@
                 <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
                 <span id="selected-mood-display" class="selected-mood-display">😐</span>
             </div>
-            <div class="entry-form">
+            <div class="entry-form" id="entry-form">
                 <div id="entry-text" class="entry-text-input" contenteditable="true" autocorrect="off" spellcheck="false" data-placeholder="О чем вы хотите написать?"></div>
             </div>
             <!-- ПАНЕЛЬ ИНСТРУМЕНТОВ (TOOLBAR) -->
@@ -247,8 +247,13 @@
                         </div>
                     </div>
                     <div id="bg-panel" class="toolbar-subpanel hidden">
-                        <p style="text-align:center; color:var(--text-muted);">Фон записи — скоро</p>
-                        <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Фон записи</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div class="bg-options-grid" id="bg-options-grid">
+                            <!-- Кнопки будут сгенерированы через JS -->
+                        </div>
                     </div>
                 </div>
 

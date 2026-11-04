@@ -1,4 +1,4 @@
-const CACHE_NAME = 'my-web-diary-v2.91';
+const CACHE_NAME = 'my-web-diary-v2.93';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,7 +7,9 @@ const urlsToCache = [
   './db.js',
   './purify.min.js',
   './manifest.json',
-  './icon-192.png'
+  './icon-192.png',
+  './bg-landscape.webp',
+  './bg-perry.webp',
 ];
 
 self.addEventListener('install', (event) => {

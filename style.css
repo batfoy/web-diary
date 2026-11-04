@@ -368,8 +368,8 @@ body {
 #entry-modal:not(.is-editing) .entry-actions { display: none; }
 
 .entry-form {
-    flex: 1; padding: 20px; display: flex; flex-direction: column;
-    gap: 15px; overflow-y: auto;
+    flex: 1; padding: 15px; display: flex; flex-direction: column;
+    gap: 15px; overflow-y: auto; transition: background 0.3s;   /* плавная смена фона */
 }
 .entry-title-input {
     width: 100%; border: none; border-bottom: 2px solid var(--border-color);
@@ -394,6 +394,7 @@ body {
     word-wrap: break-word;
     overflow-y: auto;
     min-height: 150px;
+    background: transparent;
 }
 
 /* Стили для пустого поля (имитация placeholder) */
@@ -1775,4 +1776,253 @@ body.multi-delete-active { touch-action: pan-y; }
 
 .table-size-btn:active {
     transform: scale(0.95);
+}
+
+/* === 🎨 ФОНЫ ЗАПИСЕЙ === */
+
+/* Панель выбора фона */
+.bg-options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 15px;
+}
+
+/* Кнопка-превью */
+.bg-option-btn {
+    aspect-ratio: 1;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.2s;
+    background: var(--mood-btn-bg);
+}
+
+.bg-option-btn:hover {
+    transform: scale(1.05);
+    border-color: var(--accent-color);
+}
+
+.bg-option-btn.selected {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color) inset;
+}
+
+.bg-option-btn.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+/* Внутренний квадрат превью — тот же фон, что и в записи */
+.bg-option-preview {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 10px;
+}
+
+/* Название фона под превью */
+.bg-option-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 0.7em;
+    padding: 4px;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* === ФОНЫ (применяются и к #entry-text, и к превью) === */
+.bg-default {
+    background: transparent;
+}
+.bg-paper {
+    background: linear-gradient(135deg, #fdfbf7 0%, #f5efe6 100%);
+}
+.bg-night {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+.bg-forest {
+    background: linear-gradient(135deg, #d4e4d4 0%, #a8c5a8 100%);
+}
+.bg-sunset {
+    background: linear-gradient(135deg, #ffb997 0%, #f67e7d 50%, #843b62 100%);
+}
+.bg-lavender {
+    background: linear-gradient(135deg, #e8e0f5 0%, #c9b8e8 100%);
+}
+
+/* === ТЁМНЫЕ ФОНЫ: переопределение цветов для ВСЕХ элементов === */
+.entry-form.bg-night,
+.entry-form.bg-sunset,
+.entry-form.bg-wood,
+.entry-form.bg-stone {
+    color: #f0f0f0;
+    --text-color: #f0f0f0;
+    --text-muted: #b0b0b0;
+}
+
+.entry-form.bg-night a,
+.entry-form.bg-sunset a,
+.entry-form.bg-wood a,
+.entry-form.bg-stone a {
+    color: #87ceeb;
+}
+
+.entry-form.bg-night:empty:before,
+.entry-form.bg-sunset:empty:before,
+.entry-form.bg-wood:empty:before,
+.entry-form.bg-stone:empty:before {
+    color: #b0b0b0;
+}
+
+.entry-form.bg-night .custom-list-item::before,
+.entry-form.bg-sunset .custom-list-item::before,
+.entry-form.bg-wood .custom-list-item::before,
+.entry-form.bg-stone .custom-list-item::before {
+    color: #f0f0f0;
+}
+
+.entry-form.bg-night .custom-checkbox-marker,
+.entry-form.bg-sunset .custom-checkbox-marker,
+.entry-form.bg-wood .custom-checkbox-marker,
+.entry-form.bg-stone .custom-checkbox-marker {
+    border-color: #f0f0f0;
+}
+
+.entry-form.bg-night .custom-checkbox-marker.checked::after,
+.entry-form.bg-sunset .custom-checkbox-marker.checked::after,
+.entry-form.bg-wood .custom-checkbox-marker.checked::after,
+.entry-form.bg-stone .custom-checkbox-marker.checked::after {
+    color: #1a1a1a;
+}
+
+.entry-form.bg-night table,
+.entry-form.bg-sunset table,
+.entry-form.bg-wood table,
+.entry-form.bg-stone table {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.entry-form.bg-night th,
+.entry-form.bg-night td,
+.entry-form.bg-sunset th,
+.entry-form.bg-sunset td,
+.entry-form.bg-wood th,
+.entry-form.bg-wood td,
+.entry-form.bg-stone th,
+.entry-form.bg-stone td {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f0f0f0;
+}
+
+.entry-form.bg-night th,
+.entry-form.bg-sunset th,
+.entry-form.bg-wood th,
+.entry-form.bg-stone th {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.entry-form.bg-night .number-item::before,
+.entry-form.bg-sunset .number-item::before,
+.entry-form.bg-wood .number-item::before,
+.entry-form.bg-stone .number-item::before {
+    color: #f0f0f0;
+}
+
+/* Пейзаж всегда со светлым фоном — текст должен быть тёмным */
+.entry-form.bg-landscape {
+    color: #1a1a1a;
+}
+.entry-form.bg-landscape a {
+    color: #0066cc;
+}
+.entry-form.bg-landscape .custom-list-item::before {
+    color: #1a1a1a;
+}
+.entry-form.bg-landscape .custom-checkbox-marker {
+    border-color: #333;
+}
+.entry-form.bg-landscape .number-item::before {
+    color: #1a1a1a;
+}
+
+/* === 🎨 ДОПОЛНИТЕЛЬНЫЕ ФОНЫ === */
+
+/* Дерево — тёплые коричневые полосы (имитация древесных волокон) */
+.bg-wood {
+    background:
+        repeating-linear-gradient(
+            90deg,
+            #8b5a2b 0px,
+            #a0522d 4px,
+            #8b4513 8px,
+            #a0522d 12px,
+            #8b5a2b 16px
+        );
+    color: #fdf5e6;
+}
+
+/* Камень — серые пятна (имитация каменной поверхности) */
+.bg-stone {
+    background:
+        radial-gradient(circle at 20% 30%, #b0b0b0 0%, transparent 40%),
+        radial-gradient(circle at 70% 60%, #909090 0%, transparent 35%),
+        radial-gradient(circle at 40% 80%, #a8a8a8 0%, transparent 30%),
+        linear-gradient(135deg, #888 0%, #6a6a6a 50%, #7a7a7a 100%);
+    color: #f0f0f0;
+}
+
+/* 2D-пейзаж: небо с солнцем, зелёная гора, домик */
+.bg-landscape  {
+    background-image: url('bg-landscape.webp');
+    background-size: cover;         /* картинка заполняет всё пространство */
+    background-position: center;    /* по центру */
+    background-repeat: no-repeat;
+    color: #1a1a1a;
+}
+
+.bg-perry {
+    background-image: url('bg-perry.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #494949;   /* светлый текст, если фон тёмный */
+}
+
+/* Пейзаж всегда со светлым фоном — текст должен быть тёмным */
+#entry-text.bg-landscape {
+    color: #1a1a1a;
+}
+#entry-text.bg-landscape a {
+    color: #0066cc;
+}
+#entry-text.bg-landscape .custom-list-item::before {
+    color: #1a1a1a;
+}
+#entry-text.bg-landscape .custom-checkbox-marker {
+    border-color: #333;
+}
+#entry-text.bg-landscape .number-item::before {
+    color: #1a1a1a;
 }

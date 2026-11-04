@@ -67,6 +67,21 @@ const QUOTES = [
     { text: "Каждый ребенок — художник. Трудность в том, чтобы остаться художником, выйдя из детского возраста.", author: "Пабло Пикассо" },
     { text: "Вы никогда не пересечете океан, если не наберетесь мужества потерять берег из виду.", author: "Христофор Колумб" }
 ];
+
+// === 🎨 ФОНЫ ЗАПИСЕЙ ===
+const BACKGROUNDS = [
+    { id: 'default',   name: 'Стандарт', cssClass: 'bg-default' },
+    { id: 'paper',     name: 'Бумага',   cssClass: 'bg-paper' },
+    { id: 'night',     name: 'Ночь',     cssClass: 'bg-night' },
+    { id: 'forest',    name: 'Лес',      cssClass: 'bg-forest' },
+    { id: 'sunset',    name: 'Закат',    cssClass: 'bg-sunset' },
+    { id: 'lavender',  name: 'Лаванда',  cssClass: 'bg-lavender' },
+    { id: 'wood',      name: 'Дерево',   cssClass: 'bg-wood' },
+    { id: 'stone',     name: 'Камень',   cssClass: 'bg-stone' },
+    { id: 'landscape', name: 'Пейзаж',   cssClass: 'bg-landscape' },
+    { id: 'perry', name: 'Утканос', cssClass: 'bg-perry' }
+];
+
 // === 😊 ПАКИ ЭМОДЗИ (Поддержка текста и картинок) ===
 const EMOJI_PACKS = [
     {
@@ -476,7 +491,8 @@ async function saveCurrentEntry() {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
             title, content: cleanedHtml,                        // ← cleanedHtml
             mood: tempMood, wordCount, tags, fontSize,
-            lineHeight, fontFamily, fontWeight, fontStyle
+            lineHeight, fontFamily, fontWeight, fontStyle,
+            background: currentBgId 
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -487,7 +503,8 @@ async function saveCurrentEntry() {
                 ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
                 title, content: cleanedHtml,                    // ← cleanedHtml
                 mood: tempMood, wordCount, tags, fontSize,
-                lineHeight, fontFamily, fontWeight, fontStyle
+                lineHeight, fontFamily, fontWeight, fontStyle,
+                background: currentBgId 
             };
         }
     }
@@ -655,6 +672,10 @@ function openEntryForm(entry = null) {
         editor.style.fontWeight = entry.fontWeight || '';
         editor.style.fontStyle = entry.fontStyle || '';
 
+        // Восстанавливаем фон записи
+        const savedBg = entry.background || 'default';
+        applyBackgroundToEntry(savedBg);
+
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
@@ -672,6 +693,9 @@ function openEntryForm(entry = null) {
         editor.style.fontFamily = '';
         editor.style.fontWeight = '';
         editor.style.fontStyle = '';
+
+        // Сброс фона для новой записи
+        applyBackgroundToEntry('default');   // ← добавить
 
         tempMood = '😐';
 
@@ -758,7 +782,8 @@ async function handleSaveEntry() {
                 ...diaryEntries[index], date: diaryEntries[index].date, updatedAt: now, editedAt: now,
                 title, content: cleanedHtml,                    // ← cleanedHtml
                 mood: tempMood, wordCount, tags, fontSize,
-                lineHeight, fontFamily, fontWeight, fontStyle
+                lineHeight, fontFamily, fontWeight, fontStyle,
+                background: currentBgId 
             };
             showToast('Запись обновлена', 'success');
         } else {
@@ -769,7 +794,8 @@ async function handleSaveEntry() {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
             title, content: cleanedHtml,                        // ← cleanedHtml
             mood: tempMood, wordCount, tags, fontSize,
-            lineHeight, fontFamily, fontWeight, fontStyle
+            lineHeight, fontFamily, fontWeight, fontStyle,
+            background: currentBgId 
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -1901,6 +1927,9 @@ function openToolbarPanel(panelId) {
             renderEmojiPacks();
             renderEmojiGrid(currentEmojiPackId);
         }
+        if (panelId === 'bg-panel') {
+            renderBgOptions();
+        }
     }
 }
 
@@ -2552,8 +2581,65 @@ if (btnLineIncrease) {
     btnLineIncrease.addEventListener('click', () => changeLineHeight(0.1));
 }
 
-//EMODJI
+// === 🎨 РЕНДЕР ПАНЕЛИ ФОНОВ ===
+let currentBgId = 'default';   // текущий выбранный фон
 
+function renderBgOptions() {
+    const grid = document.getElementById('bg-options-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    BACKGROUNDS.forEach(bg => {
+        const btn = document.createElement('button');
+        btn.className = 'bg-option-btn' + (bg.id === currentBgId ? ' selected' : '');
+        btn.title = bg.name;
+        btn.dataset.bgId = bg.id;
+
+        // Внутренний превью-квадрат с тем же классом фона
+        const preview = document.createElement('div');
+        preview.className = 'bg-option-preview ' + bg.cssClass;
+
+        // Название фона
+        const name = document.createElement('span');
+        name.className = 'bg-option-name';
+        name.textContent = bg.name;
+
+        btn.appendChild(preview);
+        btn.appendChild(name);
+
+        btn.addEventListener('mousedown', (e) => e.preventDefault());
+        btn.addEventListener('click', () => {
+            applyBackgroundToEntry(bg.id);
+            closeToolbarPanel();
+        });
+
+        grid.appendChild(btn);
+    });
+}
+
+// Применить фон к #entry-text
+function applyBackgroundToEntry(bgId) {
+    const editor = document.getElementById('entry-form');
+    const bg = BACKGROUNDS.find(b => b.id === bgId);
+    if (!bg) return;
+
+    // Убираем все старые классы фонов
+    BACKGROUNDS.forEach(b => editor.classList.remove(b.cssClass));
+
+    // Ставим новый (если не default — можно и default поставить, класс прозрачный)
+    editor.classList.add(bg.cssClass);
+
+    currentBgId = bgId;
+
+    // Обновляем выделение в панели (если открыта)
+    document.querySelectorAll('.bg-option-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.bgId === bgId);
+    });
+
+    onEntryFieldInput();
+}
+
+//EMODJI
 function renderEmojiPacks() {
     const packsContainer = document.getElementById('emoji-packs');
     packsContainer.innerHTML = '';
