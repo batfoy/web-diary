@@ -1,4 +1,4 @@
-const CACHE_NAME = 'my-web-diary-v2.8';
+const CACHE_NAME = 'my-web-diary-v2.91';
 const urlsToCache = [
   './',
   './index.html',

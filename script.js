@@ -604,7 +604,7 @@ function openEntryForm(entry = null) {
         content = content.replace(/font-family:\s*['"]?High Summit['"]?[^;]*;?/gi, '');
         content = content.replace(/font-family:\s*['"]?Sunday['"]?[^;]*;?/gi, '');
         editor.innerHTML = DOMPurify.sanitize(content, {
-            ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a'],
+            ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a', 'table', 'tbody', 'tr', 'td', 'th'],
             ALLOWED_ATTR: ['class', 'style', 'data-marker', 'src', 'alt', 'contenteditable', 'href', 'target', 'rel']
         });
 
@@ -716,6 +716,7 @@ function enterEditMode() {
 }
 
 async function handleSaveEntry() {
+    clearTimeout(autoSaveTimer);
     const title = document.getElementById('entry-title').value.trim();
     const editor = document.getElementById('entry-text');
     const htmlContent = editor.innerHTML.replace(/\u200B/g, '').trim();
@@ -791,6 +792,7 @@ async function handleSaveEntry() {
 }
 
 function closeEntryForm() {
+    clearTimeout(autoSaveTimer);
     closeToolbarPanel(); // Гарантированно закрываем открытые панели инструментов
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
@@ -1024,11 +1026,8 @@ function renderEntries() {
             ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>` 
             : '';
 
-        // === ИСПРАВЛЕНИЕ: Очищаем HTML для красивого текстового превью ===
         const plainContent = getPlainTextFromHTML(entry.content);
-        // Обрезаем текст, если он длиннее 120 символов, чтобы карточка была аккуратной
         const previewText = plainContent.length > 120 ? plainContent.substring(0, 120) + '...' : plainContent;
-        const displayText = previewText || '<span style="color:var(--text-muted); font-style:italic;">(Запись без текста)</span>';
 
         card.innerHTML = `
             <div class="entry-header">
@@ -1039,7 +1038,7 @@ function renderEntries() {
                 <span style="font-size:1.2em">${entry.mood}</span>
             </div>
             ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
-            <div class="entry-text">${escapeHtml(displayText)}</div>
+            <div class="entry-text">${previewText ? escapeHtml(previewText) : '<span style="color:var(--text-muted); font-style:italic;">(Запись без текста)</span>'}</div>
             ${tagsHtml}
         `;
 
@@ -1545,7 +1544,7 @@ document.getElementById('import-file').onchange = (e) => {
             data.entries.forEach(entry => {
                 if (!existing.has(entry.id)) {
                     entry.content = DOMPurify.sanitize(entry.content || '', {
-                        ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a'],
+                        ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a', 'table', 'tbody', 'tr', 'td', 'th'],
                         ALLOWED_ATTR: ['class', 'style', 'data-marker', 'src', 'alt', 'contenteditable', 'href', 'target', 'rel']
                     });
                     diaryEntries.push(entry);
@@ -1925,7 +1924,8 @@ function insertEmojiAtCursor(emojiData) {
     let nodeToInsert;
 
     if (typeof emojiData === 'string') {
-        nodeToInsert = document.createTextNode(emojiData + ' ');
+        const suffix = emojiData === '#' ? '' : ' ';
+        nodeToInsert = document.createTextNode(emojiData + suffix);
         range.deleteContents();
         range.insertNode(nodeToInsert);
         range.setStartAfter(nodeToInsert);
@@ -2208,17 +2208,35 @@ function applyListStyle(type) {
 
     // Защита от заголовка
     if (!editor.contains(selection.anchorNode)) {
-        showToast('Списки можно создавать только в основном тексте записи', 'info');
-        return;
+        // Курсор не в тексте (например, в заголовке) — перемещаем в конец #entry-text
+        editor.focus();
+
+        // Если редактор пуст — создаём <div> с \u200B
+        if (!editor.firstChild || editor.textContent.replace(/\u200B/g, '').trim() === '') {
+            editor.innerHTML = '<div>\u200B</div>';
+        }
+
+        const range = document.createRange();
+        const lastBlock = editor.lastElementChild || editor;
+        range.selectNodeContents(lastBlock);
+        range.collapse(false);   // в конец
+        selection.removeAllRanges();
+        selection.addRange(range);
     }
 
     // Находим текущий блок, в котором стоит курсор
     let node = selection.anchorNode;
     while (node && node !== editor) {
-        if (node.nodeType === 1 && ['DIV', 'P', 'LI'].includes(node.tagName)) {
+        if (node.nodeType === 1 && ['DIV', 'P', 'LI', 'TD', 'TH'].includes(node.tagName)) {
             break;
         }
         node = node.parentNode;
+    }
+
+    // Защита: не применяем списки внутри таблиц
+    if (node && node !== editor && node.closest('table')) {
+        showToast('Списки нельзя применять внутри таблицы', 'info');
+        return;
     }
 
     // Если курсор не в блоке — создаём блок (после нормализации в openEntryForm это редкость)
@@ -2289,7 +2307,24 @@ function applyListStyle(type) {
 
     // Применяем новый тип ко всем найденным строкам
     siblings.forEach(item => {
-        // 1. Очистка
+        // === REMOVE — ДО очистки ===
+        if (type === 'remove') {
+            item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
+            item.removeAttribute('data-marker');
+            item.style.listStyleType = '';
+            item.style.paddingLeft = '';
+            item.style.display = '';
+
+            const oldCb = item.querySelector('.custom-checkbox-marker');
+            if (oldCb) oldCb.remove();
+
+            if (item.firstChild && item.firstChild.nodeType === 3) {
+                item.firstChild.textContent = item.firstChild.textContent.replace(/^\u200B/, '');
+            }
+            return;
+        }
+
+        // 1. Очистка (для остальных типов)
         item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
         item.removeAttribute('data-marker');
         item.style.listStyleType = '';
@@ -2301,24 +2336,6 @@ function applyListStyle(type) {
 
         // 2. Применяем новый тип
         item.classList.add('custom-list-item');
-        if (type === 'remove') {
-            // Полностью убираем список с этой строки
-            item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
-            item.removeAttribute('data-marker');
-            item.style.listStyleType = '';
-            item.style.paddingLeft = '';
-            item.style.display = '';
-
-            const oldCb = item.querySelector('.custom-checkbox-marker');
-            if (oldCb) oldCb.remove();
-
-            // Убираем \u200B в начале
-            if (item.firstChild && item.firstChild.nodeType === 3) {
-                item.firstChild.textContent = item.firstChild.textContent.replace(/^\u200B/, '');
-            }
-
-            return; // переходим к следующему item
-        }
 
         if (type === 'checkbox') {
             item.classList.add('checkbox-item');
@@ -2499,27 +2516,23 @@ if (hAlignBtn) {
     
     hAlignBtn.addEventListener('click', () => {
         const editor = document.getElementById('entry-text');
-        
-        // 1. Переключаем состояние
+
         currentHAlignState = (currentHAlignState + 1) % 4;
         const newAlign = alignValues[currentHAlignState];
 
-        // 2. Явно ставим выравнивание самому контейнеру
+        // Ставим выравнивание контейнеру
         editor.style.textAlign = newAlign;
 
-        // 3. Явно ставим выравнивание ВСЕМ блочным дочерним элементам (DIV, P, H1-H5, LI)
-        // Мы НЕ трогаем SPAN, чтобы не сломать стили шрифтов, которые мы применяли ранее
+        // Ставим выравнивание ВСЕМ блочным элементам, включая ячейки таблицы
         const children = editor.querySelectorAll('*');
         children.forEach(child => {
             const tag = child.tagName;
-            if (['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'LI'].includes(tag)) {
+            if (['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'LI', 'TD', 'TH'].includes(tag)) {
                 child.style.textAlign = newAlign;
             }
         });
 
-        // 4. Обновляем иконку на кнопке
         hAlignBtn.innerHTML = alignIcons[currentHAlignState];
-
         editor.focus();
         onEntryFieldInput();
     });
@@ -2800,6 +2813,80 @@ document.getElementById('entry-text').addEventListener('paste', (e) => {
 
     onEntryFieldInput();
 });
+
+// === 📊 ВСТАВКА И УДАЛЕНИЕ ТАБЛИЦЫ ===
+
+function insertTable(rows, cols) {
+    const editor = document.getElementById('entry-text');
+    editor.focus();
+    
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    
+    // Формируем HTML таблицы
+    let tableHTML = '<div class="table-wrapper"><table>';
+    for (let i = 0; i < rows; i++) {
+        tableHTML += '<tr>';
+        for (let j = 0; j < cols; j++) {
+            const tag = i === 0 ? 'th' : 'td';
+            tableHTML += `<${tag} contenteditable="true"><br></${tag}>`;
+        }
+        tableHTML += '</tr>';
+    }
+    tableHTML += '</table></div><div><br></div>';
+
+    // Создаём узел из HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = tableHTML;
+
+    // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: используем DocumentFragment для вставки ВСЕХ узлов
+    const fragment = document.createDocumentFragment();
+    while (tempDiv.firstChild) {
+        fragment.appendChild(tempDiv.firstChild);
+    }
+
+    // Вставляем все узлы (table-wrapper + div с <br>) в позицию курсора
+    range.deleteContents();
+    range.insertNode(fragment);
+
+    // Закрываем панель и триггерим автосохранение
+    closeToolbarPanel();
+    onEntryFieldInput();
+}
+
+function removeTable() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const node = selection.anchorNode.nodeType === 1 
+        ? selection.anchorNode 
+        : selection.anchorNode.parentElement;
+    
+    const wrapper = node.closest('.table-wrapper');
+    
+    if (wrapper) {
+        wrapper.remove();
+        onEntryFieldInput();
+        closeToolbarPanel();
+        showToast('Таблица удалена', 'success');
+    } else {
+        showToast('Курсор не в таблице', 'info');
+    }
+}
+
+// Привязываем обработчики к кнопкам выбора размера
+document.querySelectorAll('.table-size-btn[data-rows]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const rows = parseInt(btn.dataset.rows, 10);
+        const cols = parseInt(btn.dataset.cols, 10);
+        insertTable(rows, cols);
+    });
+});
+
+// Привязываем обработчик к кнопке удаления
+document.getElementById('table-remove-btn')?.addEventListener('click', removeTable);
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {

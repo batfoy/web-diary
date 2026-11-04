@@ -213,21 +213,38 @@
                     </div>
                     <!-- Панель списков (заменяем содержимое существующего блока) -->
                     <div id="list-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Список</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
                         <div class="list-options-grid">
                             <button class="list-option-btn" data-type="circle" title="Маркированный список">●</button>
                             <button class="list-option-btn" data-type="asterisk" title="Список со звездочками">⭐</button>
                             <button class="list-option-btn" data-type="heart" title="Список с сердечками">❤️</button>
                             <button class="list-option-btn" data-type="thumbs" title="Список с пальцем">👌</button>
-                            <!-- Специальный класс для кнопки с цифрами, чтобы текст влезал аккуратно -->
                             <button class="list-option-btn list-btn-number" data-type="number" title="Нумерованный список">123</button>
                             <button class="list-option-btn" data-type="checkbox" title="Чек-лист">✅</button>
-                            <button class="list-option-btn" data-type="remove" title="Убрать список">🚫</button>
+                            <button class="list-option-btn" data-type="remove" title="Убрать список">⊘</button>
                         </div>
-                        <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
                     </div>
                     <div id="table-panel" class="toolbar-subpanel hidden">
-                        <p style="text-align:center; color:var(--text-muted);">Таблицы — скоро</p>
-                        <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Таблица</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div style="display: flex; gap: 10px; padding: 15px; justify-content: center; flex-wrap: wrap;">
+                            <button class="table-size-btn" data-rows="2" data-cols="2" title="2 строки, 2 столбца">2 × 2</button>
+                            <button class="table-size-btn" data-rows="2" data-cols="3" title="2 строки, 3 столбца">2 × 3</button>
+                            <button class="table-size-btn" data-rows="3" data-cols="2" title="3 строки, 2 столбца">3 × 2</button>
+                            <button class="table-size-btn" data-rows="3" data-cols="3" title="3 строки, 3 столбца">3 × 3</button>
+                            <button class="table-size-btn" data-rows="3" data-cols="4" title="3 строки, 4 столбца">3 × 4</button>
+                            <button class="table-size-btn" data-rows="4" data-cols="2" title="4 строки, 2 столбца">4 × 2</button>
+                            <button class="table-size-btn" data-rows="4" data-cols="3" title="4 строки, 3 столбца">4 × 3</button>
+                            <button class="table-size-btn" data-rows="4" data-cols="4" title="4 строки, 4 столбца">4 × 4</button>
+                            <button class="table-size-btn" data-rows="5" data-cols="2" title="5 строк, 2 столбца">5 × 2</button>
+                            <button class="table-size-btn" data-rows="5" data-cols="3" title="5 строк, 3 столбца">5 × 3</button>
+                            <button class="table-size-btn" id="table-remove-btn" title="Удалить таблицу" style="background: var(--danger-bg); color: var(--danger-color); border-color: var(--danger-color);">🗑️ Удалить</button>
+                        </div>
                     </div>
                     <div id="bg-panel" class="toolbar-subpanel hidden">
                         <p style="text-align:center; color:var(--text-muted);">Фон записи — скоро</p>
@@ -237,13 +254,59 @@
 
                 <!-- Основная панель кнопок -->
                 <div class="toolbar-buttons">
-                    <button class="toolbar-btn" id="toolbar-templates-btn" title="Шаблоны">📝</button>
-                    <button class="toolbar-btn" id="toolbar-bg-btn" title="Фон записи">🎨</button>
-                    <button class="toolbar-btn" id="toolbar-emoji-btn" title="Эмодзи">😊</button>
-                    <button class="toolbar-btn" id="toolbar-tag-btn" title="Теги">#</button>
-                    <button class="toolbar-btn" id="toolbar-text-btn" title="Текст">Aa</button>
-                    <button class="toolbar-btn" id="toolbar-list-btn" title="Список">☰</button>
-                    <button class="toolbar-btn" id="toolbar-table-btn" title="Таблица">⊞</button>
+                    <button class="toolbar-btn" id="toolbar-templates-btn" title="Шаблоны">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-bg-btn" title="Фон записи">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round">
+                            <line x1="3" y1="21" x2="21" y2="3"></line>
+                            <line x1="3" y1="15" x2="15" y2="3"></line>
+                            <line x1="9" y1="21" x2="21" y2="9"></line>
+                            <line x1="3" y1="9" x2="9" y2="3"></line>
+                            <line x1="15" y1="21" x2="21" y2="15"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-emoji-btn" title="Эмодзи">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-tag-btn" title="Теги">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" y1="9" x2="20" y2="9"></line>
+                            <line x1="4" y1="15" x2="20" y2="15"></line>
+                            <line x1="10" y1="3" x2="8" y2="21"></line>
+                            <line x1="16" y1="3" x2="14" y2="21"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-text-btn" title="Текст">
+                        <span style="font-weight: 400; font-size: 1.1em;">Aa</span>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-list-btn" title="Список">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-table-btn" title="Таблица">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="12" y1="3" x2="12" y2="21"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
