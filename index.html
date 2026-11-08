@@ -407,23 +407,50 @@
             </div>
         </div>
     </div>
-
     <!-- МОДАЛКА ГРАФИКА НАСТРОЕНИЙ -->
     <div id="chart-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
+
+        <!-- Основной контент (белый блок) -->
         <div class="modal-content chart-modal-content">
-            <div class="entry-modal-header">
+            <!-- Компактная шапка только для графика -->
+            <div class="entry-modal-header chart-header-compact">
                 <button id="prev-month-chart" class="calendar-nav">←</button>
                 <h2 id="chart-modal-title">Настроение</h2>
                 <button id="next-month-chart" class="calendar-nav">→</button>
                 <button class="modal-close-btn" id="close-chart-modal">✕</button>
             </div>
-            <div class="chart-modal-body">
+
+            <div class="chart-modal-body chart-body-compact">
                 <div class="chart-header">
                     <span id="chart-average">—</span>
                 </div>
+                <!-- Старый линейный график -->
                 <canvas id="mood-chart" aria-label="График настроений"></canvas>
+                <!-- Новая гистограмма -->
+                <canvas id="bar-chart" aria-label="Гистограмма настроений" class="hidden"></canvas>
                 <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
+            </div>
+        </div>
+
+        <!-- ВЫНЕСЕННЫЙ БЛОК УПРАВЛЕНИЯ (прилеплен снизу к белому блоку) -->
+        <div class="chart-controls-bottom">
+            <button id="chart-mode-toggle" class="chart-mode-btn">📈 Гистограмма</button>
+
+            <!-- Кнопка-стрелочка (скрывается на линейном графике через JS/CSS) -->
+            <button id="chart-period-toggle" class="period-toggle-btn" title="Выбрать период">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M7 10l5 5 5-5z"/>
+                </svg>
+            </button>
+
+            <!-- Сам выпадающий список -->
+            <div id="chart-period-selector" class="period-selector hidden">
+                <div class="period-selector-inner">
+                    <button class="period-option" data-period="all">За всё время</button>
+                    <button class="period-option" data-period="month">За месяц</button>
+                    <button class="period-option" data-period="week">За неделю</button>
+                </div>
             </div>
         </div>
     </div>
@@ -475,7 +502,7 @@
     <script src="purify.min.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('./sw.js')
                 .then((registration) => {
                     console.log('Service Worker зарегистрирован:', registration.scope);
                 })

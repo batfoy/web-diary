@@ -1,3 +1,19 @@
+// === 🛠️ ПОЛИФИЛЛ ДЛЯ CANVAS (закругленные углы для старых Safari/iOS) ===
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+    };
+}
+
 // === 📦 ПЕРЕМЕННЫЕ ===
 let diaryEntries = [];
 const STORAGE_KEY = 'my_web_diary_entries_v2';
@@ -25,10 +41,39 @@ let pinSetupStage = null;
 let pinSetupTemp = '';
 let isPinUnlocked = false;
 
+
+// === 🛡️ БЕЗОПАСНОСТЬ: Конфигурация DOMPurify ===
+const SANITIZE_CONFIG = {
+    ALLOWED_TAGS: ['div','p','span','br','b','i','u','strong','em','h1','h2','h3','h4','h5','img','a','table','tbody','tr','td','th'],
+    ALLOWED_ATTR: ['class','style','data-marker','src','alt','contenteditable','href','target','rel'],
+    ALLOW_DATA_ATTR: true,
+    FORBID_TAGS: ['script','iframe','object','embed','form'],
+    FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus']
+};
+
+// Хук для фильтрации CSS в атрибуте style (разрешаем только безопасные свойства)
+DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+    if (data.attrName === 'style') {
+        const safe = data.attrValue.split(';').filter(rule =>
+            /^\s*(color|font-|text-align|line-height|background)/i.test(rule)
+        ).join(';');
+        data.attrValue = safe;
+    }
+});
+
+// === 🔐 ХЕШИРОВАНИЕ PIN ===
+async function hashPin(pin) {
+    const data = new TextEncoder().encode(pin + 'my_diary_salt_v1');
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
 const appMain = document.getElementById('app-main');
 
 const MOODS = [
-    { emoji: '😡', score: 0 }, { emoji: '😭', score: 1 }, { emoji: '☹️', score: 2 },
+    { emoji: '😭', score: 0 }, { emoji: '☹️', score: 1 }, { emoji: '😡', score: 2 },
     { emoji: '😕', score: 3 }, { emoji: '😐', score: 4 }, { emoji: '😏', score: 5 },
     { emoji: '😊', score: 6 }, { emoji: '😁', score: 7 }, { emoji: '🤪', score: 8 },
     { emoji: '🥰', score: 9 }
@@ -312,7 +357,7 @@ function handlePinDelete() {
                          : pinSetupStage === 'confirm-new' ? 'Повторите код ещё раз' : '';
 }
 
-function verifyPinInput() {
+async function verifyPinInput() {
     const savedPin = localStorage.getItem(PIN_KEY);
     const subtitle = document.getElementById('pin-subtitle');
     
@@ -320,11 +365,12 @@ function verifyPinInput() {
         pinSetupTemp = pinInputBuffer;
         showPinModal('setup-confirm');
     } else if (pinSetupStage === 'confirm-new') {
-        if (pinInputBuffer === pinSetupTemp) {
-            localStorage.setItem(PIN_KEY, pinSetupTemp);
-            pinSetupTemp = '';
-            pinSetupStage = null;
-            isPinUnlocked = true;
+    if (pinInputBuffer === pinSetupTemp) {
+        const hashed = await hashPin(pinSetupTemp);  // ← НОВОЕ: хешируем перед сохранением
+        localStorage.setItem(PIN_KEY, hashed);
+        pinSetupTemp = '';
+        pinSetupStage = null;
+        isPinUnlocked = true;
             document.getElementById('pin-modal').classList.add('hidden');
             updatePinMenuVisibility();
             //updateResetPinButtonVisibility();
@@ -344,10 +390,20 @@ function verifyPinInput() {
             }, 1500);
         }
     } else {
-        if (pinInputBuffer === savedPin) {
-            isPinUnlocked = true;
-            document.getElementById('pin-modal').classList.add('hidden');
-        } else {
+    const inputHash = await hashPin(pinInputBuffer);  // ← НОВОЕ: хешируем введённый
+
+    // Проверяем: хеш совпадает ИЛИ это старый plaintext PIN (для миграции)
+    if (inputHash === savedPin || pinInputBuffer === savedPin) {
+        // Если это был старый plaintext PIN — мигрируем на хеш
+        if (pinInputBuffer === savedPin && !savedPin.includes('-')) {
+            const newHash = await hashPin(pinInputBuffer);
+            localStorage.setItem(PIN_KEY, newHash);
+            console.log('PIN мигрирован на хеш');
+        }
+
+        isPinUnlocked = true;
+        document.getElementById('pin-modal').classList.add('hidden');
+    } else {
             subtitle.classList.add('error');
             subtitle.textContent = 'Неверный PIN-код';
             shakePinModal();
@@ -362,6 +418,7 @@ function verifyPinInput() {
 }
 
 function skipPinSetup() {
+    pinInputBuffer = '';
     isPinUnlocked = true;
     document.getElementById('pin-modal').classList.add('hidden');
 }
@@ -620,10 +677,7 @@ function openEntryForm(entry = null) {
         let content = entry.content || '';
         content = content.replace(/font-family:\s*['"]?High Summit['"]?[^;]*;?/gi, '');
         content = content.replace(/font-family:\s*['"]?Sunday['"]?[^;]*;?/gi, '');
-        editor.innerHTML = DOMPurify.sanitize(content, {
-            ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a', 'table', 'tbody', 'tr', 'td', 'th'],
-            ALLOWED_ATTR: ['class', 'style', 'data-marker', 'src', 'alt', 'contenteditable', 'href', 'target', 'rel']
-        });
+        editor.innerHTML = DOMPurify.sanitize(content, SANITIZE_CONFIG);
 
         // === НОРМАЛИЗАЦИЯ ===
 
@@ -1049,8 +1103,8 @@ function renderEntries() {
         const editedHtml = getEditedLabelHtml(entry);
 
         const tagsHtml = (entry.tags && entry.tags.length > 0) 
-            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${t}</span>`).join('')}</div>` 
-            : '';
+        ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
+        : '';
 
         const plainContent = getPlainTextFromHTML(entry.content);
         const previewText = plainContent.length > 120 ? plainContent.substring(0, 120) + '...' : plainContent;
@@ -1103,15 +1157,14 @@ function renderEntries() {
 
 async function saveAndRender() {
     try {
-        // Сохраняем все записи в IndexedDB
         await saveAllToIndexedDB();
     } catch (error) {
         console.error('Не удалось сохранить в IndexedDB:', error);
-        // Не прерываем выполнение, просто показываем уведомление
-        showToast('Ошибка сохранения данных', 'error');
+        showToast('Ошибка сохранения данных — попробуйте ещё раз', 'error');
+        return;   // НЕ рендерим, чтобы UI не показывал «сохранено», если это не так
     }
     
-    // Обновляем интерфейс независимо от результата сохранения
+    // Обновляем интерфейс только если сохранение прошло успешно
     renderEntries();
     drawMoodChart();
     renderCalendar();
@@ -1460,15 +1513,30 @@ function applyTheme(themeName) {
         btn.classList.toggle('selected', btn.getAttribute('data-theme') === themeName);
     });
     localStorage.setItem('my_web_diary_theme_v1', themeName);
-    drawMoodChart();
+    
+    // Перерисовываем активный график, если модалка открыта
+    if (!document.getElementById('chart-modal').classList.contains('hidden')) {
+        if (currentChartMode === 'line') {
+            drawMoodChart();
+        } else {
+            drawBarChart();
+        }
+    }
 }
 
 function loadTheme() {
     const savedTheme = localStorage.getItem('my_web_diary_theme_v1') || 'light';
     applyTheme(savedTheme);
 }
+
 document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.onclick = () => { applyTheme(btn.getAttribute('data-theme')); };
+    btn.onclick = () => { 
+        applyTheme(btn.getAttribute('data-theme'));
+        // Перерисовываем график, если он открыт
+        if (!document.getElementById('chart-modal').classList.contains('hidden')) {
+            drawMoodChart();
+        }
+    };
 });
 
 // === 💾 СКАЧИВАНИЕ ===
@@ -1569,10 +1637,27 @@ document.getElementById('import-file').onchange = (e) => {
             let count = 0;
             data.entries.forEach(entry => {
                 if (!existing.has(entry.id)) {
-                    entry.content = DOMPurify.sanitize(entry.content || '', {
-                        ALLOWED_TAGS: ['div', 'p', 'span', 'br', 'b', 'i', 'u', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'img', 'a', 'table', 'tbody', 'tr', 'td', 'th'],
-                        ALLOWED_ATTR: ['class', 'style', 'data-marker', 'src', 'alt', 'contenteditable', 'href', 'target', 'rel']
-                    });
+                    // Проверяем, что entry — это объект
+                    if (!entry || typeof entry !== 'object') return;
+
+                    // Проверяем обязательные поля
+                    if (!entry.id || !entry.date || typeof entry.content !== 'string') {
+                        console.warn('Пропущена битая запись при импорте:', entry);
+                        return;
+                    }
+
+                    // Санитизируем контент
+                    entry.content = DOMPurify.sanitize(entry.content, SANITIZE_CONFIG);
+
+                    // Санитизируем теги: проверяем, что это массив строк, и экранируем каждую
+                    if (Array.isArray(entry.tags)) {
+                        entry.tags = entry.tags
+                            .filter(t => typeof t === 'string')  // только строки
+                            .map(t => t.substring(0, 50));        // ограничиваем длину
+                    } else {
+                        entry.tags = [];
+                    }
+
                     diaryEntries.push(entry);
                     count++;
                 }
@@ -1595,15 +1680,48 @@ document.querySelector('#reminder-modal .modal-backdrop').onclick = closeReminde
 document.querySelector('.quote-section').onclick = nextQuote;
 
 // === 📊 ГРАФИК (модалка) ===
+let currentChartMode = 'line'; // 'line' | 'bar'
+let currentBarPeriod = 'all';  // 'all' | 'month' | 'week'
+
 function openChartModal() {
     closeSidebar();
-    updateChartModalTitle();
+    
+    const isBar = currentChartMode === 'bar';
+    document.getElementById('chart-mode-toggle').textContent = isBar ? '📉 Линейный график' : '📈 Гистограмма';
+    
+    document.getElementById('prev-month-chart').classList.toggle('hidden', isBar);
+    document.getElementById('next-month-chart').classList.toggle('hidden', isBar);
+    
+    document.getElementById('mood-chart').classList.toggle('hidden', isBar);
+    document.getElementById('bar-chart').classList.toggle('hidden', !isBar);
+    
+    // Стрелочка видна ТОЛЬКО на гистограмме
+    document.getElementById('chart-period-toggle').classList.toggle('hidden', !isBar);
+    
+    document.getElementById('chart-period-selector').classList.add('hidden');
+    
+    if (isBar) {
+        document.getElementById('chart-modal-title').textContent = 'Частота эмоций';
+        document.getElementById('chart-average').textContent = 'Распределение';
+    } else {
+        updateChartModalTitle();
+    }
+    
+    if (!document.querySelector('.period-option.active')) {
+        document.querySelector('.period-option[data-period="all"]').classList.add('active');
+    }
+    
     document.getElementById('chart-modal').classList.remove('hidden');
-    setTimeout(() => drawMoodChart(), 50);
+    
+    setTimeout(() => {
+        if (isBar) drawBarChart();
+        else drawMoodChart();
+    }, 50);
 }
 
 function closeChartModal() {
     document.getElementById('chart-modal').classList.add('hidden');
+    document.getElementById('chart-period-selector').classList.add('hidden');
 }
 
 function updateChartModalTitle() {
@@ -1615,14 +1733,206 @@ function updateChartModalTitle() {
 function changeChartMonth(delta) {
     currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
     updateChartModalTitle();
-    drawMoodChart();
+    if (currentChartMode === 'line') {
+        drawMoodChart();
+    } else {
+        drawBarChart();
+    }
 }
 
+// === ОБРАБОТЧИКИ СОБЫТИЙ ГРАФИКА ===
+
+document.getElementById('chart-mode-toggle').onclick = (e) => {
+    e.stopPropagation();
+    
+    if (currentChartMode === 'line') {
+        currentChartMode = 'bar';
+        e.target.textContent = '📉 Линейный график';
+        
+        document.getElementById('prev-month-chart').classList.add('hidden');
+        document.getElementById('next-month-chart').classList.add('hidden');
+        document.getElementById('chart-modal-title').textContent = 'Частота эмоций';
+        document.getElementById('chart-average').textContent = 'Распределение';
+        
+        document.getElementById('mood-chart').classList.add('hidden');
+        document.getElementById('bar-chart').classList.remove('hidden');
+        document.getElementById('chart-period-toggle').classList.remove('hidden');
+        
+        drawBarChart();
+    } else {
+        currentChartMode = 'line';
+        e.target.textContent = '📈 Гистограмма';
+        
+        document.getElementById('prev-month-chart').classList.remove('hidden');
+        document.getElementById('next-month-chart').classList.remove('hidden');
+        updateChartModalTitle();
+        
+        document.getElementById('mood-chart').classList.remove('hidden');
+        document.getElementById('bar-chart').classList.add('hidden');
+        document.getElementById('chart-period-toggle').classList.add('hidden');
+        
+        drawMoodChart();
+    }
+    
+    document.getElementById('chart-period-selector').classList.add('hidden');
+};
+
+document.getElementById('chart-period-toggle').onclick = (e) => {
+    e.stopPropagation();
+    const selector = document.getElementById('chart-period-selector');
+    selector.classList.toggle('hidden');
+};
+
+document.addEventListener('click', (e) => {
+    const selector = document.getElementById('chart-period-selector');
+    const toggleBtn = document.getElementById('chart-period-toggle');
+    
+    if (!selector.classList.contains('hidden') && 
+        !selector.contains(e.target) && 
+        e.target !== toggleBtn && 
+        !toggleBtn.contains(e.target)) {
+        selector.classList.add('hidden');
+    }
+});
+
+document.querySelectorAll('.period-option').forEach(btn => {
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        currentBarPeriod = btn.dataset.period;
+        
+        document.querySelectorAll('.period-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.getElementById('chart-period-selector').classList.add('hidden');
+        
+        if (currentChartMode === 'bar') {
+            drawBarChart();
+        }
+    };
+});
+
+// Привязка кнопок открытия/закрытия модалки
 document.getElementById('sidebar-chart-btn').onclick = openChartModal;
 document.getElementById('close-chart-modal').onclick = closeChartModal;
 document.querySelector('#chart-modal .modal-backdrop').onclick = closeChartModal;
 document.getElementById('prev-month-chart').onclick = () => changeChartMonth(-1);
 document.getElementById('next-month-chart').onclick = () => changeChartMonth(1);
+
+// === РИСОВАНИЕ ГИСТОГРАММЫ ===
+function drawBarChart() {
+    const canvas = document.getElementById('bar-chart');
+    const chartModal = document.getElementById('chart-modal');
+    
+    if (!canvas || chartModal.classList.contains('hidden')) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+
+    const width = rect.width;
+    const height = 220;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const styles = getComputedStyle(document.body);
+    const muted = styles.getPropertyValue('--text-muted').trim() || '#888';
+    const grid = styles.getPropertyValue('--border-color').trim() || '#ddd';
+    const textColor = styles.getPropertyValue('--text-color').trim() || '#333';
+
+    let filteredEntries = diaryEntries;
+    const now = new Date();
+    
+    if (currentBarPeriod === 'week') {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(now.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+        filteredEntries = diaryEntries.filter(e => new Date(e.date) >= sevenDaysAgo);
+    } else if (currentBarPeriod === 'month') {
+        const currentMonth = currentCalendarDate.getMonth();
+        const currentYear = currentCalendarDate.getFullYear();
+        filteredEntries = diaryEntries.filter(e => {
+            const d = new Date(e.date);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+    }
+
+    const counts = {};
+    MOODS.forEach(m => counts[m.emoji] = 0);
+    filteredEntries.forEach(e => {
+        if (counts[e.mood] !== undefined) counts[e.mood]++;
+    });
+
+    const maxCount = Math.max(...Object.values(counts), 1);
+
+    const left = 30, right = 10, top = 20, bottom = 30;
+    const plotW = width - left - right;
+    const plotH = height - top - bottom;
+
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i <= 10; i++) {
+        const y = top + plotH - (i / 10) * plotH;
+        ctx.strokeStyle = grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(width - right, y);
+        ctx.stroke();
+        ctx.fillStyle = muted;
+        ctx.fillText(i, left - 5, y);
+    }
+
+    const barSpacing = plotW / 10;
+    const barWidth = Math.min(barSpacing * 0.6, 30);
+
+    MOODS.forEach((m, index) => {
+        const count = counts[m.emoji];
+        const hue = (index / 9) * 120;
+        const color = `hsl(${hue}, 70%, 50%)`;
+        const x = left + (index * barSpacing) + (barSpacing - barWidth) / 2;
+        
+        const normalizedHeight = maxCount > 0 ? (count / maxCount) * 10 : 0;
+        const barHeight = (normalizedHeight / 10) * plotH;
+        const y = top + plotH - barHeight;
+
+        if (count > 0) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
+            ctx.fill();
+            
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(count, x + barWidth / 2, y - 5);
+        } else {
+            ctx.fillStyle = grid;
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.roundRect(x, top + plotH - 2, barWidth, 2, [4, 4, 0, 0]);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = textColor;
+        ctx.fillText(m.emoji, x + barWidth / 2, top + plotH + 8);
+    });
+
+    const totalEntries = filteredEntries.length;
+    let periodLabel = 'За всё время';
+    if (currentBarPeriod === 'week') periodLabel = 'За неделю';
+    if (currentBarPeriod === 'month') periodLabel = 'За текущий месяц';
+    
+    document.getElementById('chart-summary').textContent = `${periodLabel} · Всего записей: ${totalEntries}`;
+}
 
 // === 📈 СТАТИСТИКА ===
 function openStatsModal() {

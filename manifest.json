@@ -1,9 +1,9 @@
 {
   "name": "Мой Веб-Дневник",
   "short_name": "Дневник",
-  "id": "/index.html",
+  "id": "./index.html",
   "description": "Личный дневник с тегами, фильтрами и защитой PIN-кодом",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f5f5",
   "theme_color": "#4CAF50",

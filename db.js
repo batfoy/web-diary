@@ -84,16 +84,34 @@ async function migrateFromLocalStorage() {
     try {
         const entries = JSON.parse(stored);
         if (Array.isArray(entries) && entries.length > 0) {
-            console.log(`Миграция: найдено ${entries.length} записей в localStorage`);
-            
-            // Сохраняем все записи в IndexedDB
+            let migratedCount = 0;
+
             for (const entry of entries) {
-                await dbPut(entry);
+                // Пропускаем битые записи (без id или не объекты)
+                if (!entry || typeof entry !== 'object' || !entry.id) {
+                    console.warn('Пропущена битая запись при миграции:', entry);
+                    continue;
+                }
+
+                // Проверяем, что дата валидная
+                if (!entry.date || isNaN(new Date(entry.date).getTime())) {
+                    console.warn('Пропущена запись с невалидной датой:', entry);
+                    continue;
+                }
+
+                try {
+                    await dbPut(entry);
+                    migratedCount++;
+                } catch (e) {
+                    console.warn('Не удалось мигрировать запись:', entry.id, e);
+                }
             }
-            
-            // После успешной миграции удаляем данные из localStorage
+
+            // ВСЕГДА удаляем localStorage, даже если часть записей пропущена
+            // Это предотвращает зацикливание миграции
             localStorage.removeItem(LS_KEY);
-            console.log('Миграция завершена успешно');
+
+            console.log(`Миграция завершена: ${migratedCount} из ${entries.length} записей`);
             return true;
         }
     } catch (error) {
@@ -106,33 +124,38 @@ async function migrateFromLocalStorage() {
 
 // Массовое сохранение всех записей (используется при миграции и импорте)
 async function saveAllToIndexedDB() {
-    // ПРОВЕРКА: база данных должна быть инициализирована
     if (!db) {
-        console.warn('IndexedDB не инициализирована, пропускаем сохранение');
-        return;
+        console.warn('IndexedDB не инициализирована');
+        throw new Error('DB not initialized');
     }
-    
-    try {
+
+    return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        
-        // Сначала очищаем хранилище
-        store.clear();
-        
-        // Затем записываем все текущие записи
-        for (const entry of diaryEntries) {
-            store.put(entry);
-        }
-        
-        return new Promise((resolve, reject) => {
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => {
-                console.error('Ошибка транзакции IndexedDB:', transaction.error);
-                reject(transaction.error);
-            };
-        });
-    } catch (error) {
-        console.error('Ошибка при сохранении в IndexedDB:', error);
-        // Не прерываем выполнение приложения, просто логируем ошибку
-    }
+
+        // 1. Получаем все существующие ключи в базе
+        const getAllKeysRequest = store.getAllKeys();
+
+        getAllKeysRequest.onsuccess = () => {
+            const existingKeys = new Set(getAllKeysRequest.result);
+            const newKeys = new Set(diaryEntries.map(e => e.id));
+
+            // 2. Удаляем ТОЛЬКО те записи, которых больше нет в массиве
+            for (const key of existingKeys) {
+                if (!newKeys.has(key)) {
+                    store.delete(key);
+                }
+            }
+
+            // 3. Записываем/перезаписываем актуальные записи
+            for (const entry of diaryEntries) {
+                store.put(entry);
+            }
+        };
+
+        // 4. Обработка завершения транзакции
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(new Error('Transaction aborted'));
+    });
 }
