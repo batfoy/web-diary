@@ -24,8 +24,8 @@ body.theme-dark {
     --text-color: #e0e0e0;
     --text-muted: #999999;
     --border-color: #444444;
-    --accent-color: #66bb6a;
-    --accent-hover: #81c784;
+    --accent-color: #b0bec5;  /* Светло-серый (Blue Grey 200) */
+    --accent-hover: #90a4ae;
     --mood-btn-bg: #3a3a3a;
     --mood-btn-selected-bg: #2e4a2f;
     --danger-bg: #3d2222;
@@ -41,6 +41,26 @@ body.theme-pastel {
     --accent-hover: #f06292;
     --mood-btn-bg: #fce4ec;
     --mood-btn-selected-bg: #f8bbd0;
+    --danger-bg: #ffebee;
+}
+
+/* ============================================
+   ТЕМА: МЯГКАЯ ГОЛУБАЯ (MY DIARY STYLE)
+   ============================================ */
+body.theme-blue {
+    --bg-color: #e3f2fd;           /* Очень светлый голубой (фон body) */
+    --card-bg: #ffffff;            /* Карточки почти белые */
+    --text-color: #1a2a3a;         /* Темный текст */
+    --text-muted: #6b7b8b;         /* Приглушенный серо-голубой */
+    --border-color: #bbdefb;       /* Светло-голубые границы */
+    
+    --accent-color: #2196F3;       /* Основной яркий голубой (кнопки) */
+    --accent-hover: #1976D2;       /* Темнее для нажатий */
+    
+    --mood-btn-bg: #bbdefb;        /* Фон кнопок настроения / плашек */
+    --mood-btn-selected-bg: #90caf9; /* Выбранные кнопки */
+    
+    --danger-color: #f44336;
     --danger-bg: #ffebee;
 }
 
@@ -232,21 +252,66 @@ body {
 }
 
 /* ============================================
-   8. FAB-КНОПКА
+   КНОПКА FAB (ЦВЕТ ЗАВИСИТ ОТ ТЕМЫ)
    ============================================ */
 .fab-button {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    width: 64px; height: 64px; border-radius: 50%;
-    background: var(--accent-color); color: white; border: none;
-    font-size: 2.2em; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
-    animation: glow 2s infinite alternate; z-index: 100;
+    position: fixed; 
+    bottom: 30px; 
+    left: 50%; 
+    transform: translateX(-50%);
+    width: 64px; 
+    height: 64px; 
+    border-radius: 50%;
+    
+    /* ТЕПЕРЬ ЦВЕТ БЕРЕТСЯ ИЗ ПЕРЕМЕННОЙ ТЕМЫ */
+    background: var(--accent-color); 
+    
+    color: #ffffff; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3); 
+    border: 1px solid var(--accent-hover); 
+    
+    font-size: 2.2em; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    cursor: pointer; 
+    
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s; 
+    z-index: 100;
 }
-.fab-button:hover { transform: translateX(-50%) scale(1.1); box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6); }
-@keyframes glow {
-    from { box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
-    to { box-shadow: 0 4px 25px rgba(76, 175, 80, 0.8), 0 0 10px var(--accent-color); }
+
+.fab-button:hover { 
+    transform: translateX(-50%) scale(1.08); 
+}
+
+/* --- САМА ВОЛНА --- */
+.fab-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    
+    /* ВОЛНА ТОЖЕ БЕРЕТ ЦВЕТ ИЗ ТЕМЫ */
+    background: var(--accent-color); 
+    
+    z-index: -1; 
+    animation: wave 2.5s infinite ease-out;
+}
+
+/* --- АНИМАЦИЯ ВОЛНЫ --- */
+@keyframes wave {
+    0% {
+        transform: scale(1);
+        opacity: 0.6; 
+    }
+    100% {
+        transform: scale(1.8); 
+        opacity: 0; 
+    }
 }
 
 /* ============================================
@@ -2131,63 +2196,6 @@ body.multi-delete-active { touch-action: pan-y; }
     transition: all 0.2s;
 }
 
-.period-toggle-btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.period-toggle-btn.hidden {
-    display: none !important;
-}
-
-/* ============================================
-   ВЫПАДАЮЩИЙ СПИСОК ПЕРИОДОВ (БЕЛЫЙ БЛОК)
-   ============================================ */
-.period-selector {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-5px);
-    z-index: 100;
-}
-
-.period-selector.hidden {
-    display: none;
-}
-
-.period-selector-inner {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 -4px 15px rgba(0,0,0,0.15);
-    display: flex;
-    flex-direction: column;
-    padding: 6px;
-    min-width: 130px;
-}
-
-.period-option {
-    background: transparent;
-    border: none;
-    padding: 8px 12px;
-    text-align: left;
-    font-size: 0.85em;
-    color: var(--text-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.period-option:hover {
-    background: var(--mood-btn-selected-bg);
-}
-
-.period-option.active {
-    background: var(--mood-btn-selected-bg);
-    font-weight: 600;
-    color: var(--accent-color);
-}
-
 
 /* ============================================
 ИСПРАВЛЕНИЕ ПОЗИЦИОНИРОВАНИЯ ГРАФИКА И НИЖНЯЯ ПАНЕЛЬ
@@ -2317,7 +2325,7 @@ body.multi-delete-active { touch-action: pan-y; }
 .period-option {
     background: transparent;
     border: none;
-    padding: 10px 15px;
+    padding: 6px 8px;
     text-align: left;
     font-size: 0.9em;
     color: var(--text-color);
@@ -2340,4 +2348,178 @@ body.multi-delete-active { touch-action: pan-y; }
 
 .hidden {
     display: none !important;
+}
+
+
+/* ============================================
+   ЗАСТАВКА (SPLASH SCREEN)
+   ============================================ */
+#splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Жестко задаем цвет фона заставки (светлый фон) */
+    background: #f5f5f5; 
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    overflow: hidden;
+}
+
+#splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* Фоновый слой — картинка или градиент */
+.splash-bg {
+    position: absolute;
+    inset: 0;
+    /* Жестко задаем цвета, без var(--accent-color), чтобы темы не влияли */
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    opacity: 0.15; /* Та самая мягкость */
+    z-index: 1;
+}
+
+/* Контент по центру */
+.splash-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    text-align: center;
+    animation: splashFadeIn 1s ease-out;
+}
+
+.splash-icon {
+    width: 150px;
+    height: 150px;
+    border-radius: 24px;
+    /* box-shadow: 0 10px 30px rgba(0,0,0,0.2); */
+    animation: splashPop 0.8s ease-out;
+}
+
+.splash-title-img {
+    width: 320px; /* Подгони под свой размер, чтобы выглядело красиво */
+    max-width: 85%; /* Чтобы не вылезала за края на маленьких экранах */
+    height: auto;
+    margin: 10px 0; /* Небольшой отступ сверху и снизу */
+    
+    /* Если хочешь тень под буквами, раскомментируй: */
+    /* filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); */
+}
+
+.splash-subtitle {
+    font-size: 1em;
+    font-weight: 400;
+    /* Жестко задаем серый цвет, чтобы в темной теме он не пропал */
+    color: #888888; 
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+/* Анимации */
+@keyframes splashFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashPop {
+    0% { transform: scale(0.7); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+
+/* ============================================
+   ИНДИВИДУАЛЬНЫЕ НАСТРОЙКИ ДЛЯ ГОЛУБОЙ ТЕМЫ
+   ============================================ */
+
+/* 1. Кнопка меню (гамбургер) — темная */
+body.theme-blue #menu-btn {
+    color: #0d47a1; /* Темно-синий */
+}
+
+/* 2. Кнопки FAB и Save-Close — темно-голубые */
+body.theme-blue .fab-button,
+body.theme-blue .save-close-btn {
+    background: var(--accent-color) !important;
+    color: #ffffff !important;
+    /* box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4) !important; */
+}
+
+/* 3. Плашка с цитатой — чуть темнее, чем основной фон */
+body.theme-blue .quote-section {
+    background: #bbdefb !important; /* Средне-голубой */
+    color: #000000 !important;      /* Темно-синий текст */
+}
+
+/* 4. Боковое меню (Sidebar) — светло-голубой/серый */
+body.theme-blue .sidebar {
+    background: #f1f8ff !important; /* Очень светлый, почти белый с голубым */
+}
+
+/* 5. Окно редактирования записи — белое */
+body.theme-blue .entry-modal-content {
+    background: #ffffff !important;
+}
+
+/* 6. Карточки записей — белые с легкой голубой тенью */
+body.theme-blue .entry-card {
+    background: #ffffff !important;
+    border: 1px solid #e3f2fd;
+}
+
+/* 7. Кнопка "Меню" в шапке (три полоски) */
+body.theme-blue .main-header {
+    background: #e3f2fd; /* Как фон, чтобы не сливалось */
+}
+
+/* ============================================
+   ЦВЕТОВЫЕ ИНДИКАТОРЫ ТЕМ В БОКОВОМ МЕНЮ
+   ============================================ */
+
+/* Общие стили для всех кнопок тем */
+.theme-btn {
+    position: relative;
+    padding-left: 30px; /* Освобождаем место слева для полоски */
+    overflow: hidden;
+}
+
+/* Псевдоэлемент для цветной полоски */
+.theme-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 10px; /* Ширина полоски */
+    border-radius: 6px 0 0 6px; /* Скругление только слева */
+    border: 1px solid rgba(0,0,0,0.1); /* Легкая граница, чтобы светлые темы не сливались с фоном */
+    border-right: none;
+}
+
+/* 1. Светлая тема */
+.theme-btn[data-theme="light"]::before {
+    background-color: #f5f5f5; 
+}
+
+/* 2. Тёмная тема */
+.theme-btn[data-theme="dark"]::before {
+    background-color: #2d2d2d;
+}
+
+/* 3. Пастельная тема */
+.theme-btn[data-theme="pastel"]::before {
+    background-color: #fce4ec;
+}
+
+/* 4. Мягкая голубая тема (твоя новая) */
+.theme-btn[data-theme="blue"]::before {
+    background-color: #e3f2fd;
 }

@@ -1507,7 +1507,7 @@ document.getElementById('sidebar-theme-toggle').onclick = () => {
 };
 
 function applyTheme(themeName) {
-    document.body.classList.remove('theme-dark', 'theme-pastel');
+    document.body.classList.remove('theme-dark', 'theme-pastel', 'theme-blue');
     if (themeName !== 'light') document.body.classList.add('theme-' + themeName);
     document.querySelectorAll('.theme-btn').forEach(btn => {
         btn.classList.toggle('selected', btn.getAttribute('data-theme') === themeName);
@@ -3304,5 +3304,17 @@ async function initApp() {
     initPinProtection();
     checkReminder();
 }
+
+
+// === ЗАСТАВКА ===
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.classList.add('hidden');
+            setTimeout(() => splash.remove(), 1000); // удаляем после исчезновения
+        }
+    }, 2000); // 1.5 секунды — показываем заставку
+});
 
 initApp();

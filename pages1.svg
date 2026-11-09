@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1024" height="1024">
+  <defs>
+    <!-- Градиент для закладки и текста -->
+    <linearGradient id="bookmarkGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2E7D32"/>
+      <stop offset="100%" stop-color="#4CAF50"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== ФОН (Оставил прозрачным для заставки, но можно вернуть #4CAF50) ===== -->
+  <!-- Если нужна иконка с фоном, раскомментируй строку ниже -->
+  <!-- <rect width="512" height="512" fill="#4CAF50"/> -->
+
+  <!-- ===== КНИГА ===== -->
+  <g transform="translate(8, 0)">
+    
+    <!-- ТЕНЬ КНИГИ -->
+    <g transform="translate(0, 10)" opacity="0.15" fill="#000000">
+      <rect x="75" y="76" width="35" height="340"/>
+      <path d="M 120 76 H 350 A 40 40 0 0 1 390 116 V 416 H 120 Z"/>
+    </g>
+
+    <!-- 1. Задняя обложка -->
+    <path d="M 120 76 H 380 A 40 40 0 0 1 420 116 V 436 H 120 Z" fill="#D9D9D9"/>
+
+    <!-- 2. Корешок (белый) -->
+    <rect x="75" y="76" width="35" height="360" fill="#FFFFFF"/>
+    
+    <!-- 3. Тень/торец на корешке -->
+    <rect x="75" y="416" width="35" height="20" fill="#D9D9D9"/>
+    
+    <!-- 4. Основная белая страница -->
+    <path d="M 120 76 H 350 A 40 40 0 0 1 390 116 V 416 H 120 Z" fill="#FFFFFF"/>
+
+    <!-- ===== ЦЕНТРАЛЬНЫЙ БЛОК (ПОД НАЗВАНИЕ) ===== -->
+    <g transform="translate(255, 261)">
+      
+      <!-- Сам блок (зеленый градиент) -->
+      <rect x="-60" y="-35" width="120" height="70" rx="12" ry="12" fill="url(#bookmarkGrad)"/>
+      
+      <!-- Декоративные линии внутри блока -->
+      <g fill="#FFFFFF" opacity="0.4">
+        <rect x="-40" y="-15" width="80" height="8" rx="4"/>
+        <rect x="-40" y="5" width="50" height="8" rx="4"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ===== ЗАКЛАДКА ===== -->
+  <g transform="translate(8, 0)">
+    <!-- Тень от закладки -->
+    <path d="M 212.5 72 H 297.5 L 297.5 206 L 255 176 L 212.5 206 Z" fill="#000000" opacity="0.15" transform="translate(4, 4)"/>
+
+    <!-- Сама закладка (зеленая) -->
+    <path d="M 212.5 76 H 297.5 L 297.5 206 L 255 176 L 212.5 206 Z" fill="url(#bookmarkGrad)"/>
+  </g>
+
+  <!-- ===== НАЗВАНИЕ "СТРАНИЦЫ" (ГРАДИЕНТНЫЙ ТЕКСТ) ===== -->
+  <!-- Координаты подобраны так, чтобы текст был ровно под книгой по центру -->
+  <text x="256" y="500" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="900" fill="url(#bookmarkGrad)" letter-spacing="2">Страницы</text>
+</svg>

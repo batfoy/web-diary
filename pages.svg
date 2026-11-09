@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 128" width="1024" height="256">
+  <defs>
+    <!-- Тот же градиент, что и в иконке -->
+    <linearGradient id="textGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2E7D32"/>
+      <stop offset="100%" stop-color="#4CAF50"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Фон прозрачный (можно добавить <rect width="100%" height="100%" fill="transparent"/>, но он не нужен) -->
+
+  <!-- Текст по центру -->
+  <text x="256" y="85" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="800" fill="url(#textGrad)" letter-spacing="2">Страницы</text>
+</svg>
