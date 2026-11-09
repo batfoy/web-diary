@@ -347,29 +347,31 @@ body {
     display: flex; 
     flex-direction: column;
     
-    /* На весь экран */
+    /* На весь экран, но с учетом видимой области */
     width: 100vw; 
-    height: 100vh;
-    max-height: 100vh; 
+    height: 100dvh; 
+    max-height: 100dvh; 
     max-width: 100vw;
     border-radius: 0; 
     overflow: hidden; 
     
-    /* Учитываем «челку» iPhone */
+    /* Отступы для безопасных зон (челка, нижняя полоска) */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Шапка модалки (кнопки Сохранить, Удалить и т.д.) */
 .entry-modal-header {
     display: flex; 
     justify-content: space-between; 
     align-items: center;
-    padding: 15px 20px; 
+    
+    /* Увеличиваем отступ сверху, чтобы кнопки не прилипали к статус-бару */
+    padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
+    
     border-bottom: 1px solid var(--border-color); 
     flex-shrink: 0;
     gap: 10px;
-    background: var(--card-bg); /* Чтобы не просвечивало при скролле */
+    background: var(--card-bg); 
 }
 
 /* Строка с заголовком и датой */
