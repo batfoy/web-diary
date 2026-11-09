@@ -519,12 +519,19 @@ async function saveCurrentEntry() {
     // Удаляем пустые <div> (без текста и без картинок)
     const temp = document.createElement('div');
     temp.innerHTML = htmlContent;
+
+    // Удаляем пустые <div>, НО не трогаем таблицы и их содержимое
     temp.querySelectorAll('div').forEach(div => {
+        // Если div находится внутри таблицы или содержит таблицу — не удаляем
+        if (div.closest('table') || div.querySelector('table')) return;
+
+        // Если div пустой (без текста, без картинок, без невидимых символов) — удаляем
         if (div.textContent.replace(/\u200B/g, '').trim() === '' && !div.querySelector('img')) {
             div.remove();
         }
     });
-    const cleanedHtml = temp.innerHTML;   // ← используем ДАЛЬШЕ
+
+    const cleanedHtml = temp.innerHTML;
 
     const plainText = getPlainTextFromHTML(cleanedHtml);       // ← по cleanedHtml
     const hasImage = editor.querySelector('img.inline-emoji') !== null;
@@ -669,6 +676,7 @@ function openEntryForm(entry = null) {
     const titleInput = document.getElementById('entry-title');
     const saveCloseBtn = document.getElementById('save-close-btn');
     const editor = document.getElementById('entry-text');
+    
 
     if (entry) {
         editingEntryId = entry.id;
@@ -767,6 +775,7 @@ function openEntryForm(entry = null) {
     updateModalState();
     updateEditModeUI();
     document.getElementById('entry-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Блокируем скролл фона
 
     if (isEditing && !entry) setTimeout(() => titleInput.focus(), 100);
 }
@@ -802,12 +811,19 @@ async function handleSaveEntry() {
     // Удаляем пустые <div> (без текста и без картинок)
     const temp = document.createElement('div');
     temp.innerHTML = htmlContent;
+
+    // Удаляем пустые <div>, НО не трогаем таблицы и их содержимое
     temp.querySelectorAll('div').forEach(div => {
+        // Если div находится внутри таблицы или содержит таблицу — не удаляем
+        if (div.closest('table') || div.querySelector('table')) return;
+
+        // Если div пустой (без текста, без картинок, без невидимых символов) — удаляем
         if (div.textContent.replace(/\u200B/g, '').trim() === '' && !div.querySelector('img')) {
             div.remove();
         }
     });
-    const cleanedHtml = temp.innerHTML;   // ← используем ДАЛЬШЕ
+
+    const cleanedHtml = temp.innerHTML;
 
     const plainText = getPlainTextFromHTML(cleanedHtml);       // ← по cleanedHtml
     const hasImage = editor.querySelector('img.inline-emoji') !== null;
@@ -877,6 +893,7 @@ function closeEntryForm() {
     document.getElementById('entry-modal').classList.add('hidden');
     editingEntryId = null;
     isEditing = false;
+    document.body.style.overflow = ''; // Возвращаем скролл
 }
 
 // Универсальная левая кнопка: поведение зависит от состояния
@@ -3227,27 +3244,35 @@ function insertTable(rows, cols) {
         tableHTML += '<tr>';
         for (let j = 0; j < cols; j++) {
             const tag = i === 0 ? 'th' : 'td';
-            tableHTML += `<${tag} contenteditable="true"><br></${tag}>`;
+            // Важно: добавляем \u200B (невидимый символ), чтобы ячейка не считалась пустой
+            tableHTML += `<${tag} contenteditable="true">\u200B</${tag}>`;
         }
         tableHTML += '</tr>';
     }
     tableHTML += '</table></div><div><br></div>';
 
-    // Создаём узел из HTML
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = tableHTML;
 
-    // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: используем DocumentFragment для вставки ВСЕХ узлов
     const fragment = document.createDocumentFragment();
     while (tempDiv.firstChild) {
         fragment.appendChild(tempDiv.firstChild);
     }
 
-    // Вставляем все узлы (table-wrapper + div с <br>) в позицию курсора
     range.deleteContents();
     range.insertNode(fragment);
 
-    // Закрываем панель и триггерим автосохранение
+    // === ИСПРАВЛЕНИЕ ФОКУСА ===
+    // Находим первую ячейку и ставим курсор ровно в неё
+    const firstCell = editor.querySelector('th, td');
+    if (firstCell) {
+        const newRange = document.createRange();
+        newRange.selectNodeContents(firstCell);
+        newRange.collapse(false); // ставим в конец содержимого ячейки
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+    }
+
     closeToolbarPanel();
     onEntryFieldInput();
 }

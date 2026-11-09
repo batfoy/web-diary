@@ -339,55 +339,82 @@ body {
 .modal.top-layer { z-index: 1001; }
 
 /* ============================================
-   10. МОДАЛКА ЗАПИСИ (ОБНОВЛЕННАЯ)
+   10. МОДАЛКА ЗАПИСИ (НА ВЕСЬ ЭКРАН)
    ============================================ */
+
 .entry-modal-content {
-    padding: 0; display: flex; flex-direction: column;
-    height: 80vh; overflow: hidden;
-}
-.entry-modal-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 15px 20px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
-    gap: 10px;
-}
-.entry-title-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 15px 20px 0 20px; gap: 10px;
+    padding: 0; 
+    display: flex; 
+    flex-direction: column;
+    
+    /* На весь экран */
+    width: 100vw; 
+    height: 100vh;
+    max-height: 100vh; 
+    max-width: 100vw;
+    border-radius: 0; 
+    overflow: hidden; 
+    
+    /* Учитываем «челку» iPhone */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Шапка модалки (кнопки Сохранить, Удалить и т.д.) */
+.entry-modal-header {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    padding: 15px 20px; 
+    border-bottom: 1px solid var(--border-color); 
+    flex-shrink: 0;
+    gap: 10px;
+    background: var(--card-bg); /* Чтобы не просвечивало при скролле */
+}
+
+/* Строка с заголовком и датой */
+.entry-title-row {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    padding: 15px 20px 0 20px; 
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Форма (текст записи) — скроллится только она */
+.entry-form {
+    flex: 1; 
+    padding: 15px; 
+    display: flex; 
+    flex-direction: column;
+    gap: 15px; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch;
+    transition: background 0.3s;
+}
+
+/* Остальные стили для кнопок и полей (оставляем как было) */
 .date-picker-display {
     display: flex;
     align-items: center;
-    gap: 6px; /* Уменьшили отступ между иконкой и текстом */
+    gap: 6px; 
     background: var(--mood-btn-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 4px 10px; /* Уменьшили внутренние отступы для компактности */
+    padding: 4px 10px; 
     cursor: pointer;
-    font-size: 0.85em; /* Уменьшили шрифт, как в entry-date-line */
+    font-size: 0.85em; 
     color: var(--text-color);
     transition: background-color 0.2s, transform 0.1s;
     user-select: none;
-    flex-shrink: 0; /* Запрещаем блоку сжиматься меньше контента */
+    flex-shrink: 0; 
 }
 
-.date-picker-display:hover { 
-    background: var(--mood-btn-selected-bg); 
-}
-
-.date-picker-display:active { 
-    transform: scale(0.97); 
-}
-
-.date-picker-icon { 
-    font-size: 1em; /* Иконка теперь пропорциональна уменьшенному тексту */
-    line-height: 1;
-}
-
-#entry-date-text { 
-    font-weight: 500; 
-    white-space: nowrap; /* Запрещаем перенос текста на новую строку */
-}
+.date-picker-display:hover { background: var(--mood-btn-selected-bg); }
+.date-picker-display:active { transform: scale(0.97); }
+.date-picker-icon { font-size: 1em; line-height: 1; }
+#entry-date-text { font-weight: 500; white-space: nowrap; }
 
 .selected-mood-display { font-size: 2em; transition: transform 0.2s; }
 #entry-modal:not(.is-editing) .selected-mood-display { cursor: default; pointer-events: none; opacity: 1; }
@@ -405,21 +432,10 @@ body {
     margin-right: 5px; 
     transition: transform 0.2s; 
 }
-.edit-btn:hover { 
-    transform: scale(1.15); 
-}
+.edit-btn:hover { transform: scale(1.15); }
 
-/* Если режим редактирования ВЫКЛЮЧЕН (просмотр старой записи) — показываем карандаш */
-#entry-modal:not(.is-editing) .edit-btn { 
-    display: block !important; 
-}
-
-/* Если режим редактирования ВКЛЮЧЕН (новая запись ИЛИ нажали на карандаш) — скрываем его */
-#entry-modal.is-editing .edit-btn { 
-    display: none !important; 
-}
-
-
+#entry-modal:not(.is-editing) .edit-btn { display: block !important; }
+#entry-modal.is-editing .edit-btn { display: none !important; }
 
 #entry-modal:not(.is-editing) .entry-title-input,
 #entry-modal:not(.is-editing) .entry-text-input {
@@ -432,14 +448,28 @@ body {
 
 #entry-modal:not(.is-editing) .entry-actions { display: none; }
 
-.entry-form {
-    flex: 1; padding: 15px; display: flex; flex-direction: column;
-    gap: 15px; overflow-y: auto; transition: background 0.3s;   /* плавная смена фона */
-}
 .entry-title-input {
     width: 100%; border: none; border-bottom: 2px solid var(--border-color);
     background: transparent; font-size: 1.3em; font-weight: 600;
     color: var(--text-color); padding: 5px 0; outline: none; transition: border-color 0.2s;
+}
+
+/* Поле ввода текста */
+.entry-text-input {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 1em;
+    font-weight: 400; 
+    color: var(--text-color);
+    outline: none;
+    line-height: 1.6;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    min-height: 150px;
 }
 /* ============================================
    ПОЛЕ ВВОДА (RICH TEXT)
@@ -2522,4 +2552,20 @@ body.theme-blue .main-header {
 /* 4. Мягкая голубая тема (твоя новая) */
 .theme-btn[data-theme="blue"]::before {
     background-color: #e3f2fd;
+}
+
+/* Принудительно растягиваем модалку записи на весь экран */
+#entry-modal .entry-modal-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transform: none !important; /* Убираем анимацию масштабирования, чтобы окно не «прыгало» */
+}
+
+/* Убираем анимацию появления, чтобы окно сразу было на весь экран */
+#entry-modal:not(.hidden) .modal-content {
+    transform: none !important;
 }
