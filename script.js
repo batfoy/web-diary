@@ -829,8 +829,26 @@ async function handleSaveEntry() {
     const hasImage = editor.querySelector('img.inline-emoji') !== null;
 
     if (!plainText && !title && !hasImage) {
-        showToast('Запись не может быть пустой', 'error');
-        return false;
+        // Если запись пустая и мы её редактировали — удаляем без подтверждения
+        if (editingEntryId) {
+            const entryId = editingEntryId;
+            closeEntryForm(); // Сначала закрываем форму
+
+            // Удаляем из базы и массива
+            await dbDelete(entryId);
+            diaryEntries = diaryEntries.filter(e => e.id !== entryId);
+
+            // Обновляем интерфейс
+            renderEntries();
+            renderCalendar();
+            drawMoodChart();
+            showToast('Пустая запись удалена', 'info'); // Небольшое уведомление
+            return false;
+        } else {
+            // Если это новая пустая запись — просто закрываем
+            closeEntryForm();
+            return false;
+        }
     }
 
     const dateDisplay = document.getElementById('entry-date-display');
