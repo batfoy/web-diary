@@ -339,7 +339,7 @@ body {
 .modal.top-layer { z-index: 1001; }
 
 /* ============================================
-   10. МОДАЛКА ЗАПИСИ (ФИКСИРОВАННАЯ ШАПКА И ТУЛБАР)
+   10. МОДАЛКА ЗАПИСИ (НА ВЕСЬ ЭКРАН)
    ============================================ */
 
 .entry-modal-content {
@@ -347,23 +347,24 @@ body {
     display: flex; 
     flex-direction: column;
     
-    /* На весь экран */
+    /* На весь экран на телефонах */
     width: 100vw; 
     height: 100vh; 
-    height: 100dvh; 
+    height: 100dvh; /* Для современных браузеров */
     max-height: 100vh; 
     max-height: 100dvh;
     max-width: 100vw;
     border-radius: 0; 
-    overflow: hidden; /* Прячем всё, что вылезает */
+    overflow: hidden; 
+    
+    /* Безопасные зоны (челка) */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
     
     background: var(--card-bg);
-    
-    /* ВАЖНО: Делаем relative, чтобы шапка и тулбар позиционировались внутри */
-    position: relative; 
 }
 
-/* На компьютере — обычное окно */
+/* На компьютере ограничиваем ширину и высоту, как было раньше */
 @media (min-width: 769px) {
     .entry-modal-content {
         width: 90%;
@@ -371,42 +372,34 @@ body {
         height: 85vh;
         max-height: 85vh;
         border-radius: 16px;
+        padding-top: 0;
+        padding-bottom: 0;
     }
 }
 
-/* --- ШАПКА (прибита к верху) --- */
+/* Шапка модалки */
 .entry-modal-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 10;
     display: flex; 
     justify-content: space-between; 
     align-items: center;
-    
-    /* Учитываем челку и отступы */
-    padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
+    padding: 15px 20px; 
     border-bottom: 1px solid var(--border-color); 
+    flex-shrink: 0;
+    gap: 10px;
     background: var(--card-bg); 
 }
 
-/* --- СТРОКА С ДАТОЙ И ЗАГОЛОВКОМ (сдвигаем вниз под шапку) --- */
+/* Строка с заголовком и датой */
 .entry-title-row {
     display: flex; 
     align-items: center; 
     justify-content: space-between;
     padding: 15px 20px 0 20px; 
     gap: 10px;
-    
-    /* Сдвигаем вниз ровно на высоту шапки (примерно 70px) + место под челку */
-    margin-top: calc(70px + env(safe-area-inset-top));
-    
     flex-shrink: 0;
-    z-index: 5;
 }
 
-/* --- ФОРМА (текст записи) --- */
+/* Форма (текст записи) — скроллится только она */
 .entry-form {
     flex: 1; 
     padding: 15px; 
@@ -416,32 +409,156 @@ body {
     overflow-y: auto; 
     -webkit-overflow-scrolling: touch;
     transition: background 0.3s;
-    
-    /* Отступ снизу, чтобы текст не залезал под тулбар */
-    padding-bottom: 80px; 
 }
 
-/* --- ТУЛБАР (прибит к низу) --- */
-.entry-toolbar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 10;
-    background: var(--card-bg);
-    border-top: 1px solid var(--border-color);
-    
-    /* Учитываем полоску внизу экрана */
-    padding-bottom: env(safe-area-inset-bottom);
+/* Остальные стили для кнопок и полей (оставляем как было) */
+.date-picker-display {
+    display: flex;
+    align-items: center;
+    gap: 6px; 
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 10px; 
+    cursor: pointer;
+    font-size: 0.85em; 
+    color: var(--text-color);
+    transition: background-color 0.2s, transform 0.1s;
+    user-select: none;
+    flex-shrink: 0; 
 }
 
-/* --- НА КОМПЬЮТЕРЕ убираем абсолютное позиционирование (чтобы окно было обычным) --- */
-@media (min-width: 769px) {
-    .entry-modal-header { position: relative; top: auto; left: auto; right: auto; padding: 15px 20px; }
-    .entry-title-row { margin-top: 0; padding: 15px 20px 0 20px; }
-    .entry-toolbar { position: relative; bottom: auto; left: auto; right: auto; }
-    .entry-form { padding-bottom: 15px; }
+.date-picker-display:hover { background: var(--mood-btn-selected-bg); }
+.date-picker-display:active { transform: scale(0.97); }
+.date-picker-icon { font-size: 1em; line-height: 1; }
+#entry-date-text { font-weight: 500; white-space: nowrap; }
+
+.selected-mood-display { font-size: 2em; transition: transform 0.2s; }
+#entry-modal:not(.is-editing) .selected-mood-display { cursor: default; pointer-events: none; opacity: 1; }
+#entry-modal.is-editing .selected-mood-display { cursor: pointer; pointer-events: auto; }
+.selected-mood-display:hover { transform: scale(1.2); }
+
+.modal-close-btn {
+    background: none; border: none; font-size: 1.5em;
+    cursor: pointer; color: var(--text-muted); transition: color 0.2s;
 }
+.modal-close-btn:hover { color: var(--text-color); }
+
+.edit-btn { 
+    font-size: 1.3em; 
+    margin-right: 5px; 
+    transition: transform 0.2s; 
+}
+.edit-btn:hover { transform: scale(1.15); }
+
+#entry-modal:not(.is-editing) .edit-btn { display: block !important; }
+#entry-modal.is-editing .edit-btn { display: none !important; }
+
+#entry-modal:not(.is-editing) .entry-title-input,
+#entry-modal:not(.is-editing) .entry-text-input {
+    background: transparent; border-bottom: 2px solid transparent;
+    color: var(--text-color); cursor: default; opacity: 0.95;
+}
+#entry-modal:not(.is-editing) .entry-text-input { resize: none; }
+#entry-modal.is-editing .entry-title-input { border-bottom-color: var(--border-color); }
+#entry-modal.is-editing .entry-title-input:focus { border-bottom-color: var(--accent-color); }
+
+#entry-modal:not(.is-editing) .entry-actions { display: none; }
+
+.entry-title-input {
+    width: 100%; border: none; border-bottom: 2px solid var(--border-color);
+    background: transparent; font-size: 1.3em; font-weight: 600;
+    color: var(--text-color); padding: 5px 0; outline: none; transition: border-color 0.2s;
+}
+
+/* Поле ввода текста */
+.entry-text-input {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 1em;
+    font-weight: 400; 
+    color: var(--text-color);
+    outline: none;
+    line-height: 1.6;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    min-height: 150px;
+}
+/* ============================================
+   ПОЛЕ ВВОДА (RICH TEXT)
+   ============================================ */
+.entry-text-input {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 1em;
+    font-weight: 400; /* <-- ЯВНО указываем обычную жирность (Regular) */
+    color: var(--text-color);
+    outline: none;
+    line-height: 1.6;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    min-height: 150px;
+    background: transparent;
+}
+
+/* Стили для пустого поля (имитация placeholder) */
+.entry-text-input:empty:before {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    pointer-events: none;
+    display: block; /* Для Firefox */
+}
+
+/* Стили для встроенных эмодзи-картинок */
+.entry-text-input img.inline-emoji {
+    height: 1.3em; /* Размер как у крупного текста */
+    width: auto;
+    vertical-align: middle;
+    margin: 0 2px;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Отключаем редактирование самой картинки, чтобы её нельзя было случайно растянуть */
+.entry-text-input img[contenteditable="false"] {
+    cursor: default;
+}
+
+
+.btn-tag {
+    background: transparent; border: 1px solid var(--accent-color);
+    color: var(--accent-color); border-radius: 20px;
+    padding: 8px 16px; font-size: 0.9em; font-weight: 600;
+    cursor: pointer; transition: background-color 0.2s, color 0.2s;
+}
+.btn-tag:hover { background: var(--accent-color); color: white; }
+
+/* Новые кнопки шапки модалки */
+.save-close-btn {
+    background: var(--accent-color); color: white; border: none;
+    border-radius: 50%; width: 38px; height: 38px;
+    font-size: 1.3em; font-weight: bold; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background-color 0.2s, transform 0.15s; flex-shrink: 0;
+}
+.save-close-btn:hover { background: var(--accent-hover); transform: scale(1.1); }
+
+.header-delete-btn {
+    background: var(--danger-bg); color: var(--danger-color);
+    border: 1px solid var(--danger-color); border-radius: 50%;
+    width: 38px; height: 38px; font-size: 1.2em; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.2s, transform 0.15s; flex-shrink: 0;
+}
+.header-delete-btn:hover { opacity: 0.85; transform: scale(1.1); }
 
 /* ============================================
    11. МОДАЛКА ПОДТВЕРЖДЕНИЯ
@@ -799,18 +916,13 @@ body.multi-delete-active { touch-action: pan-y; }
 /* === 📱 МОБИЛЬНАЯ АДАПТАЦИЯ ТУЛБАРА ПОД КЛАВИАТУРУ === */
 @media (max-width: 768px) {
     .entry-toolbar {
-        /* Убираем transform, который мог ломать высоту */
-        transform: none; 
+        /* Сдвигаем вверх только сам тулбар на высоту клавиатуры */
+        transform: translateY(calc(-1 * var(--keyboard-inset, 0px)));
+        transition: transform 0.2s ease-out;
+        
+        /* Гарантируем, что он останется поверх контента при сдвиге */
         position: relative; 
         z-index: 20; 
-        width: 100%;
-        flex-shrink: 0;
-    }
-    
-    /* Если клавиатура открыта, мы просто уменьшаем высоту формы */
-    .entry-modal-content {
-        height: 100vh;
-        height: 100dvh;
     }
 }
 
@@ -2458,3 +2570,18 @@ body.theme-blue .main-header {
     background-color: #e3f2fd;
 }
 
+/* Принудительно растягиваем модалку записи на весь экран */
+#entry-modal .entry-modal-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transform: none !important; /* Убираем анимацию масштабирования, чтобы окно не «прыгало» */
+}
+
+/* Убираем анимацию появления, чтобы окно сразу было на весь экран */
+#entry-modal:not(.hidden) .modal-content {
+    transform: none !important;
+}
