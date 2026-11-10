@@ -28,6 +28,20 @@ const SORT_KEY = 'my_web_diary_sort_mode_v1';
 let activeSortMode = localStorage.getItem(SORT_KEY) || 'created'; 
 // created | updated | mood
 let tempMood = '😐';
+let activeTriggerFilter = null;
+
+let tempTriggers = [];
+const AVAILABLE_TRIGGERS = [
+    // Эмоции и состояния
+    '😴 Усталость', '😠 Ссора', '😢 Обида', '🤒 Болезнь', '😐 Скука',
+    // Здоровье и тело
+    '🛌 Отдых', '💤 Сон', '💪 Спорт', '🚶 Прогулка', '🍔 Еда',
+    // Активности и увлечения
+    '🎨 Хобби', '📚 Учёба', '💻 Работа', '☕ Кофе',
+    // Социальное и внешнее
+    '❤️ Отношения', '🎉 Праздник', '🌧️ Погода'
+];
+
 let currentQuoteIndex = 0;
 
 let multiDeleteMode = false;
@@ -50,6 +64,32 @@ const SANITIZE_CONFIG = {
     FORBID_TAGS: ['script','iframe','object','embed','form'],
     FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus']
 };
+
+function renderTriggers() {
+    const grid = document.getElementById('triggers-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    AVAILABLE_TRIGGERS.forEach(trig => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'trigger-chip' + (tempTriggers.includes(trig) ? ' active' : '');
+        chip.textContent = trig;
+        
+        chip.onclick = (e) => {
+            e.preventDefault();
+            if (tempTriggers.includes(trig)) {
+                tempTriggers = tempTriggers.filter(t => t !== trig);
+                chip.classList.remove('active');
+            } else {
+                tempTriggers.push(trig);
+                chip.classList.add('active');
+            }
+            onEntryFieldInput(); // Автосохранение
+        };
+        grid.appendChild(chip);
+    });
+}
 
 // Хук для фильтрации CSS в атрибуте style (разрешаем только безопасные свойства)
 DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
@@ -556,7 +596,8 @@ async function saveCurrentEntry() {
             title, content: cleanedHtml,                        // ← cleanedHtml
             mood: tempMood, wordCount, tags, fontSize,
             lineHeight, fontFamily, fontWeight, fontStyle,
-            background: currentBgId 
+            background: currentBgId,
+            triggers: tempTriggers 
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -568,7 +609,8 @@ async function saveCurrentEntry() {
                 title, content: cleanedHtml,                    // ← cleanedHtml
                 mood: tempMood, wordCount, tags, fontSize,
                 lineHeight, fontFamily, fontWeight, fontStyle,
-                background: currentBgId 
+                background: currentBgId,
+                triggers: tempTriggers 
             };
         }
     }
@@ -708,6 +750,7 @@ function openEntryForm(entry = null) {
     
 
     if (entry) {
+        tempTriggers = entry.triggers ? [...entry.triggers] : [];
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
@@ -774,6 +817,7 @@ function openEntryForm(entry = null) {
 
         saveCloseBtn.title = 'Закрыть без изменений';
     } else {
+        tempTriggers = [];
         editingEntryId = null;
         titleInput.value = '';
         editor.innerHTML = '';
@@ -898,7 +942,8 @@ async function handleSaveEntry() {
                 title, content: cleanedHtml,                    // ← cleanedHtml
                 mood: tempMood, wordCount, tags, fontSize,
                 lineHeight, fontFamily, fontWeight, fontStyle,
-                background: currentBgId 
+                background: currentBgId,
+                triggers: tempTriggers 
             };
             showToast('Запись обновлена', 'success');
         } else {
@@ -910,7 +955,8 @@ async function handleSaveEntry() {
             title, content: cleanedHtml,                        // ← cleanedHtml
             mood: tempMood, wordCount, tags, fontSize,
             lineHeight, fontFamily, fontWeight, fontStyle,
-            background: currentBgId 
+            background: currentBgId,
+            triggers: tempTriggers 
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -1113,6 +1159,8 @@ function renderEntries() {
     if (activeDateFilter) filtered = filtered.filter(entry => getDateKey(entry.date) === activeDateFilter);
     if (activeTagFilter) filtered = filtered.filter(entry => entry.tags && entry.tags.includes(activeTagFilter));
     if (activeMoodFilter) filtered = filtered.filter(entry => entry.mood === activeMoodFilter);
+    // НОВОЕ: Фильтр по триггеру
+    if (activeTriggerFilter) filtered = filtered.filter(entry => entry.triggers && entry.triggers.includes(activeTriggerFilter));
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
         filtered = filtered.filter(entry =>
@@ -1138,6 +1186,11 @@ function renderEntries() {
         const banner = document.createElement('div');
         banner.className = 'active-filter-banner';
         banner.innerHTML = `<span>Настроение: <strong style="font-size:1.2em">${activeMoodFilter}</strong></span><button class="clear-filter-btn" id="clear-mood-filter" title="Показать все">✕</button>`;
+        list.appendChild(banner);
+    } else if (activeTriggerFilter) {
+        const banner = document.createElement('div');
+        banner.className = 'active-filter-banner';
+        banner.innerHTML = `<span>Триггер: <strong>${escapeHtml(activeTriggerFilter)}</strong></span><button class="clear-filter-btn" id="clear-trigger-filter" title="Показать все">✕</button>`;
         list.appendChild(banner);
     }
 
@@ -1168,8 +1221,14 @@ function renderEntries() {
         ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
         : '';
 
+        const triggersHtml = (entry.triggers && entry.triggers.length > 0) 
+        ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.triggers.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-selected-bg); padding:2px 8px; border-radius:10px; color:var(--text-color); border: 1px solid var(--border-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
+        : '';
+
         const plainContent = getPlainTextFromHTML(entry.content);
-        const previewText = plainContent.length > 120 ? plainContent.substring(0, 120) + '...' : plainContent;
+        // Убираем #теги из превью, чтобы не дублировать плашки
+        const textWithoutTags = plainContent.replace(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g, '').trim();
+        const previewText = textWithoutTags.length > 120 ? textWithoutTags.substring(0, 120) + '...' : textWithoutTags;
 
         card.innerHTML = `
             <div class="entry-header">
@@ -1181,6 +1240,7 @@ function renderEntries() {
             </div>
             ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
             <div class="entry-text">${previewText ? escapeHtml(previewText) : '<span style="color:var(--text-muted); font-style:italic;">(Запись без текста)</span>'}</div>
+            ${triggersHtml}
             ${tagsHtml}
         `;
 
@@ -1502,6 +1562,7 @@ document.getElementById('close-search-btn').onclick = () => {
     activeTagFilter = null;
     activeDateFilter = null;
     activeMoodFilter = null;
+    activeTriggerFilter = null;
     renderEntries();
 };
 
@@ -1515,6 +1576,7 @@ searchInput.addEventListener('input', (e) => {
     activeTagFilter = null;
     activeDateFilter = null;
     activeMoodFilter = null;
+    activeTriggerFilter = null; // НОВОЕ
     
     renderEntries();
 });
@@ -1997,11 +2059,20 @@ function drawBarChart() {
 }
 
 // === 📈 СТАТИСТИКА ===
+// === 📈 СТАТИСТИКА ===
+let currentStatsMode = 'normal'; // 'normal' | 'deep'
+
 function openStatsModal() {
     closeSidebar();
+    currentStatsMode = 'normal';
+    
+    // Сброс UI на обычный режим
+    document.getElementById('stats-mode-toggle').textContent = '🔍 Глубокая статистика';
+    document.getElementById('stats-normal-body').classList.remove('hidden');
+    document.getElementById('stats-deep-body').classList.add('hidden');
 
     if (diaryEntries.length === 0) {
-        document.getElementById('stats-body').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px 0;">Пока нет записей.<br>Начните вести дневник!</p>';
+        document.getElementById('stats-normal-body').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px 0;">Пока нет записей.<br>Начните вести дневник!</p>';
         document.getElementById('stats-modal').classList.remove('hidden');
         return;
     }
@@ -2024,16 +2095,30 @@ function openStatsModal() {
     });
     const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
 
+    // Считаем среднее настроение
+    let totalMoodScore = 0;
+    let moodEntriesCount = 0;
+    diaryEntries.forEach(entry => {
+        const score = getMoodScore(entry.mood);
+        if (score !== null) {
+            totalMoodScore += score;
+            moodEntriesCount++;
+        }
+    });
+    const avgMood = moodEntriesCount > 0 ? (totalMoodScore / moodEntriesCount) : 0;
+    const avgMoodEmoji = MOODS[Math.round(avgMood)]?.emoji || '😐';
+
     const longestEntry = [...diaryEntries].sort((a, b) => (b.wordCount || 0) - (a.wordCount || 0))[0];
     const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    document.getElementById('stats-body').innerHTML = `
+    document.getElementById('stats-normal-body').innerHTML = `
         <div class="stats-item"><span class="stats-label">Всего записей</span><span class="stats-value large">${totalEntries}</span></div>
         <div class="stats-item"><span class="stats-label">Всего слов</span><span class="stats-value">${totalWords.toLocaleString('ru-RU')}</span></div>
         <div class="stats-item"><span class="stats-label">Средняя длина записи</span><span class="stats-value">${avgWords} слов</span></div>
         <div class="stats-item"><span class="stats-label">Дней с записями</span><span class="stats-value">${daysWithEntries} из ${daysSinceFirst} (${activityPercent}%)</span></div>
         <div class="stats-item"><span class="stats-label">Самое частое настроение</span><span class="stats-value">${topMood[0]} (${topMood[1]} ${topMood[1] === 1 ? 'раз' : 'раза'})</span></div>
+        <div class="stats-item"><span class="stats-label">Среднее настроение за всё время</span><span class="stats-value">${avgMoodEmoji} (${avgMood.toFixed(1)})</span></div>
         <div class="stats-item"><span class="stats-label">Самая длинная запись</span><span class="stats-value">${longestEntry.wordCount || 0} слов</span></div>
         <div class="stats-item"><span class="stats-label">Самая короткая запись</span><span class="stats-value">${shortestEntry.wordCount || 0} слов</span></div>
         <div class="stats-item"><span class="stats-label">Первая запись</span><span class="stats-value">${firstDateStr}</span></div>
@@ -2041,6 +2126,238 @@ function openStatsModal() {
 
     document.getElementById('stats-modal').classList.remove('hidden');
 }
+
+// Переключатель режимов статистики
+document.getElementById('stats-mode-toggle').onclick = () => {
+    if (currentStatsMode === 'normal') {
+        currentStatsMode = 'deep';
+        document.getElementById('stats-mode-toggle').textContent = '📊 Обычная статистика';
+        document.getElementById('stats-normal-body').classList.add('hidden');
+        document.getElementById('stats-deep-body').classList.remove('hidden');
+        renderDeepStats();
+    } else {
+        currentStatsMode = 'normal';
+        document.getElementById('stats-mode-toggle').textContent = '🔍 Глубокая статистика';
+        document.getElementById('stats-normal-body').classList.remove('hidden');
+        document.getElementById('stats-deep-body').classList.add('hidden');
+    }
+};
+
+// --- ГЛУБОКАЯ СТАТИСТИКА (ТРИГГЕРЫ) ---
+function renderDeepStats() {
+    const triggerStats = {};
+    diaryEntries.forEach(entry => {
+        if (entry.triggers && entry.triggers.length > 0) {
+            const score = getMoodScore(entry.mood);
+            if (score !== null) {
+                entry.triggers.forEach(trig => {
+                    if (!triggerStats[trig]) triggerStats[trig] = { total: 0, count: 0 };
+                    triggerStats[trig].total += score;
+                    triggerStats[trig].count += 1;
+                });
+            }
+        }
+    });
+
+    const sortedTriggers = Object.entries(triggerStats).map(([name, data]) => {
+        const avgScore = data.total / data.count;
+        return {
+            trigger: name,
+            avgScore: avgScore,
+            count: data.count,
+            emoji: MOODS[Math.round(avgScore)]?.emoji || '😐'
+        };
+    }).sort((a, b) => b.count - a.count); // Сортируем по частоте для общего списка
+
+    // --- ТОП-3 ХОРОШИХ И ПЛОХИХ ---
+    // Берем только те, что встречались хотя бы 1 раз (уже есть в sortedTriggers)
+    const sortedByScore = [...sortedTriggers].sort((a, b) => b.avgScore - a.avgScore);
+    
+    const topGood = sortedByScore.slice(0, 3).filter(t => t.avgScore >= 5); // Только положительные
+    const topBad = sortedByScore.slice(-3).reverse().filter(t => t.avgScore < 5); // Только отрицательные
+
+    const goodContainer = document.getElementById('top-good-triggers');
+    const badContainer = document.getElementById('top-bad-triggers');
+
+    goodContainer.innerHTML = '';
+    badContainer.innerHTML = '';
+
+    if (topGood.length > 0) {
+        let html = `<div style="background: rgba(76, 175, 80, 0.1); border-left: 4px solid var(--accent-color); padding: 10px; border-radius: 8px;">
+            <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px;">✨ Больше всего радости:</div>`;
+        topGood.forEach(t => {
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 0.9em; font-weight: 500;">${t.trigger}</span>
+                <span style="font-size: 0.9em; color: var(--accent-color); font-weight: 600;">${t.emoji} ${t.avgScore.toFixed(1)}</span>
+            </div>`;
+        });
+        html += `</div>`;
+        goodContainer.innerHTML = html;
+    }
+
+    if (topBad.length > 0) {
+        let html = `<div style="background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--danger-color); padding: 10px; border-radius: 8px;">
+            <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px;">⚠️ Чаще всего портит настроение:</div>`;
+        topBad.forEach(t => {
+            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 0.9em; font-weight: 500;">${t.trigger}</span>
+                <span style="font-size: 0.9em; color: var(--danger-color); font-weight: 600;">${t.emoji} ${t.avgScore.toFixed(1)}</span>
+            </div>`;
+        });
+        html += `</div>`;
+        badContainer.innerHTML = html;
+    }
+
+    // Заполняем селект
+    const select = document.getElementById('trigger-filter-select');
+    const currentValue = select.value;
+    select.innerHTML = '<option value="all">Все триггеры</option>';
+    sortedTriggers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.trigger;
+        opt.textContent = t.trigger;
+        select.appendChild(opt);
+    });
+    select.value = currentValue;
+
+    // Фильтрация для графика
+    const filterValue = select.value;
+    let displayData = sortedTriggers;
+    if (filterValue !== 'all') {
+        displayData = sortedTriggers.filter(t => t.trigger === filterValue);
+    }
+
+    // Отрисовка графика
+    drawTriggerChart(displayData);
+
+    // Текстовый вывод (под графиком)
+    const list = document.getElementById('trigger-stats-list');
+    list.innerHTML = '';
+    displayData.forEach(t => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85em; cursor: pointer;'; // Добавили cursor: pointer
+        item.innerHTML = `
+            <span style="font-weight: 500;">${t.trigger}</span>
+            <span style="color: var(--accent-color); font-weight: 600;">${t.emoji} ${t.avgScore.toFixed(1)} <span style="font-size: 0.85em; color: var(--text-muted); font-weight: 400;">(${t.count} раз)</span></span>
+        `;
+
+        // ДОБАВИЛИ ОБРАБОТЧИК КЛИКА
+        item.onclick = () => {
+            closeStatsModal();
+            applyTriggerFilter(t.trigger);
+        };
+
+        list.appendChild(item);
+    });
+
+    if (sortedTriggers.length === 0) {
+        document.getElementById('trigger-chart').classList.add('hidden');
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0;">Пока нет записей с триггерами.</p>';
+    } else {
+        document.getElementById('trigger-chart').classList.remove('hidden');
+    }
+}
+
+function drawTriggerChart(triggerData) {
+    const canvas = document.getElementById('trigger-chart');
+    if (!canvas || canvas.classList.contains('hidden')) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+
+    const width = rect.width;
+    const height = 200;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const styles = getComputedStyle(document.body);
+    const textColor = styles.getPropertyValue('--text-color').trim() || '#333';
+    const gridColor = styles.getPropertyValue('--border-color').trim() || '#ddd';
+
+    // Цвета для полосок (независимо от темы, чтобы было наглядно)
+    const colorGood = '#4CAF50'; // Зелёный
+    const colorMid = '#FFC107';  // Жёлтый
+    const colorBad = '#F44336';  // Красный
+
+    ctx.clearRect(0, 0, width, height);
+
+    if (triggerData.length === 0) return;
+
+    const left = 110, right = 20, top = 10, bottom = 20;
+    const chartWidth = width - left - right;
+    const chartHeight = height - top - bottom;
+
+    const barHeight = Math.min(chartHeight / triggerData.length, 30);
+    const maxScore = 9;
+
+    // Сетка
+    for (let i = 0; i <= 3; i++) {
+        const score = i * 3;
+        const x = left + (score / maxScore) * chartWidth;
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, top + chartHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = textColor;
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(score, x, top + chartHeight + 15);
+    }
+
+    // Полоски
+    triggerData.forEach((item, index) => {
+        const y = top + index * barHeight + 5;
+        const barW = (item.avgScore / maxScore) * chartWidth;
+
+        // Название триггера
+        ctx.fillStyle = textColor;
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.trigger, left - 10, y + barHeight / 2);
+
+        // ВЫБОР ЦВЕТА В ЗАВИСИМОСТИ ОТ БАЛЛА
+        let barColor;
+        if (item.avgScore >= 6) {
+            barColor = colorGood;
+        } else if (item.avgScore >= 4) {
+            barColor = colorMid;
+        } else {
+            barColor = colorBad;
+        }
+
+        // Полоска
+        ctx.fillStyle = barColor;
+        ctx.beginPath();
+        ctx.roundRect(left, y, barW, barHeight - 10, [0, 4, 4, 0]);
+        ctx.fill();
+
+        // Значение (цифра + эмодзи)
+        // Если полоска короткая (меньше 30px), пишем чёрным снаружи, чтобы не сливалось
+        if (barW < 30) {
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'left';
+            ctx.fillText(item.avgScore.toFixed(1) + ' ' + item.emoji, left + barW + 5, y + barHeight / 2);
+        } else {
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'right';
+            ctx.fillText(item.avgScore.toFixed(1) + ' ' + item.emoji, left + barW - 5, y + barHeight / 2);
+        }
+    });
+}
+
+// Обработчик фильтра
+document.getElementById('trigger-filter-select').addEventListener('change', () => {
+    renderDeepStats();
+});
+
+
 
 function closeStatsModal() {
     document.getElementById('stats-modal').classList.add('hidden');
@@ -2105,6 +2422,21 @@ function applyTagFilter(tag) {
     showToast(`Показаны записи: ${tag}`, 'info');
 }
 
+function applyTriggerFilter(trigger) {
+    activeTriggerFilter = trigger;
+    activeTagFilter = null;
+    activeDateFilter = null;
+    activeMoodFilter = null;
+    searchQuery = '';
+    document.getElementById('search-input').value = '';
+    if (multiDeleteMode) exitMultiDeleteMode();
+    
+    appMain.classList.add('search-active');
+    renderEntries();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast(`Показаны записи с триггером: ${trigger}`, 'info');
+}
+
 function clearTagFilter() { activeTagFilter = null; renderEntries(); }
 function closeTagsModal() { document.getElementById('tags-modal').classList.add('hidden'); }
 
@@ -2146,11 +2478,16 @@ function applyMoodFilter(emoji) {
 }
 
 function clearMoodFilter() { activeMoodFilter = null; renderEntries(); }
+function clearTriggerFilter() {
+    activeTriggerFilter = null;
+    renderEntries();
+}
 
 document.getElementById('entries-list').addEventListener('click', (e) => {
     if (e.target.closest('#clear-tag-filter')) clearTagFilter();
     else if (e.target.closest('#clear-date-filter')) clearDateFilter();
     else if (e.target.closest('#clear-mood-filter')) clearMoodFilter();
+    else if (e.target.closest('#clear-trigger-filter')) clearTriggerFilter();
 });
 
 // === 🔐 PIN-ОБРАБОТЧИКИ ===
@@ -2298,6 +2635,9 @@ function openToolbarPanel(panelId) {
         if (panelId === 'emoji-panel') {
             renderEmojiPacks();
             renderEmojiGrid(currentEmojiPackId);
+        }
+        if (panelId === 'triggers-panel') {
+            renderTriggers();
         }
         if (panelId === 'bg-panel') {
             renderBgOptions();
@@ -3237,6 +3577,14 @@ document.addEventListener('selectionchange', () => {
     }
 });
 
+document.getElementById('toolbar-triggers-btn').onclick = () => {
+    if (activeToolbarPanel === 'triggers-panel') {
+        closeToolbarPanel();
+    } else {
+        openToolbarPanel('triggers-panel');
+    }
+};
+
 
 // === 🔗 АВТОССЫЛКИ ПРИ ВСТАВКЕ URL ===
 document.getElementById('entry-text').addEventListener('paste', (e) => {
@@ -3342,6 +3690,8 @@ function removeTable() {
     }
 }
 
+
+
 // Привязываем обработчики к кнопкам выбора размера
 document.querySelectorAll('.table-size-btn[data-rows]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3353,6 +3703,10 @@ document.querySelectorAll('.table-size-btn[data-rows]').forEach(btn => {
 
 // Привязываем обработчик к кнопке удаления
 document.getElementById('table-remove-btn')?.addEventListener('click', removeTable);
+
+document.getElementById('trigger-filter-select').addEventListener('change', () => {
+    renderSmartStats();
+});
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {

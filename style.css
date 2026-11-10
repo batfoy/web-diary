@@ -2582,3 +2582,48 @@ body.theme-blue .main-header {
     background-color: #e3f2fd;
 }
 
+/* Чипсы триггеров */
+.triggers-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+}
+.trigger-chip {
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.trigger-chip:hover {
+    background: var(--mood-btn-selected-bg);
+}
+.trigger-chip.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+#trigger-filter-select {
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+
+/* Стили для селекта в глубокой статистике */
+#trigger-filter-select {
+    background: var(--mood-btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    cursor: pointer;
+    outline: none;
+}

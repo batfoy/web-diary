@@ -260,6 +260,13 @@
                             <button class="font-style-btn" data-preset="greatvibes" style="font-family: 'Great Vibes', cursive; font-weight: 400; font-style: normal; font-size: 1.3em;">Great Vibes</button>
                         </div>
                     </div>
+                    <div id="triggers-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Что повлияло на настроение?</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div class="triggers-grid" id="triggers-grid" style="padding: 10px; justify-content: flex-start;"></div>
+                    </div>
                     <!-- Панель списков (заменяем содержимое существующего блока) -->
                     <div id="list-panel" class="toolbar-subpanel hidden">
                         <div class="text-panel-header">
@@ -339,6 +346,13 @@
                             <line x1="4" y1="15" x2="20" y2="15"></line>
                             <line x1="10" y1="3" x2="8" y2="21"></line>
                             <line x1="16" y1="3" x2="14" y2="21"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-triggers-btn" title="Что повлияло на настроение?">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            <line x1="9" y1="10" x2="15" y2="10"></line>
+                            <line x1="9" y1="14" x2="15" y2="14"></line>
                         </svg>
                     </button>
                     <button class="toolbar-btn" id="toolbar-text-btn" title="Текст">
@@ -512,7 +526,42 @@
                 <h2>📈 Статистика</h2>
                 <button class="modal-close-btn" id="close-stats-modal">✕</button>
             </div>
-            <div id="stats-body" class="stats-body"></div>
+
+            <!-- Блок с кнопкой переключения -->
+            <div style="padding: 10px 20px; background: var(--mood-btn-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: center;">
+                <button id="stats-mode-toggle" class="chart-mode-btn">🔍 Глубокая статистика</button>
+            </div>
+
+            <!-- ОБЫЧНАЯ СТАТИСТИКА -->
+            <div id="stats-normal-body" class="stats-body">
+                <!-- Сюда JS вставит общие цифры -->
+            </div>
+
+            <!-- ГЛУБОКАЯ СТАТИСТИКА (скрыта по умолчанию) -->
+            <!-- ГЛУБОКАЯ СТАТИСТИКА (скрыта по умолчанию) -->
+            <div id="stats-deep-body" class="stats-body hidden">
+
+                <!-- БЛОК ТОП-3 -->
+                <div id="top-triggers-section" style="margin-bottom: 20px;">
+                    <div id="top-good-triggers" style="margin-bottom: 15px;"></div>
+                    <div id="top-bad-triggers"></div>
+                </div>
+
+                <h3 style="font-size: 1em; margin: 0 0 15px 0; color: var(--text-color);">Все триггеры</h3>
+
+                <!-- Фильтр -->
+                <div style="margin-bottom: 15px;">
+                    <select id="trigger-filter-select" class="modal-btn secondary" style="width: 100%; padding: 10px; font-size: 0.95em;">
+                        <option value="all">Все триггеры</option>
+                    </select>
+                </div>
+
+                <!-- График -->
+                <canvas id="trigger-chart" style="width: 100%; height: 240px; display: block; margin: 0 auto;"></canvas>
+
+                <!-- Список -->
+                <div id="trigger-stats-list" style="margin-top: 15px;"></div>
+            </div>
         </div>
     </div>
 
