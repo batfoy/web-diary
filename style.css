@@ -375,24 +375,17 @@ body {
 /* Шапка модалки (кнопки Сохранить, Удалить и т.д.) */
 .entry-modal-header {
     display: flex; 
-    justify-content: space-between; 
+    justify-content: space-between; /* Раздвигает крайние кнопки */
     align-items: center;
     padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
     border-bottom: 1px solid var(--border-color); 
     flex-shrink: 0;
-    gap: 10px;
     background: var(--card-bg); 
     position: relative;
+    width: 100%;
+    gap: 6px;
 }
 
-/* Центрируем календарь */
-#entry-date-display {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    /* Убедимся, что он не перекрывает кнопки */
-    z-index: 1; 
-}
 
 /* Строка с заголовком и датой */
 .entry-title-row {
@@ -438,10 +431,13 @@ body {
    ВОЗВРАЩАЕМ КНОПКИ И РЕЖИМЫ
    ============================================ */
 
+/* Календарь — обычный элемент, без absolute */
 .date-picker-display {
     display: flex;
-    align-items: center;
-    gap: 6px; 
+    align-items: center; /* Выравниваем текст и стрелку по центру вертикали */
+    justify-content: center; /* Чтобы дата и стрелка были вместе */
+    gap: 2px; /* Минимальный отступ между текстом и стрелкой */
+    
     background: var(--mood-btn-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -452,10 +448,25 @@ body {
     transition: background-color 0.2s, transform 0.1s;
     user-select: none;
     flex-shrink: 0; 
-    /* Убираем абсолютное позиционирование */
-    position: static; 
-    transform: none;
 }
+
+.date-picker-display:active {
+    transform: scale(0.97);
+}
+
+/* Прижимаем календарь и карандаш к центру */
+#entry-date-display {
+    margin: 0 auto;
+    
+}
+
+/* Карандаш */
+#edit-mode-btn {
+    margin: 0 auto;
+    /* Убедимся, что он виден */
+    color: var(--text-color); 
+}
+
 .date-picker-display:hover { background: var(--mood-btn-selected-bg); }
 .date-picker-display:active { transform: scale(0.97); }
 .date-picker-icon { font-size: 1em; line-height: 1; }
@@ -535,12 +546,7 @@ body {
     pointer-events: none; /* Чтобы клик шел по кнопке, а не по SVG */
 }
 
-.entry-date-wrapper {
-    /* Вместо абсолютного позиционирования делаем flex-элемент, который растягивается */
-    flex: 1; 
-    display: flex;
-    justify-content: center;
-}
+
 
 /* Корзина */
 .header-delete-btn {

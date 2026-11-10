@@ -772,7 +772,6 @@ function openEntryForm(entry = null) {
         dateText.textContent = formatPrettyDate(entryDateKey);
         isEditing = false;
 
-        saveCloseBtn.textContent = '✕';
         saveCloseBtn.title = 'Закрыть без изменений';
     } else {
         editingEntryId = null;
@@ -796,7 +795,6 @@ function openEntryForm(entry = null) {
 
         isEditing = true;
 
-        saveCloseBtn.textContent = '←';
         saveCloseBtn.title = 'Отмена (назад)';
     }
 
