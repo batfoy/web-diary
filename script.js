@@ -616,30 +616,60 @@ function updateModalState() {
 }
 
 // Обновляет иконки и доступность полей под текущее состояние
+// Обновляет иконки и доступность полей под текущее состояние
 function updateEditModeUI() {
     const modal = document.getElementById('entry-modal');
     const titleInput = document.getElementById('entry-title');
-    const textInput = document.getElementById('entry-text'); // Это теперь div
-    const saveCloseBtn = document.getElementById('save-close-btn');
+    const textInput = document.getElementById('entry-text');
     const headerDeleteBtn = document.getElementById('header-delete-btn');
     const editModeBtn = document.getElementById('edit-mode-btn');
+    const saveCloseBtn = document.getElementById('save-close-btn');
 
-    // ИСПРАВЛЕНО: используем getPlainTextFromHTML для div вместо .value
+    // Безопасное получение иконок
+    const iconBack = document.getElementById('btn-icon-back');
+    const iconCheck = document.getElementById('btn-icon-check');
+    const iconClose = document.getElementById('btn-icon-close');
+
     const plainText = getPlainTextFromHTML(textInput.innerHTML).trim();
     const isNewAndEmpty = !editingEntryId && !titleInput.value.trim() && !plainText;
     const hasContent = titleInput.value.trim() || plainText;
 
+    // Функция для переключения видимости иконок с абсолютной защитой от null
+    const showIcon = (iconToShow) => {
+        // Если хотя бы одной иконки нет в DOM (из-за кэша), выходим, чтобы не ронять приложение
+        if (!iconBack || !iconCheck || !iconClose) {
+            console.warn('⚠️ SVG-иконки не найдены в DOM! Очистите кэш (Application -> Clear site data) или обновите CACHE_VERSION в sw.js');
+            
+            // Фоллбэк: если SVG не загрузились, используем старый текстовый метод, чтобы приложение работало
+            if (saveCloseBtn) {
+                if (isNewAndEmpty) saveCloseBtn.textContent = '←';
+                else if (hasContent || editingEntryId) saveCloseBtn.textContent = '✓';
+                else saveCloseBtn.textContent = '✕';
+            }
+            return;
+        }
+
+        // Если всё хорошо, работаем с SVG
+        iconBack.style.display = 'none';
+        iconCheck.style.display = 'none';
+        iconClose.style.display = 'none';
+        
+        if (iconToShow) {
+            iconToShow.style.display = 'block';
+        }
+    };
+
     if (isEditing) {
         modal.classList.add('is-editing');
         titleInput.removeAttribute('readonly');
-        textInput.setAttribute('contenteditable', 'true'); // Разрешаем редактирование div
+        textInput.setAttribute('contenteditable', 'true'); 
         if (editModeBtn) editModeBtn.classList.add('hidden');
         
         if (isNewAndEmpty) {
-            saveCloseBtn.textContent = '←';
+            showIcon(iconBack); 
             saveCloseBtn.title = 'Отмена (назад)';
         } else {
-            saveCloseBtn.textContent = '✓';
+            showIcon(iconCheck); 
             saveCloseBtn.title = 'Сохранить и закрыть';
         }
 
@@ -652,15 +682,14 @@ function updateEditModeUI() {
     } else {
         modal.classList.remove('is-editing');
         titleInput.setAttribute('readonly', true);
-        textInput.setAttribute('contenteditable', 'false'); // Запрещаем редактирование div при просмотре
+        textInput.setAttribute('contenteditable', 'false');
         if (editModeBtn) editModeBtn.classList.remove('hidden');
         
-        saveCloseBtn.textContent = '✕';
+        showIcon(iconClose); 
         saveCloseBtn.title = 'Закрыть без изменений';
         headerDeleteBtn.classList.remove('hidden');
     }
 
-    // Показываем toolbar только в режиме редактирования
     const toolbar = document.getElementById('entry-toolbar');
     if (isEditing) {
         toolbar.classList.remove('hidden');

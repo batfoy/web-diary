@@ -12,6 +12,19 @@
 </head>
 <body>
 
+    <!-- ЗАСТАВКА -->
+    <div id="splash-screen">
+        <div class="splash-bg"></div>
+        <div class="splash-content">
+            <img src="logo-transparent.png" alt="Иконка" class="splash-icon">
+
+            <!-- Твоя картинка с надписью вместо <h1> -->
+            <img src="pages.png" alt="Страницы" class="splash-title-img">
+
+            <p class="splash-subtitle">Дневник и настроение</p>
+        </div>
+    </div>
+
     <!-- ШАПКА -->
     <header class="main-header">
         <button id="menu-btn" class="icon-btn" title="Меню">☰</button>
@@ -130,9 +143,28 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content entry-modal-content">
             <div class="entry-modal-header">
-                <button id="save-close-btn" class="save-close-btn" title="Сохранить и закрыть">✓</button>
+                <!-- Левая кнопка (Назад / Сохранить / Закрыть) -->
+                <button id="save-close-btn" class="save-close-btn" title="Сохранить и закрыть">
 
-                <!-- Обертка для календаря, чтобы он был ровно по центру -->
+                    <!-- 1. Иконка СТРЕЛКИ НАЗАД (для новой пустой записи) -->
+                    <svg id="btn-icon-back" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5"></path>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+
+                    <!-- 2. Иконка ГАЛОЧКИ (для сохранения, скрыта по умолчанию) -->
+                    <svg id="btn-icon-check" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+
+                    <!-- 3. Иконка КРЕСТИКА (для закрытия без изменений, скрыта по умолчанию) -->
+                    <svg id="btn-icon-close" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+
+                <!-- Обертка для календаря (по центру) -->
                 <div class="entry-date-wrapper">
                     <div id="entry-date-display" class="date-picker-display">
                         <span class="date-picker-icon">📅</span>
@@ -140,8 +172,23 @@
                     </div>
                 </div>
 
-                <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">✏️</button>
-                <button id="header-delete-btn" class="header-delete-btn" title="Удалить запись">🗑️</button>
+                <!-- Кнопка "Карандаш" (Редактировать) -->
+                <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+
+                <!-- Кнопка "Корзина" (Удалить) -->
+                <button id="header-delete-btn" class="header-delete-btn" title="Удалить запись">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </button>
             </div>
             <div class="entry-title-row">
                 <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
@@ -519,15 +566,3 @@
     </script>
     <script src="script.js" defer></script>
 </body>
-<!-- ЗАСТАВКА -->
-<div id="splash-screen">
-    <div class="splash-bg"></div>
-    <div class="splash-content">
-        <img src="logo-transparent.png" alt="Иконка" class="splash-icon">
-        
-        <!-- Твоя картинка с надписью вместо <h1> -->
-        <img src="pages.png" alt="Страницы" class="splash-title-img">
-        
-        <p class="splash-subtitle">Дневник и настроение</p>
-    </div>
-</div>
