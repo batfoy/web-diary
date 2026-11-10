@@ -452,6 +452,9 @@ body {
     transition: background-color 0.2s, transform 0.1s;
     user-select: none;
     flex-shrink: 0; 
+    /* Убираем абсолютное позиционирование */
+    position: static; 
+    transform: none;
 }
 .date-picker-display:hover { background: var(--mood-btn-selected-bg); }
 .date-picker-display:active { transform: scale(0.97); }
@@ -473,6 +476,7 @@ body {
     font-size: 1.3em; 
     margin-right: 5px; 
     transition: transform 0.2s; 
+    flex-shrink: 0;
 }
 .edit-btn:hover { transform: scale(1.15); }
 
@@ -505,11 +509,21 @@ body {
 .save-close-btn {
     background: var(--accent-color); color: white; border: none;
     border-radius: 50%; width: 38px; height: 38px;
-    font-size: 1.3em; font-weight: bold; cursor: pointer;
+    font-size: 1.3em; font-weight: 700; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: background-color 0.2s, transform 0.15s; flex-shrink: 0;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+    line-height: 1;
+    padding: 0;
 }
-.save-close-btn:hover { background: var(--accent-hover); transform: scale(1.1); }
+.save-close-btn:hover { background: var(--accent-hover); }
+
+.entry-date-wrapper {
+    /* Вместо абсолютного позиционирования делаем flex-элемент, который растягивается */
+    flex: 1; 
+    display: flex;
+    justify-content: center;
+}
 
 .header-delete-btn {
     background: var(--danger-bg); color: var(--danger-color);

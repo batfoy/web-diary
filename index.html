@@ -131,10 +131,15 @@
         <div class="modal-content entry-modal-content">
             <div class="entry-modal-header">
                 <button id="save-close-btn" class="save-close-btn" title="Сохранить и закрыть">✓</button>
-                <div id="entry-date-display" class="date-picker-display">
-                    <span class="date-picker-icon">📅</span>
-                    <span id="entry-date-text">Сегодня</span>
+
+                <!-- Обертка для календаря, чтобы он был ровно по центру -->
+                <div class="entry-date-wrapper">
+                    <div id="entry-date-display" class="date-picker-display">
+                        <span class="date-picker-icon">📅</span>
+                        <span id="entry-date-text">Сегодня</span>
+                    </div>
                 </div>
+
                 <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">✏️</button>
                 <button id="header-delete-btn" class="header-delete-btn" title="Удалить запись">🗑️</button>
             </div>
