@@ -105,6 +105,10 @@
     </aside>
 
     <main id="app-main">
+                <!-- Кнопка Назад (скрыта по умолчанию) -->
+        <button id="back-to-stats-btn" class="back-to-stats-btn hidden">
+            ← Назад к статистике
+        </button>
         <section class="quote-section">
             <p id="daily-quote-text">Загрузка цитаты...</p>
             <span id="daily-quote-author"></span>
@@ -123,6 +127,19 @@
             </div>
             <div id="calendar-grid-desktop" class="calendar-grid"></div>
         </section>
+                <!-- Иконка сортировки -->
+        <div class="sort-toggle-container">
+            <button id="sort-toggle-btn" class="sort-toggle-btn" title="Сортировка записей">
+                <svg id="sort-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Иконка "сначала новые" (стрелка вниз) -->
+                    <line x1="4" y1="6" x2="20" y2="6"></line>
+                    <line x1="4" y1="12" x2="14" y2="12"></line>
+                    <line x1="4" y1="18" x2="8" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        
+        <section id="entries-list" class="entries-list"></section>
         <section id="entries-list" class="entries-list"></section>
     </main>
 
@@ -393,14 +410,17 @@
     </div>
 
     <!-- МОДАЛКА КАЛЕНДАРЯ -->
-    <div id="calendar-modal" class="modal hidden">
+        <!-- МОДАЛКА КАЛЕНДАРЯ -->
+    <div id="calendar-modal" class="modal hidden fullscreen-modal">
         <div class="modal-backdrop"></div>
-        <div class="modal-content calendar-modal-content">
+        <div class="modal-content calendar-modal-content fullscreen-content">
             <div class="entry-modal-header">
                 <button id="close-calendar-btn" class="back-btn">← Назад</button>
                 <h2>Календарь</h2>
                 <span></span>
             </div>
+            
+            <!-- Поднимаем календарь наверх -->
             <div class="calendar-header">
                 <button id="prev-month-btn" class="calendar-nav">←</button>
                 <h3 id="calendar-month-label"></h3>
@@ -411,7 +431,11 @@
                 <div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
             </div>
             <div id="calendar-grid" class="calendar-grid"></div>
-            <p class="calendar-hint">Нажми на день, чтобы увидеть записи</p>
+            
+            <!-- НОВЫЙ БЛОК: Инсайты месяца -->
+            <div id="month-insights" class="month-insights">
+                <!-- Сюда JS вставит данные о лучшем/худшем дне -->
+            </div>
         </div>
     </div>
 
@@ -519,47 +543,42 @@
     </div>
 
     <!-- МОДАЛКА СТАТИСТИКИ -->
-    <div id="stats-modal" class="modal hidden">
+        <!-- МОДАЛКА СТАТИСТИКИ -->
+    <div id="stats-modal" class="modal hidden fullscreen-modal">
         <div class="modal-backdrop"></div>
-        <div class="modal-content stats-modal-content">
+        <div class="modal-content stats-modal-content fullscreen-content">
             <div class="entry-modal-header">
                 <h2>📈 Статистика</h2>
                 <button class="modal-close-btn" id="close-stats-modal">✕</button>
             </div>
 
-            <!-- Блок с кнопкой переключения -->
             <div style="padding: 10px 20px; background: var(--mood-btn-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: center;">
                 <button id="stats-mode-toggle" class="chart-mode-btn">🔍 Глубокая статистика</button>
             </div>
 
-            <!-- ОБЫЧНАЯ СТАТИСТИКА -->
-            <div id="stats-normal-body" class="stats-body">
-                <!-- Сюда JS вставит общие цифры -->
-            </div>
+            <div id="stats-normal-body" class="stats-body"></div>
 
-            <!-- ГЛУБОКАЯ СТАТИСТИКА (скрыта по умолчанию) -->
-            <!-- ГЛУБОКАЯ СТАТИСТИКА (скрыта по умолчанию) -->
-            <div id="stats-deep-body" class="stats-body hidden">
+                        <div id="stats-deep-body" class="stats-body hidden">
+                <!-- 1. График по дням недели (ТЕПЕРЬ СВЕРХУ) -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="font-size: 1em; margin: 0 0 15px 0; color: var(--text-color);">Настроение по дням недели</h3>
+                    <canvas id="weekday-chart" style="width: 100%; height: 200px; display: block; margin: 0 auto;"></canvas>
+                </div>
 
-                <!-- БЛОК ТОП-3 -->
-                <div id="top-triggers-section" style="margin-bottom: 20px;">
+                <!-- 2. Блок Топ-3 -->
+                <div id="top-triggers-section" style="margin-bottom: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                     <div id="top-good-triggers" style="margin-bottom: 15px;"></div>
                     <div id="top-bad-triggers"></div>
                 </div>
 
+                <!-- 3. Все триггеры -->
                 <h3 style="font-size: 1em; margin: 0 0 15px 0; color: var(--text-color);">Все триггеры</h3>
-
-                <!-- Фильтр -->
                 <div style="margin-bottom: 15px;">
                     <select id="trigger-filter-select" class="modal-btn secondary" style="width: 100%; padding: 10px; font-size: 0.95em;">
                         <option value="all">Все триггеры</option>
                     </select>
                 </div>
-
-                <!-- График -->
-                <canvas id="trigger-chart" style="width: 100%; height: 240px; display: block; margin: 0 auto;"></canvas>
-
-                <!-- Список -->
+                <canvas id="trigger-chart" style="width: 100%; display: block; margin: 0 auto;"></canvas>
                 <div id="trigger-stats-list" style="margin-top: 15px;"></div>
             </div>
         </div>

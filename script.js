@@ -29,17 +29,25 @@ let activeSortMode = localStorage.getItem(SORT_KEY) || 'created';
 // created | updated | mood
 let tempMood = '😐';
 let activeTriggerFilter = null;
+let sortOrder = 'desc'; // 'desc' = сначала новые, 'asc' = сначала старые
+
+let triggerChartPositions = [];
+let cameFromDeepStats = false;
 
 let tempTriggers = [];
 const AVAILABLE_TRIGGERS = [
     // Эмоции и состояния
-    '😴 Усталость', '😠 Ссора', '😢 Обида', '🤒 Болезнь', '😐 Скука',
+    '😴 Усталость', '😠 Ссора', '😢 Обида', '😐 Скука', '😨 Страх', '😰 Тревога',
     // Здоровье и тело
     '🛌 Отдых', '💤 Сон', '💪 Спорт', '🚶 Прогулка', '🍔 Еда',
     // Активности и увлечения
     '🎨 Хобби', '📚 Учёба', '💻 Работа', '☕ Кофе',
-    // Социальное и внешнее
-    '❤️ Отношения', '🎉 Праздник', '🌧️ Погода'
+    // Социальное
+    '❤️ Отношения', '🎉 Праздник', '🤒 Болезнь',
+    // Внешнее и атмосфера
+    '🌧️ Погода', '📰 Новости', '🔮 Непредсказуемость', 
+    // Позитивные состояния
+    '🛡️ Безопасность', '🧘 Спокойствие', '☀️ Радость'
 ];
 
 let currentQuoteIndex = 0;
@@ -113,10 +121,10 @@ async function hashPin(pin) {
 const appMain = document.getElementById('app-main');
 
 const MOODS = [
-    { emoji: '😭', score: 0 }, { emoji: '☹️', score: 1 }, { emoji: '😡', score: 2 },
-    { emoji: '😕', score: 3 }, { emoji: '😐', score: 4 }, { emoji: '😏', score: 5 },
-    { emoji: '😊', score: 6 }, { emoji: '😁', score: 7 }, { emoji: '🤪', score: 8 },
-    { emoji: '🥰', score: 9 }
+    { emoji: '😭', score: 1 }, { emoji: '☹️', score: 2 }, { emoji: '😡', score: 3 },
+    { emoji: '😕', score: 4 }, { emoji: '😐', score: 5 }, { emoji: '😏', score: 6 },
+    { emoji: '😊', score: 7 }, { emoji: '😁', score: 8 }, { emoji: '🤪', score: 9 },
+    { emoji: '🥰', score: 10 }
 ];
 
 const QUOTES = [
@@ -254,14 +262,16 @@ function getEntryUpdatedTime(entry) {
 function sortEntriesForList(entries) {
     const sorted = [...entries];
 
+    // Сначала сортируем по выбранному режиму (создание или изменение)
     if (activeSortMode === 'updated') {
-        return sorted.sort((a, b) => getEntryUpdatedTime(b) - getEntryUpdatedTime(a));
+        sorted.sort((a, b) => getEntryUpdatedTime(b) - getEntryUpdatedTime(a));
+    } else {
+        // По умолчанию — по дате создания
+        sorted.sort((a, b) => getEntryCreatedTime(b) - getEntryCreatedTime(a));
     }
 
-    
 
-    // По умолчанию — по дате создания / публикации
-    return sorted.sort((a, b) => getEntryCreatedTime(b) - getEntryCreatedTime(a));
+    return sorted;
 }
 
 function formatEditedDate(timestamp) {
@@ -312,6 +322,7 @@ function setSortMode(mode) {
 async function migrateEntriesTags() {
     let needsSave = false;
     diaryEntries.forEach(entry => {
+        // Добавляем теги, если их нет
         if (!entry.tags || entry.tags.length === 0) {
             entry.tags = extractTags(entry.content);
             needsSave = true;
@@ -590,6 +601,8 @@ async function saveCurrentEntry() {
     const fontWeight = editor.style.fontWeight || '';
     const fontStyle = editor.style.fontStyle || '';
 
+    
+
     if (!editingEntryId) {
         const newEntry = {
             id: now.toString(), date: finalDate, createdAt: now, updatedAt: now, editedAt: null,
@@ -597,7 +610,8 @@ async function saveCurrentEntry() {
             mood: tempMood, wordCount, tags, fontSize,
             lineHeight, fontFamily, fontWeight, fontStyle,
             background: currentBgId,
-            triggers: tempTriggers 
+            triggers: tempTriggers
+            
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -610,7 +624,8 @@ async function saveCurrentEntry() {
                 mood: tempMood, wordCount, tags, fontSize,
                 lineHeight, fontFamily, fontWeight, fontStyle,
                 background: currentBgId,
-                triggers: tempTriggers 
+                triggers: tempTriggers
+                 
             };
         }
     }
@@ -751,6 +766,7 @@ function openEntryForm(entry = null) {
 
     if (entry) {
         tempTriggers = entry.triggers ? [...entry.triggers] : [];
+
         editingEntryId = entry.id;
         tempMood = entry.mood;
         titleInput.value = entry.title || '';
@@ -934,6 +950,8 @@ async function handleSaveEntry() {
     const fontWeight = editor.style.fontWeight || '';
     const fontStyle = editor.style.fontStyle || '';
 
+
+
     if (editingEntryId) {
         const index = diaryEntries.findIndex(e => e.id === editingEntryId);
         if (index !== -1) {
@@ -943,7 +961,8 @@ async function handleSaveEntry() {
                 mood: tempMood, wordCount, tags, fontSize,
                 lineHeight, fontFamily, fontWeight, fontStyle,
                 background: currentBgId,
-                triggers: tempTriggers 
+                triggers: tempTriggers
+                
             };
             showToast('Запись обновлена', 'success');
         } else {
@@ -956,7 +975,8 @@ async function handleSaveEntry() {
             mood: tempMood, wordCount, tags, fontSize,
             lineHeight, fontFamily, fontWeight, fontStyle,
             background: currentBgId,
-            triggers: tempTriggers 
+            triggers: tempTriggers
+            
         };
         diaryEntries.unshift(newEntry);
         editingEntryId = newEntry.id;
@@ -1152,14 +1172,13 @@ function renderEntries() {
     const list = document.getElementById('entries-list');
     list.innerHTML = '';
 
-    const hasAnyFilter = !!(activeTagFilter || activeDateFilter || activeMoodFilter || searchQuery);
+    const hasAnyFilter = !!(activeTagFilter || activeDateFilter || activeMoodFilter || activeTriggerFilter || searchQuery);
     appMain.classList.toggle('search-active', hasAnyFilter);
 
     let filtered = diaryEntries;
     if (activeDateFilter) filtered = filtered.filter(entry => getDateKey(entry.date) === activeDateFilter);
     if (activeTagFilter) filtered = filtered.filter(entry => entry.tags && entry.tags.includes(activeTagFilter));
     if (activeMoodFilter) filtered = filtered.filter(entry => entry.mood === activeMoodFilter);
-    // НОВОЕ: Фильтр по триггеру
     if (activeTriggerFilter) filtered = filtered.filter(entry => entry.triggers && entry.triggers.includes(activeTriggerFilter));
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -1171,6 +1190,7 @@ function renderEntries() {
 
     const sorted = sortEntriesForList(filtered);
 
+    // Баннеры фильтров (как было)
     if (activeDateFilter) {
         const prettyDate = new Date(activeDateFilter + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         const banner = document.createElement('div');
@@ -1201,79 +1221,124 @@ function renderEntries() {
         if (activeDateFilter) msg = 'В этот день записей нет';
         else if (activeTagFilter) msg = `Нет записей с тегом ${activeTagFilter}`;
         else if (activeMoodFilter) msg = `Нет записей с настроением ${activeMoodFilter}`;
+        else if (activeTriggerFilter) msg = `Нет записей с триггером ${activeTriggerFilter}`;
         else if (searchQuery) msg = 'Ничего не найдено';
         empty.textContent = msg;
         list.appendChild(empty);
         return;
     }
 
+    // --- ГРУППИРОВКА ПО ДАТЕ ---
+    const groups = {};
     sorted.forEach(entry => {
-        const card = document.createElement('div');
-        card.className = 'entry-card';
-        card.dataset.entryId = entry.id;
+        const dateKey = getDateKey(entry.date);
+        if (!groups[dateKey]) groups[dateKey] = [];
+        groups[dateKey].push(entry);
+    });
 
-        // Дата берем из date (дата создания), а не updatedAt
-        const dateObj = new Date(entry.date);
-        const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-        const editedHtml = getEditedLabelHtml(entry);
+        // Сортируем ключи (даты) в зависимости от sortOrder
+    const sortedDateKeys = Object.keys(groups).sort((a, b) => {
+        if (sortOrder === 'asc') {
+            return new Date(a) - new Date(b); // Сначала старые
+        } else {
+            return new Date(b) - new Date(a); // Сначала новые
+        }
+    });
 
-        const tagsHtml = (entry.tags && entry.tags.length > 0) 
-        ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
-        : '';
+    sortedDateKeys.forEach(dateKey => {
+        const entriesOfDay = groups[dateKey];
+        
+        // Контейнер для группы
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'entries-date-group';
 
-        const triggersHtml = (entry.triggers && entry.triggers.length > 0) 
-        ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.triggers.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-selected-bg); padding:2px 8px; border-radius:10px; color:var(--text-color); border: 1px solid var(--border-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
-        : '';
+        // Заголовок с датой
+        const dateHeader = document.createElement('div');
+        dateHeader.className = 'entries-date-header';
+        
+        // Красивая дата (если сегодня/вчера — пишем словами, иначе — дату)
+        const todayKey = getDateKey(new Date());
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = getDateKey(yesterday);
 
-        const plainContent = getPlainTextFromHTML(entry.content);
-        // Убираем #теги из превью, чтобы не дублировать плашки
-        const textWithoutTags = plainContent.replace(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g, '').trim();
-        const previewText = textWithoutTags.length > 120 ? textWithoutTags.substring(0, 120) + '...' : textWithoutTags;
+        let headerText;
+        if (dateKey === todayKey) headerText = 'Сегодня';
+        else if (dateKey === yesterdayKey) headerText = 'Вчера';
+        else {
+            headerText = new Date(dateKey + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        dateHeader.textContent = headerText;
+        groupContainer.appendChild(dateHeader);
 
-        card.innerHTML = `
-            <div class="entry-header">
-                <span class="entry-date-line">
-                    <span>${dateStr}</span>
-                    ${editedHtml}
-                </span>
-                <span style="font-size:1.2em">${entry.mood}</span>
-            </div>
-            ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
-            <div class="entry-text">${previewText ? escapeHtml(previewText) : '<span style="color:var(--text-muted); font-style:italic;">(Запись без текста)</span>'}</div>
-            ${triggersHtml}
-            ${tagsHtml}
-        `;
+        // Карточки записей этого дня
+        entriesOfDay.forEach(entry => {
+            const card = document.createElement('div');
+            card.className = 'entry-card';
+            card.dataset.entryId = entry.id;
 
-        // ... далее идет код с pressTimer и обработчиками кликов (оставь его без изменений) ...
+            // В карточке показываем ТОЛЬКО ВРЕМЯ (без даты)
+            const timeStr = new Date(entry.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            const editedHtml = getEditedLabelHtml(entry);
 
-        let pressTimer = null;
-        let isLongPress = false;
+            const tagsHtml = (entry.tags && entry.tags.length > 0) 
+            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
+            : '';
 
-        const startPress = () => {
-            isLongPress = false;
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                enterMultiDeleteMode(entry.id);
-            }, 500);
-        };
-        const endPress = () => { clearTimeout(pressTimer); };
-        const cancelPress = () => { clearTimeout(pressTimer); };
+            const triggersHtml = (entry.triggers && entry.triggers.length > 0) 
+            ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.triggers.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-selected-bg); padding:2px 8px; border-radius:10px; color:var(--text-color); border: 1px solid var(--border-color);">${escapeHtml(t)}</span>`).join('')}</div>` 
+            : '';
 
-        card.addEventListener('touchstart', startPress, { passive: true });
-        card.addEventListener('touchend', endPress);
-        card.addEventListener('touchmove', cancelPress);
-        card.addEventListener('touchcancel', cancelPress);
-        card.addEventListener('mousedown', startPress);
-        card.addEventListener('mouseup', endPress);
-        card.addEventListener('mouseleave', cancelPress);
+            const plainContent = getPlainTextFromHTML(entry.content);
+            const textWithoutTags = plainContent.replace(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g, '').trim();
+            const previewText = textWithoutTags.length > 120 ? textWithoutTags.substring(0, 120) + '...' : textWithoutTags;
 
-        card.addEventListener('click', () => {
-            if (isLongPress) { isLongPress = false; return; }
-            if (multiDeleteMode) { toggleEntrySelection(entry.id); return; }
-            openEntryForm(entry);
+            card.innerHTML = `
+                <div class="entry-header">
+                    <span class="entry-date-line">
+                        <span>${timeStr}</span>
+                        ${editedHtml}
+                    </span>
+                    <span style="font-size:1.2em">${entry.mood}</span>
+                </div>
+                ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
+                <div class="entry-text">${previewText ? escapeHtml(previewText) : '<span style="color:var(--text-muted); font-style:italic;">(Запись без текста)</span>'}</div>
+                ${triggersHtml}
+                ${tagsHtml}
+            `;
+
+            // --- Обработчики кликов и long press ---
+            let pressTimer = null;
+            let isLongPress = false;
+
+            const startPress = () => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    enterMultiDeleteMode(entry.id);
+                }, 500);
+            };
+            const endPress = () => { clearTimeout(pressTimer); };
+            const cancelPress = () => { clearTimeout(pressTimer); };
+
+            card.addEventListener('touchstart', startPress, { passive: true });
+            card.addEventListener('touchend', endPress);
+            card.addEventListener('touchmove', cancelPress);
+            card.addEventListener('touchcancel', cancelPress);
+            card.addEventListener('mousedown', startPress);
+            card.addEventListener('mouseup', endPress);
+            card.addEventListener('mouseleave', cancelPress);
+
+            card.addEventListener('click', () => {
+                if (isLongPress) { isLongPress = false; return; }
+                if (multiDeleteMode) { toggleEntrySelection(entry.id); return; }
+                openEntryForm(entry);
+            });
+
+            groupContainer.appendChild(card);
         });
 
-        list.appendChild(card);
+        list.appendChild(groupContainer);
     });
 }
 
@@ -1444,7 +1509,33 @@ function renderCalendar() {
             const dayEntries = diaryEntries.filter(e => getDateKey(e.date) === dateStr);
 
             if (dayEntries.length > 0) {
-                cell.textContent = dayEntries[0].mood;
+                            if (dayEntries.length > 0) {
+                // Считаем среднее настроение за день
+                let totalScore = 0;
+                let validMoodsCount = 0;
+                
+                dayEntries.forEach(e => {
+                    const score = getMoodScore(e.mood);
+                    if (score !== null) {
+                        totalScore += score;
+                        validMoodsCount++;
+                    }
+                });
+
+                if (validMoodsCount > 0) {
+                    const avgScore = totalScore / validMoodsCount;
+                    const avgEmoji = MOODS[Math.round(avgScore)]?.emoji || '😐';
+                    cell.textContent = avgEmoji;
+                } else {
+                    cell.textContent = dayEntries[0].mood; // fallback
+                }
+
+                cell.classList.add('has-entry');
+                cell.title = `Записей: ${dayEntries.length}`;
+            } else {
+                cell.textContent = day;
+                cell.classList.add('no-entry');
+            }
                 cell.classList.add('has-entry');
                 cell.title = `Записей: ${dayEntries.length}`;
             } else {
@@ -1458,6 +1549,7 @@ function renderCalendar() {
     }
     fillGrid('calendar-grid');
     fillGrid('calendar-grid-desktop');
+    renderMonthInsights();
 }
 
 function handleDayClick(dateStr) {
@@ -1485,6 +1577,8 @@ function applyDateFilter(dateKey) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const prettyDate = new Date(dateKey + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
     showToast(`Записи за ${prettyDate}`, 'info');
+    cameFromDeepStats = false;
+    document.getElementById('back-to-stats-btn').classList.add('hidden');
 }
 
 function clearDateFilter() { activeDateFilter = null; renderEntries(); }
@@ -1577,6 +1671,9 @@ searchInput.addEventListener('input', (e) => {
     activeDateFilter = null;
     activeMoodFilter = null;
     activeTriggerFilter = null; // НОВОЕ
+
+    cameFromDeepStats = false;
+    document.getElementById('back-to-stats-btn').classList.add('hidden');
     
     renderEntries();
 });
@@ -2095,7 +2192,7 @@ function openStatsModal() {
     });
     const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
 
-    // Считаем среднее настроение
+    // Считаем среднее настроение за всё время
     let totalMoodScore = 0;
     let moodEntriesCount = 0;
     diaryEntries.forEach(entry => {
@@ -2108,17 +2205,67 @@ function openStatsModal() {
     const avgMood = moodEntriesCount > 0 ? (totalMoodScore / moodEntriesCount) : 0;
     const avgMoodEmoji = MOODS[Math.round(avgMood)]?.emoji || '😐';
 
+    // --- РАСЧЕТЫ ДЛЯ НОВЫХ ПОКАЗАТЕЛЕЙ ---
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // 1. Среднее за текущий месяц
+    let monthTotalScore = 0;
+    let monthCount = 0;
+    diaryEntries.forEach(entry => {
+        const d = new Date(entry.date);
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+            const score = getMoodScore(entry.mood);
+            if (score !== null) { monthTotalScore += score; monthCount++; }
+        }
+    });
+    const avgMonth = monthCount > 0 ? (monthTotalScore / monthCount) : 0;
+    const avgMonthEmoji = MOODS[Math.round(avgMonth)]?.emoji || '😐';
+
+    // 2. Лучшее и худшее за последние 7 дней
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    
+    let weekBest = null;
+    let weekWorst = null;
+    
+    diaryEntries.forEach(entry => {
+        const d = new Date(entry.date);
+        if (d >= sevenDaysAgo) {
+            const score = getMoodScore(entry.mood);
+            if (score !== null) {
+                if (!weekBest || score > weekBest.score) weekBest = { emoji: entry.mood, score: score };
+                if (!weekWorst || score < weekWorst.score) weekWorst = { emoji: entry.mood, score: score };
+            }
+        }
+    });
+
+    // --- ФОРМИРУЕМ HTML ---
     const longestEntry = [...diaryEntries].sort((a, b) => (b.wordCount || 0) - (a.wordCount || 0))[0];
     const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
     document.getElementById('stats-normal-body').innerHTML = `
         <div class="stats-item"><span class="stats-label">Всего записей</span><span class="stats-value large">${totalEntries}</span></div>
-        <div class="stats-item"><span class="stats-label">Всего слов</span><span class="stats-value">${totalWords.toLocaleString('ru-RU')}</span></div>
+        
+        <div class="stats-item">
+            <span class="stats-label">Лучшее за неделю</span>
+            <span class="stats-value" style="color: var(--accent-color); font-size: 1.2em;">${weekBest ? weekBest.emoji : '—'}</span>
+        </div>
+        <div class="stats-item">
+            <span class="stats-label">Худшее за неделю</span>
+            <span class="stats-value" style="color: var(--danger-color); font-size: 1.2em;">${weekWorst ? weekWorst.emoji : '—'}</span>
+        </div>
+
         <div class="stats-item"><span class="stats-label">Средняя длина записи</span><span class="stats-value">${avgWords} слов</span></div>
         <div class="stats-item"><span class="stats-label">Дней с записями</span><span class="stats-value">${daysWithEntries} из ${daysSinceFirst} (${activityPercent}%)</span></div>
         <div class="stats-item"><span class="stats-label">Самое частое настроение</span><span class="stats-value">${topMood[0]} (${topMood[1]} ${topMood[1] === 1 ? 'раз' : 'раза'})</span></div>
-        <div class="stats-item"><span class="stats-label">Среднее настроение за всё время</span><span class="stats-value">${avgMoodEmoji} (${avgMood.toFixed(1)})</span></div>
+        
+        <div class="stats-item"><span class="stats-label">Среднее настроение (всё время)</span><span class="stats-value">${avgMoodEmoji} (${avgMood.toFixed(1)})</span></div>
+        <div class="stats-item"><span class="stats-label">Среднее настроение (месяц)</span><span class="stats-value">${monthCount > 0 ? `${avgMonthEmoji} (${avgMonth.toFixed(1)})` : '—'}</span></div>
+
         <div class="stats-item"><span class="stats-label">Самая длинная запись</span><span class="stats-value">${longestEntry.wordCount || 0} слов</span></div>
         <div class="stats-item"><span class="stats-label">Самая короткая запись</span><span class="stats-value">${shortestEntry.wordCount || 0} слов</span></div>
         <div class="stats-item"><span class="stats-label">Первая запись</span><span class="stats-value">${firstDateStr}</span></div>
@@ -2230,31 +2377,17 @@ function renderDeepStats() {
     // Отрисовка графика
     drawTriggerChart(displayData);
 
-    // Текстовый вывод (под графиком)
-    const list = document.getElementById('trigger-stats-list');
-    list.innerHTML = '';
-    displayData.forEach(t => {
-        const item = document.createElement('div');
-        item.style.cssText = 'display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85em; cursor: pointer;'; // Добавили cursor: pointer
-        item.innerHTML = `
-            <span style="font-weight: 500;">${t.trigger}</span>
-            <span style="color: var(--accent-color); font-weight: 600;">${t.emoji} ${t.avgScore.toFixed(1)} <span style="font-size: 0.85em; color: var(--text-muted); font-weight: 400;">(${t.count} раз)</span></span>
-        `;
-
-        // ДОБАВИЛИ ОБРАБОТЧИК КЛИКА
-        item.onclick = () => {
-            closeStatsModal();
-            applyTriggerFilter(t.trigger);
-        };
-
-        list.appendChild(item);
-    });
 
     if (sortedTriggers.length === 0) {
         document.getElementById('trigger-chart').classList.add('hidden');
         list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0;">Пока нет записей с триггерами.</p>';
     } else {
         document.getElementById('trigger-chart').classList.remove('hidden');
+    }
+    
+    // Проверка, что мы на вкладке "Глубокая статистика", прежде чем рисовать график по дням
+    if (!document.getElementById('stats-deep-body').classList.contains('hidden')) {
+        drawWeekdayChart();
     }
 }
 
@@ -2263,12 +2396,23 @@ function drawTriggerChart(triggerData) {
     if (!canvas || canvas.classList.contains('hidden')) return;
 
     const ctx = canvas.getContext('2d');
+    
+    // 1. ДИНАМИЧЕСКИЙ РАСЧЕТ ВЫСОТЫ
+    // Базовый отступ (сверху/снизу) + по 35px на каждый триггер (минимум 200px)
+    const padding = 40; 
+    const rowHeight = 35; 
+    const calculatedHeight = Math.max(200, triggerData.length * rowHeight + padding);
+    
+    // Задаем высоту элементу в HTML, чтобы он растянул родительский блок
+    canvas.style.height = calculatedHeight + 'px';
+
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
 
     const width = rect.width;
-    const height = 200;
+    const height = calculatedHeight; // Используем новую высоту
     const dpr = window.devicePixelRatio || 1;
+    
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2277,26 +2421,25 @@ function drawTriggerChart(triggerData) {
     const textColor = styles.getPropertyValue('--text-color').trim() || '#333';
     const gridColor = styles.getPropertyValue('--border-color').trim() || '#ddd';
 
-    // Цвета для полосок (независимо от темы, чтобы было наглядно)
-    const colorGood = '#4CAF50'; // Зелёный
-    const colorMid = '#FFC107';  // Жёлтый
-    const colorBad = '#F44336';  // Красный
 
     ctx.clearRect(0, 0, width, height);
 
     if (triggerData.length === 0) return;
 
+    // 2. КООРДИНАТЫ
     const left = 110, right = 20, top = 10, bottom = 20;
     const chartWidth = width - left - right;
+    // Высота области для столбиков теперь тоже динамическая
     const chartHeight = height - top - bottom;
-
+    
+    // Высота одного столбика (с учетом отступа)
     const barHeight = Math.min(chartHeight / triggerData.length, 30);
-    const maxScore = 9;
+    const maxScore = 10;
 
     // Сетка
-    for (let i = 0; i <= 3; i++) {
-        const score = i * 3;
-        const x = left + (score / maxScore) * chartWidth;
+        // Сетка от 1 до 10
+    for (let i = 1; i <= 10; i += 3) {
+        const x = left + (i / 10) * chartWidth;
         ctx.strokeStyle = gridColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -2307,13 +2450,27 @@ function drawTriggerChart(triggerData) {
         ctx.fillStyle = textColor;
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(score, x, top + chartHeight + 15);
+        ctx.fillText(i, x, top + chartHeight + 15);
     }
 
     // Полоски
+        // Полоски
+    triggerChartPositions = []; // Сбрасываем позиции перед отрисовкой
+
     triggerData.forEach((item, index) => {
-        const y = top + index * barHeight + 5;
-        const barW = (item.avgScore / maxScore) * chartWidth;
+        const y = top + index * (chartHeight / triggerData.length) + 5; 
+            // Нормализация от 1 до 10 (чтобы 0 не пропадал, а был маленькой полоской)
+        const normalizedScore = Math.max(1, item.avgScore); // Минимум 1
+        const barW = (normalizedScore / 10) * chartWidth;
+
+        // Сохраняем координаты для клика (X: от left до width-right, Y: от y до y + barHeight)
+        triggerChartPositions.push({
+            trigger: item.trigger,
+            xStart: left,
+            xEnd: width - right,
+            yStart: y,
+            yEnd: y + barHeight
+        });
 
         // Название триггера
         ctx.fillStyle = textColor;
@@ -2322,14 +2479,18 @@ function drawTriggerChart(triggerData) {
         ctx.textBaseline = 'middle';
         ctx.fillText(item.trigger, left - 10, y + barHeight / 2);
 
-        // ВЫБОР ЦВЕТА В ЗАВИСИМОСТИ ОТ БАЛЛА
+                // Выбор цвета (5 градаций, как в weekday-chart)
         let barColor;
-        if (item.avgScore >= 6) {
-            barColor = colorGood;
+        if (item.avgScore >= 8) {
+            barColor = '#1B5E20';      // 8–9: Темно-зеленый (Супер)
+        } else if (item.avgScore >= 6) {
+            barColor = '#8BC34A';      // 6–7: Светло-зеленый (Хорошо)
         } else if (item.avgScore >= 4) {
-            barColor = colorMid;
+            barColor = '#0288D1';      // 4–5: Темно-голубой (Так себе)
+        } else if (item.avgScore >= 2) {
+            barColor = '#FF9800';      // 2–3: Оранжевый (Плохо)
         } else {
-            barColor = colorBad;
+            barColor = '#F44336';      // 0–1: Красный (Ужасно)
         }
 
         // Полоска
@@ -2338,8 +2499,7 @@ function drawTriggerChart(triggerData) {
         ctx.roundRect(left, y, barW, barHeight - 10, [0, 4, 4, 0]);
         ctx.fill();
 
-        // Значение (цифра + эмодзи)
-        // Если полоска короткая (меньше 30px), пишем чёрным снаружи, чтобы не сливалось
+        // Значение
         if (barW < 30) {
             ctx.fillStyle = textColor;
             ctx.textAlign = 'left';
@@ -2355,6 +2515,30 @@ function drawTriggerChart(triggerData) {
 // Обработчик фильтра
 document.getElementById('trigger-filter-select').addEventListener('change', () => {
     renderDeepStats();
+});
+
+// Обработчик клика по графику триггеров
+document.getElementById('trigger-chart').addEventListener('click', (e) => {
+    const canvas = e.target;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Координаты клика относительно canvas (с учетом скролла и DPR)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    // Проверяем, в какой столбик попали
+    for (const pos of triggerChartPositions) {
+        // Проверяем попадание по X (хотя бы в зону графика) и по Y (строго в строку)
+        // Мы берем всю ширину от left до right, так как пользователь может кликнуть и по пустому месту справа
+        if (clickX >= pos.xStart - 100 && clickX <= pos.xEnd && clickY >= pos.yStart && clickY <= pos.yEnd) {
+            closeStatsModal();
+            applyTriggerFilter(pos.trigger);
+            return;
+        }
+    }
 });
 
 
@@ -2420,6 +2604,8 @@ function applyTagFilter(tag) {
     renderEntries();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast(`Показаны записи: ${tag}`, 'info');
+    cameFromDeepStats = false;
+    document.getElementById('back-to-stats-btn').classList.add('hidden');
 }
 
 function applyTriggerFilter(trigger) {
@@ -2430,6 +2616,9 @@ function applyTriggerFilter(trigger) {
     searchQuery = '';
     document.getElementById('search-input').value = '';
     if (multiDeleteMode) exitMultiDeleteMode();
+    
+    cameFromDeepStats = true; // Запоминаем, что пришли из статистики
+    document.getElementById('back-to-stats-btn').classList.remove('hidden'); // Показываем кнопку
     
     appMain.classList.add('search-active');
     renderEntries();
@@ -2475,6 +2664,8 @@ function applyMoodFilter(emoji) {
     renderEntries();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast(`Записи с настроением ${emoji}`, 'info');
+    cameFromDeepStats = false;
+    document.getElementById('back-to-stats-btn').classList.add('hidden');
 }
 
 function clearMoodFilter() { activeMoodFilter = null; renderEntries(); }
@@ -3409,6 +3600,8 @@ function renderEmojiGrid(packId) {
     });
 }
 
+
+
 // Обработчик закрытия панели по галочке
 document.getElementById('close-toolbar-panel').onclick = closeToolbarPanel;
 
@@ -3506,6 +3699,25 @@ document.querySelector('#templates-modal .modal-backdrop').onclick = closeTempla
 document.querySelectorAll('.template-item').forEach(btn => {
     btn.onclick = () => applyTemplate(btn.dataset.template);
 });
+
+// Кнопка возврата к глубокой статистике
+document.getElementById('back-to-stats-btn').onclick = () => {
+    // 1. Сбрасываем фильтр
+    activeTriggerFilter = null;
+    cameFromDeepStats = false;
+    document.getElementById('back-to-stats-btn').classList.add('hidden');
+    renderEntries();
+    
+    // 2. Открываем статистику снова и сразу переключаем на глубокий режим
+    openStatsModal();
+    
+    // Небольшая задержка, чтобы модалка успела открыться, затем переключаем режим
+    setTimeout(() => {
+        if (currentStatsMode === 'normal') {
+            document.getElementById('stats-mode-toggle').click();
+        }
+    }, 50);
+};
 
 // === 😊 МОДАЛКА НАСТРОЕНИЯ (закрытие) ===
 function closeMoodModal() {
@@ -3705,8 +3917,235 @@ document.querySelectorAll('.table-size-btn[data-rows]').forEach(btn => {
 document.getElementById('table-remove-btn')?.addEventListener('click', removeTable);
 
 document.getElementById('trigger-filter-select').addEventListener('change', () => {
-    renderSmartStats();
+    renderDeepStats();
 });
+
+// Обработчик кнопки сортировки
+document.getElementById('sort-toggle-btn').onclick = () => {
+    sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+    
+    // Меняем иконку (визуально переворачиваем)
+    const icon = document.getElementById('sort-icon');
+    if (sortOrder === 'asc') {
+        // Стрелка вверх (сначала старые)
+        icon.innerHTML = `
+            <line x1="4" y1="18" x2="20" y2="18"></line>
+            <line x1="4" y1="12" x2="14" y2="12"></line>
+            <line x1="4" y1="6" x2="8" y2="6"></line>
+        `;
+    } else {
+        // Стрелка вниз (сначала новые)
+        icon.innerHTML = `
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="12" x2="14" y2="12"></line>
+            <line x1="4" y1="18" x2="8" y2="18"></line>
+        `;
+    }
+    
+    renderEntries();
+};
+
+function drawWeekdayChart() {
+    const canvas = document.getElementById('weekday-chart');
+    if (!canvas || canvas.classList.contains('hidden')) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+
+    const width = rect.width;
+    const height = 220; // Увеличили высоту, чтобы влезли эмодзи сверху
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const styles = getComputedStyle(document.body);
+    const textColor = styles.getPropertyValue('--text-color').trim() || '#333';
+    const gridColor = styles.getPropertyValue('--border-color').trim() || '#ddd';
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Считаем среднее по дням недели (0 - Вс, 1 - Пн ... 6 - Сб)
+    const weekdayData = [0,0,0,0,0,0,0].map(() => ({ total: 0, count: 0 }));
+    
+    diaryEntries.forEach(entry => {
+        const d = new Date(entry.date);
+        const dayOfWeek = d.getDay();
+        const score = getMoodScore(entry.mood);
+        if (score !== null) {
+            weekdayData[dayOfWeek].total += score;
+            weekdayData[dayOfWeek].count++;
+        }
+    });
+
+    const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    const left = 30, right = 10, top = 30, bottom = 30; // top увеличили для эмодзи
+    const chartWidth = width - left - right;
+    const chartHeight = height - top - bottom;
+    const barSpacing = chartWidth / 7;
+    const barWidth = Math.min(barSpacing * 0.6, 30);
+    const maxScore = 10;
+
+    // Сетка
+    for (let i = 0; i <= 3; i++) {
+        const score = i * 3;
+        const y = top + chartHeight - (score / maxScore) * chartHeight;
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(width - right, y);
+        ctx.stroke();
+
+        ctx.fillStyle = textColor;
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(score, left - 5, y + 4);
+    }
+
+    // Бары
+    weekdayData.forEach((data, index) => {
+        const avgScore = data.count > 0 ? data.total / data.count : 0;
+        const barHeight = (avgScore / maxScore) * chartHeight;
+        const x = left + index * barSpacing + (barSpacing - barWidth) / 2;
+        const y = top + chartHeight - barHeight;
+
+        if (data.count > 0) {
+            // Определяем цвет и эмодзи по баллу
+            let barColor;
+            let emoji;
+            
+            if (avgScore >= 8) { barColor = '#1B5E20'; emoji = '🤩'; }       // Супер (темно-зеленый)
+            else if (avgScore >= 6) { barColor = '#8BC34A'; emoji = '😊'; }    // Хорошо (светло-зеленый)
+            else if (avgScore >= 4) { barColor = '#0288D1'; emoji = '😐'; }    // Так себе (темно-голубой)
+            else if (avgScore >= 2) { barColor = '#FF9800'; emoji = '🙁'; }    // Плохо (оранжевый)
+            else { barColor = '#F44336'; emoji = '😩'; }                       // Ужасно (красный)
+
+            // Рисуем столбец
+            ctx.fillStyle = barColor;
+            ctx.beginPath();
+            ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
+            ctx.fill();
+
+            // Эмодзи над столбцом
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = textColor;
+            ctx.fillText(emoji, x + barWidth / 2, y - 6);
+        } else {
+            // Пустой день (нет записей)
+            ctx.fillStyle = gridColor;
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.roundRect(x, top + chartHeight - 2, barWidth, 2, [0, 0, 0, 0]);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Подписи дней недели
+        ctx.fillStyle = textColor;
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(weekdays[index], x + barWidth / 2, top + chartHeight + 8);
+    });
+}
+
+function renderMonthInsights() {
+    const container = document.getElementById('month-insights');
+    if (!container) return;
+
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+
+    // Фильтруем записи за выбранный месяц
+    const monthEntries = diaryEntries.filter(entry => {
+        const d = new Date(entry.date);
+        return d.getMonth() === month && d.getFullYear() === year;
+    });
+
+    if (monthEntries.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0;">В этом месяце пока нет записей.</p>';
+        return;
+    }
+
+    // Группируем по дням, чтобы найти лучший и худший день
+    const days = {};
+    monthEntries.forEach(entry => {
+        const dayKey = getDateKey(entry.date);
+        if (!days[dayKey]) days[dayKey] = [];
+        days[dayKey].push(entry);
+    });
+
+    let bestDay = null;
+    let worstDay = null;
+
+    for (const [dayKey, entries] of Object.entries(days)) {
+        let total = 0;
+        let count = 0;
+        entries.forEach(e => {
+            const score = getMoodScore(e.mood);
+            if (score !== null) { total += score; count++; }
+        });
+        if (count === 0) continue;
+        
+        const avgScore = total / count;
+        const avgEmoji = MOODS[Math.round(avgScore)]?.emoji || '😐';
+
+        const dayData = {
+            date: dayKey,
+            avgScore: avgScore,
+            emoji: avgEmoji,
+            entries: entries
+        };
+
+        if (!bestDay || avgScore > bestDay.avgScore) bestDay = dayData;
+        if (!worstDay || avgScore < worstDay.avgScore) worstDay = dayData;
+    }
+
+    let html = '';
+
+    // Функция для генерации карточки
+    const createCard = (data, isBest) => {
+        if (!data) return '';
+        
+        // Берем самую длинную запись этого дня для превью
+        const mainEntry = data.entries.sort((a, b) => (b.wordCount || 0) - (a.wordCount || 0))[0];
+        const plainText = getPlainTextFromHTML(mainEntry.content);
+        const preview = plainText.length > 80 ? plainText.substring(0, 80) + '...' : plainText;
+
+        const triggersHtml = (mainEntry.triggers && mainEntry.triggers.length > 0)
+            ? `<div class="insight-triggers">${mainEntry.triggers.map(t => `<span class="insight-trigger-chip">${escapeHtml(t)}</span>`).join('')}</div>`
+            : '';
+
+        const dateObj = new Date(data.date + 'T12:00:00');
+        const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+
+        return `
+            <div class="insight-card ${isBest ? '' : 'bad'}">
+                <div class="insight-header">
+                    <span class="insight-date">${isBest ? '🌟 Лучший день' : '⚠️ Худший день'}: ${dateStr}</span>
+                    <span class="insight-mood">${data.emoji}</span>
+                </div>
+                <div class="insight-content">${preview ? escapeHtml(preview) : '<i>(Без текста)</i>'}</div>
+                ${triggersHtml}
+            </div>
+        `;
+    };
+
+    if (bestDay) html += createCard(bestDay, true);
+    if (worstDay && bestDay && worstDay.date !== bestDay.date) {
+        html += createCard(worstDay, false);
+    } else if (worstDay && !bestDay) {
+        html += createCard(worstDay, false);
+    }
+
+    // Заголовок
+    container.innerHTML = `<h3>Инсайты месяца</h3>` + (html || '<p style="text-align:center; color:var(--text-muted);">Недостаточно данных для анализа.</p>');
+}
+
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {
@@ -3740,5 +4179,6 @@ window.addEventListener('load', () => {
         }
     }, 2000); // 1.5 секунды — показываем заставку
 });
+
 
 initApp();
