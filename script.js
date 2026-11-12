@@ -2236,8 +2236,12 @@ function openStatsModal() {
         if (d >= sevenDaysAgo) {
             const score = getMoodScore(entry.mood);
             if (score !== null) {
-                if (!weekBest || score > weekBest.score) weekBest = { emoji: entry.mood, score: score };
-                if (!weekWorst || score < weekWorst.score) weekWorst = { emoji: entry.mood, score: score };
+                if (!weekBest || score > weekBest.score) {
+                    weekBest = { emoji: entry.mood, score: score, date: entry.date };
+                }
+                if (!weekWorst || score < weekWorst.score) {
+                    weekWorst = { emoji: entry.mood, score: score, date: entry.date };
+                }
             }
         }
     });
@@ -2250,14 +2254,26 @@ function openStatsModal() {
     document.getElementById('stats-normal-body').innerHTML = `
         <div class="stats-item"><span class="stats-label">Всего записей</span><span class="stats-value large">${totalEntries}</span></div>
         
-        <div class="stats-item">
-            <span class="stats-label">Лучшее за неделю</span>
-            <span class="stats-value" style="color: var(--accent-color); font-size: 1.2em;">${weekBest ? weekBest.emoji : '—'}</span>
-        </div>
-        <div class="stats-item">
-            <span class="stats-label">Худшее за неделю</span>
-            <span class="stats-value" style="color: var(--danger-color); font-size: 1.2em;">${weekWorst ? weekWorst.emoji : '—'}</span>
-        </div>
+        
+            <div class="stats-item">
+                <span class="stats-label">Лучшее за неделю</span>
+                <span class="stats-value" style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.8em; color: var(--text-muted);">
+                        ${weekBest ? new Date(weekBest.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : ''}
+                    </span>
+                    <span style="color: var(--accent-color); font-size: 1.2em;">${weekBest ? weekBest.emoji : '—'}</span>
+                </span>
+            </div>
+            <div class="stats-item">
+                <span class="stats-label">Худшее за неделю</span>
+                <span class="stats-value" style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.8em; color: var(--text-muted);">
+                        ${weekWorst ? new Date(weekWorst.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : ''}
+                    </span>
+                    <span style="color: var(--danger-color); font-size: 1.2em;">${weekWorst ? weekWorst.emoji : '—'}</span>
+                </span>
+            </div>
+
 
         <div class="stats-item"><span class="stats-label">Средняя длина записи</span><span class="stats-value">${avgWords} слов</span></div>
         <div class="stats-item"><span class="stats-label">Дней с записями</span><span class="stats-value">${daysWithEntries} из ${daysSinceFirst} (${activityPercent}%)</span></div>
