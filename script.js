@@ -126,6 +126,13 @@ const appMain = document.getElementById('app-main');
 // === 🎨 КОНФИГ ИКОНОК (SVG) ===
 // === 🎨 КОНФИГ ИКОНОК (SVG) ===
 const NAV_ICONS = {
+    // Иконка "Назад" (круглая стрелка)
+    back: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 8 8 12 12 16"></polyline><line x1="16" y1="12" x2="8" y2="12"></line></svg>`,
+    // Иконка "Статистика" (уже есть, но используем её и для заголовка)
+    stats: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="4" y="12" width="4" height="9" rx="1" ry="1"/><rect x="10" y="4" width="4" height="17" rx="1" ry="1"/><rect x="16" y="14" width="4" height="7" rx="1" ry="1"/></svg>`,
+
+    // Новая иконка "Список/Глубокая статистика" (похожа на лупу, но можно использовать любую)
+    deepStats: `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
     // Иконка смайлика для быстрой записи
     quickMood: `<svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`,
 
@@ -225,6 +232,15 @@ function getMoodSvg(emoji, size = 24) {
     }
     // Если картинки нет, возвращаем текст (фоллбэк)
     return emoji;
+}
+
+// Вспомогательная функция для получения класса цвета строки статистики
+function getStatsMoodClass(score) {
+    if (score <= 2) return 'stats-mood-1'; // Красный
+    if (score <= 4) return 'stats-mood-2'; // Оранжевый
+    if (score <= 6) return 'stats-mood-3'; // Голубой
+    if (score <= 8) return 'stats-mood-4'; // Светло-зеленый
+    return 'stats-mood-5'; // Темно-зеленый
 }
 
 
@@ -801,9 +817,7 @@ function buildEntryFromForm(existingEntry = null) {
     const hasImage = editor.querySelector('img.inline-emoji') !== null;
 
 
-    // Разрешаем сохранение, если есть триггеры (быстрая запись)
-    const hasTriggers = tempTriggers && tempTriggers.length > 0;
-    if (!title && !plainText.trim() && !hasImage && !hasTriggers) return null;
+    
 
     const dateDisplay = document.getElementById('entry-date-display');
     const dateInput = dateDisplay.dataset.date;
@@ -1890,12 +1904,21 @@ function applyTheme(themeName) {
     });
     localStorage.setItem('my_web_diary_theme_v1', themeName);
     
-    // Перерисовываем активный график, если модалка открыта
+    // 1. Перерисовываем модалку графика (если она открыта)
     if (!document.getElementById('chart-modal').classList.contains('hidden')) {
         if (currentChartMode === 'line') {
             drawMoodChart();
         } else {
             drawBarChart();
+        }
+    }
+
+    // 2. Перерисовываем статистику (если она открыта)
+    const statsModal = document.getElementById('stats-modal');
+    if (statsModal && !statsModal.classList.contains('hidden')) {
+        // Если мы на вкладке "Глубокая статистика", перерисовываем её
+        if (currentStatsMode === 'deep') {
+            renderDeepStats();
         }
     }
 }
@@ -2326,7 +2349,10 @@ function openStatsModal() {
     currentStatsMode = 'normal';
     
     // Сброс UI на обычный режим
-    document.getElementById('stats-mode-toggle').textContent = '🔍 Глубокая статистика';
+    const toggleText = document.getElementById('stats-toggle-text');
+    const toggleIcon = document.getElementById('stats-toggle-icon');
+    if (toggleText) toggleText.textContent = 'Глубокая статистика';
+    if (toggleIcon) toggleIcon.innerHTML = NAV_ICONS.deepStats;
     document.getElementById('stats-normal-body').classList.remove('hidden');
     document.getElementById('stats-deep-body').classList.add('hidden');
 
@@ -2372,12 +2398,16 @@ function openStatsModal() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // 1. Среднее за текущий месяц
+    // --- СРЕДНЕЕ ЗА ПОСЛЕДНИЕ 30 ДНЕЙ (СКОЛЬЗЯЩЕЕ ОКНО) ---
+    const monthAgoDate = new Date();
+    monthAgoDate.setDate(monthAgoDate.getDate() - 30);
+    monthAgoDate.setHours(0, 0, 0, 0);
+
     let monthTotalScore = 0;
     let monthCount = 0;
     diaryEntries.forEach(entry => {
         const d = new Date(entry.date);
-        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+        if (d >= monthAgoDate) {
             const score = getMoodScore(entry.mood);
             if (score !== null) { monthTotalScore += score; monthCount++; }
         }
@@ -2413,10 +2443,32 @@ function openStatsModal() {
     const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    
+    // --- РАСЧЕТ ЗА ПОСЛЕДНИЕ 7 ДНЕЙ ---
+    const last7DaysDate = new Date();
+    last7DaysDate.setDate(last7DaysDate.getDate() - 7);
+    last7DaysDate.setHours(0, 0, 0, 0);
+
+    let last7Total = 0;
+    let last7Count = 0;
+    diaryEntries.forEach(entry => {
+        const d = new Date(entry.date);
+        if (d >= last7DaysDate) {
+            const score = getMoodScore(entry.mood);
+            if (score !== null) {
+                last7Total += score;
+                last7Count++;
+            }
+        }
+    });
+    const avgLast7 = last7Count > 0 ? (last7Total / last7Count) : 0;
+    const avgLast7Emoji = getEmojiByScore(avgLast7);
+
+    //HTML вставка
     document.getElementById('stats-normal-body').innerHTML = `
 
         <!-- Лучшее за неделю -->
-        <div class="stats-item">
+        <div class="stats-item ${weekBest ? getStatsMoodClass(weekBest.score) : ''}">
             <span class="stats-label">Лучшее за неделю</span>
             <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
                 <span style="font-size: 0.8em; color: var(--text-muted);">
@@ -2427,7 +2479,7 @@ function openStatsModal() {
         </div>
 
         <!-- Худшее за неделю -->
-        <div class="stats-item">
+        <div class="stats-item ${weekWorst ? getStatsMoodClass(weekWorst.score) : ''}">
             <span class="stats-label">Худшее за неделю</span>
             <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
                 <span style="font-size: 0.8em; color: var(--text-muted);">
@@ -2437,8 +2489,8 @@ function openStatsModal() {
             </span>
         </div>
 
-        <!-- Самое частое настроение (сначала мелкий текст, потом эмодзи) -->
-        <div class="stats-item">
+        <!-- Самое частое настроение -->
+        <div class="stats-item ${getStatsMoodClass(getMoodScore(topMood[0]))}">
             <span class="stats-label">Самое частое настроение</span>
             <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
                 <span style="font-size: 0.8em; color: var(--text-muted);">${topMood[1]} ${topMood[1] === 1 ? 'раз' : 'раза'}</span>
@@ -2446,28 +2498,31 @@ function openStatsModal() {
             </span>
         </div>
 
-        <!-- Среднее настроение (всё время) -->
-        <div class="stats-item">
-            <span class="stats-label">Среднее настроение (всё время)</span>
+        <!-- Среднее за 7 дней -->
+        <div class="stats-item ${last7Count > 0 ? getStatsMoodClass(avgLast7) : ''}">
+            <span class="stats-label">Среднее за 7 дней</span>
             <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                <span style="font-size: 0.8em; color: var(--text-muted);">(${avgMood.toFixed(1)})</span>
-                ${getMoodSvg(avgMoodEmoji, 24)}
+                ${last7Count > 0 ? `<span style="font-size: 0.8em; color: var(--text-muted);">(${avgLast7.toFixed(1)})</span>` : '<span style="font-size: 0.8em; color: var(--text-muted);">—</span>'}
+                ${last7Count > 0 ? getMoodSvg(avgLast7Emoji, 24) : ''}
             </span>
         </div>
 
         <!-- Среднее настроение (месяц) -->
-        <div class="stats-item">
-            <span class="stats-label">Среднее настроение (месяц)</span>
+        <div class="stats-item ${monthCount > 0 ? getStatsMoodClass(avgMonth) : ''}">
+            <span class="stats-label">Среднее за 30 дней</span>
             <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
                 ${monthCount > 0 ? `<span style="font-size: 0.8em; color: var(--text-muted);">(${avgMonth.toFixed(1)})</span>` : '<span style="font-size: 0.8em; color: var(--text-muted);">—</span>'}
                 ${monthCount > 0 ? getMoodSvg(avgMonthEmoji, 24) : ''}
             </span>
         </div>
 
-        <!-- Самая длинная запись -->
-        <div class="stats-item">
-            <span class="stats-label">Самая длинная запись</span>
-            <span class="stats-value">${longestEntry.wordCount || 0} слов</span>
+        <!-- Среднее настроение (всё время) -->
+        <div class="stats-item ${moodEntriesCount > 0 ? getStatsMoodClass(avgMood) : ''}">
+            <span class="stats-label">Среднее за всё время</span>
+            <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                <span style="font-size: 0.8em; color: var(--text-muted);">(${avgMood.toFixed(1)})</span>
+                ${getMoodSvg(avgMoodEmoji, 24)}
+            </span>
         </div>
 
         <!-- Дней с записями (предпоследний) -->
@@ -2495,20 +2550,33 @@ function openStatsModal() {
 // Переключатель режимов статистики
 document.getElementById('stats-mode-toggle').onclick = () => {
     if (currentStatsMode === 'normal') {
+        // Переключаемся на ГЛУБОКУЮ статистику
         currentStatsMode = 'deep';
-        document.getElementById('stats-mode-toggle').textContent = '📊 Обычная статистика';
+        
+        // Меняем текст и иконку на кнопке
+        document.getElementById('stats-toggle-text').textContent = 'Обычная статистика';
+        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.stats; 
+        
+        // Показываем глубокую статистику
         document.getElementById('stats-normal-body').classList.add('hidden');
         document.getElementById('stats-deep-body').classList.remove('hidden');
+        
         renderDeepStats();
     } else {
+        // Возвращаемся к ОБЫЧНОЙ статистике
         currentStatsMode = 'normal';
-        document.getElementById('stats-mode-toggle').textContent = '🔍 Глубокая статистика';
+        
+        // Меняем текст и иконку обратно на "Глубокую"
+        document.getElementById('stats-toggle-text').textContent = 'Глубокая статистика';
+        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.deepStats; 
+        
+        // Показываем обычную статистику
         document.getElementById('stats-normal-body').classList.remove('hidden');
         document.getElementById('stats-deep-body').classList.add('hidden');
     }
 };
 
-// === 🏆 САМАЯ ДЛИННАЯ ПОЛОСА ХОРОШЕГО НАСТРОЕНИЯ ===
+
 // === 🏆 САМАЯ ДЛИННАЯ ПОЛОСА ХОРОШЕГО НАСТРОЕНИЯ ===
 function renderBestStreak() {
     // 1. Группируем записи по дням
@@ -2635,11 +2703,165 @@ function renderBestStreak() {
     `;
 }
 
+
+// === 📅 НАСТРОЕНИЕ ЗА ПРОШЛУЮ НЕДЕЛЮ ===
+function renderLastWeekMood() {
+    const container = document.getElementById('last-week-mood-container');
+    if (!container) return;
+
+    // 1. Определяем прошлую неделю (Пн-Вс)
+    const today = new Date();
+    const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); // Делаем Вс = 7
+    const startOfLastWeek = new Date(today);
+    startOfLastWeek.setDate(today.getDate() - dayOfWeek - 6); // Отступаем на прошлую неделю
+    startOfLastWeek.setHours(0, 0, 0, 0);
+
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfLastWeek);
+        d.setDate(d.getDate() + i);
+        weekDays.push(d);
+    }
+
+    // 2. Собираем настроение по дням
+    const dayScores = weekDays.map(date => {
+        const dateKey = getDateKey(date);
+        let total = 0, count = 0;
+        diaryEntries.forEach(e => {
+            if (getDateKey(e.date) === dateKey) {
+                const s = getMoodScore(e.mood);
+                if (s !== null) { total += s; count++; }
+            }
+        });
+        return {
+            date,
+            dateKey,
+            avg: count > 0 ? (total / count) : null,
+            emoji: count > 0 ? getEmojiByScore(total / count) : null,
+            count
+        };
+    });
+
+    // === НОВАЯ ПРОВЕРКА: минимум 3 заполненных дня ===
+    const filledDays = dayScores.filter(d => d.avg !== null).length;
+    if (filledDays < 3) {
+        container.innerHTML = `
+            <div style="text-align:center; padding: 20px 10px;">
+                <h3 style="font-size:1em; margin:0 0 10px 0; color:var(--text-color); font-weight: 400;">Настроение на прошлой неделе</h3>
+                <p style="font-size:0.9em; color:var(--text-muted); margin:0;">
+                    Ведите дневник хотя бы 3 дня в неделю, чтобы видеть результаты.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    // 3. Считаем среднее за неделю и топ-триггеры
+    let weekTotal = 0, weekCount = 0;
+    const weekTriggers = {};
+    diaryEntries.forEach(e => {
+        const d = new Date(e.date);
+        if (d >= startOfLastWeek && d < new Date(startOfLastWeek.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+            const s = getMoodScore(e.mood);
+            if (s !== null) { weekTotal += s; weekCount++; }
+            if (e.triggers) {
+                e.triggers.forEach(t => weekTriggers[t] = (weekTriggers[t] || 0) + 1);
+            }
+        }
+    });
+    const weekAvg = weekCount > 0 ? (weekTotal / weekCount) : 0;
+    const weekAvgEmoji = getEmojiByScore(weekAvg);
+    
+    // Берем топ-3 триггера
+    const topTriggers = Object.entries(weekTriggers).sort((a, b) => b[1] - a[1]).slice(0, 3).map(t => t[0]);
+
+    // 4. Формируем градиент для линии
+    // Находим индексы первого и последнего дня с данными
+    const validIndices = dayScores.map((d, i) => d.avg !== null ? i : -1).filter(i => i !== -1);
+    const firstIdx = validIndices[0];
+    const lastIdx = validIndices[validIndices.length - 1];
+
+    // Строим градиент
+    let gradientStops = [];
+    const totalSteps = lastIdx - firstIdx;
+    
+    if (totalSteps === 0) {
+        // Если данные только за 1 день
+        const color = getMoodColorHex(dayScores[firstIdx].avg);
+        gradientStops.push(`${color} 0%`, `${color} 100%`);
+    } else {
+        for (let i = firstIdx; i <= lastIdx; i++) {
+            const percent = ((i - firstIdx) / totalSteps) * 100;
+            const color = dayScores[i].avg !== null ? getMoodColorHex(dayScores[i].avg) : '#cccccc';
+            gradientStops.push(`${color} ${percent}%`);
+        }
+    }
+
+    const gradient = `linear-gradient(90deg, ${gradientStops.join(', ')})`;
+
+    // 5. Формируем HTML (Пн, Чт, Вс)
+    const daysHtml = dayScores.map((d, i) => {
+        const isFirst = i === 0;
+        const isLast = i === 6;
+        const isMid = i === 3;
+        
+        if (!isFirst && !isLast && !isMid) return '';
+
+        const dayName = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i];
+        const dateStr = d.date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+
+        return `
+            <div style="position: relative; z-index: 2; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                <div style="background: var(--surface); padding: 4px; border-radius: 50%; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                    ${d.emoji ? getMoodSvg(d.emoji, 24) : '<span style="font-size:0.7em; color:var(--text-muted);">—</span>'}
+                </div>
+                <div style="font-size: 0.7em; color: var(--text-muted); margin-top: 4px;">${dayName}</div>
+                <div style="font-size: 0.65em; color: var(--text-muted);">${dateStr}</div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div style="text-align:center; margin-bottom: 15px;">
+            <h3 style="font-size:1em; margin:0; color:var(--text-color); font-weight: 400;">Настроение на прошлой неделе</h3>
+        </div>
+
+        <div style="position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; margin: 20px 0;">
+            <!-- Градиентная линия -->
+            <div style="position: absolute; top: 20px; left: 30px; right: 30px; height: 4px; background: ${gradient}; z-index: 1; border-radius: 2px;"></div>
+
+            ${daysHtml}
+        </div>
+
+        <div style="text-align: center; margin-top: 15px;">
+            <p style="font-size: 0.85em; color: var(--text-color); margin: 0 0 5px 0;">
+                Среднее настроение за неделю: <strong>${weekAvg.toFixed(1)} ${weekAvgEmoji}</strong>
+            </p>
+            ${topTriggers.length > 0 ? `
+                <p style="font-size: 0.75em; color: var(--text-muted); margin: 0;">
+                    Чаще всего влияли: ${topTriggers.join(', ')}
+                </p>
+            ` : ''}
+        </div>
+    `;
+}
+
+// Вспомогательная функция для получения HEX-цвета по среднему баллу
+function getMoodColorHex(score) {
+    if (score <= 2) return '#f44336'; // Красный
+    if (score <= 4) return '#ff9800'; // Оранжевый
+    if (score <= 6) return '#0288d1'; // Голубой
+    if (score <= 8) return '#8bc34a'; // Светло-зеленый
+    return '#1b5e20'; // Темно-зеленый
+}
+
 // --- ГЛУБОКАЯ СТАТИСТИКА (ТРИГГЕРЫ) ---
 function renderDeepStats() {
     const triggerStats = {};
     // Отрисовка "Самая длинная полоса хорошего настроения"
     renderBestStreak();
+    // Отрисовка "Настроение на прошлой неделе" (НОВОЕ)
+    renderLastWeekMood();
     diaryEntries.forEach(entry => {
         if (entry.triggers && entry.triggers.length > 0) {
             const score = getMoodScore(entry.mood);
@@ -2748,6 +2970,203 @@ function renderDeepStats() {
     }
 }
 
+// === 📋 СПИСОК ВСЕХ ТРИГГЕРОВ ===
+
+// Функция для открытия модалки
+function openAllTriggersList() {
+    closeStatsModal(); // Закрываем глубокую статистику
+    document.getElementById('triggers-list-modal').classList.remove('hidden');
+    renderAllTriggersList();
+}
+
+// Функция для закрытия модалки
+function closeAllTriggersList() {
+    document.getElementById('triggers-list-modal').classList.add('hidden');
+    // Возвращаемся в статистику
+    openStatsModal();
+    setTimeout(() => {
+        if (currentStatsMode === 'normal') {
+            document.getElementById('stats-mode-toggle').click();
+        }
+    }, 50);
+}
+
+// Функция отрисовки списка
+function renderAllTriggersList() {
+    const container = document.getElementById('all-triggers-list-container');
+    if (!container) return;
+
+    // 1. Собираем статистику по триггерам
+    const triggerStats = {};
+    diaryEntries.forEach(entry => {
+        if (entry.triggers && entry.triggers.length > 0) {
+            const score = getMoodScore(entry.mood);
+            if (score !== null) {
+                entry.triggers.forEach(trig => {
+                    if (!triggerStats[trig]) triggerStats[trig] = { total: 0, count: 0 };
+                    triggerStats[trig].total += score;
+                    triggerStats[trig].count += 1;
+                });
+            }
+        }
+    });
+
+    // 2. Формируем массив и сортируем по частоте
+    const sortedTriggers = Object.entries(triggerStats).map(([name, data]) => {
+        const avgScore = data.total / data.count;
+        return {
+            trigger: name,
+            avgScore: avgScore,
+            count: data.count,
+            emoji: getEmojiByScore(avgScore)
+        };
+    }).sort((a, b) => b.count - a.count);
+
+    if (sortedTriggers.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0;">Пока нет записей с триггерами.</p>';
+        return;
+    }
+
+    
+    // --- УМНЫЙ АНАЛИЗ (ИНСАЙТ) ---
+    const insightBlock = document.getElementById('triggers-insight-block');
+    const insightText = document.getElementById('triggers-insight-text');
+
+    // 1. Считаем глобальное среднее настроение
+    let globalTotal = 0;
+    let globalCount = 0;
+    diaryEntries.forEach(e => {
+        const s = getMoodScore(e.mood);
+        if (s !== null) { globalTotal += s; globalCount++; }
+    });
+    const globalAvg = globalCount > 0 ? (globalTotal / globalCount) : 0;
+
+    // 2. Ищем лучший триггер (с учетом следующего дня и уровня уверенности)
+    let bestInsight = null;
+    let highestScore = -999;
+
+    // Группируем записи по дням для проверки "следующего дня"
+    const entriesByDay = {};
+    diaryEntries.forEach(e => {
+        const key = getDateKey(e.date);
+        if (!entriesByDay[key]) entriesByDay[key] = [];
+        entriesByDay[key].push(e);
+    });
+
+    Object.entries(triggerStats).forEach(([triggerName, data]) => {
+        // Считаем уровень уверенности
+        let confidence = 'low';
+        if (data.count >= 9) confidence = 'high';
+        else if (data.count >= 6) confidence = 'medium';
+        else if (data.count >= 3) confidence = 'low';
+        else return; // Если меньше 3, вообще не берем в расчет
+
+        // Считаем среднее настроение В ТОТ ЖЕ ДЕНЬ с триггером
+        const sameDayAvg = data.total / data.count;
+
+        // Считаем среднее настроение НА СЛЕДУЮЩИЙ ДЕНЬ после триггера
+        let nextDayTotal = 0;
+        let nextDayCount = 0;
+
+        diaryEntries.forEach(e => {
+            if (e.triggers && e.triggers.includes(triggerName)) {
+                const d = new Date(e.date);
+                d.setDate(d.getDate() + 1);
+                const nextDayKey = getDateKey(d);
+                if (entriesByDay[nextDayKey]) {
+                    entriesByDay[nextDayKey].forEach(nextEntry => {
+                        const s = getMoodScore(nextEntry.mood);
+                        if (s !== null) { nextDayTotal += s; nextDayCount++; }
+                    });
+                }
+            }
+        });
+
+        const nextDayAvg = nextDayCount > 0 ? (nextDayTotal / nextDayCount) : sameDayAvg;
+
+        // Ищем максимальное отклонение (влияние)
+        const sameDayDiff = sameDayAvg - globalAvg;
+        const nextDayDiff = nextDayAvg - globalAvg;
+
+        // Выбираем то, что сильнее влияет (по модулю)
+        const impact = Math.abs(sameDayDiff) > Math.abs(nextDayDiff) ? sameDayDiff : nextDayDiff;
+        const impactType = Math.abs(sameDayDiff) > Math.abs(nextDayDiff) ? 'same' : 'next';
+
+        // Если этот триггер влияет сильнее предыдущих, запоминаем
+        if (Math.abs(impact) > Math.abs(highestScore)) {
+            highestScore = impact;
+            bestInsight = {
+                trigger: triggerName,
+                confidence: confidence,
+                diff: impact,
+                percent: Math.round((Math.abs(impact) / 10) * 100),
+                type: impactType, // 'same' или 'next'
+                isPositive: impact > 0
+            };
+        }
+    });
+
+    // 3. Формируем текст
+    if (bestInsight && Math.abs(bestInsight.diff) > 0.3) { 
+        let confidenceText = '';
+        let cautionText = '';
+
+        if (bestInsight.confidence === 'low') {
+            confidenceText = ' (низкая уверенность, мало данных)';
+            cautionText = 'Возможно, ';
+        } else if (bestInsight.confidence === 'medium') {
+            confidenceText = ' (средняя уверенность)';
+        }
+
+        const direction = bestInsight.isPositive ? 'выше' : 'ниже';
+        const impactTime = bestInsight.type === 'next' ? 'на следующий день после' : 'в день, когда вы отмечаете';
+
+        insightText.innerHTML = `
+            ${cautionText}ваше настроение обычно <strong>на ${bestInsight.percent}% ${direction}</strong>, 
+            ${impactTime} триггер <strong>«${escapeHtml(bestInsight.trigger)}»</strong>.
+            <span style="font-size: 0.85em; opacity: 0.7; display: block; margin-top: 5px;">${confidenceText}</span>
+        `;
+        insightBlock.style.display = 'block';
+    } else {
+        // Если нет ярко выраженных закономерностей
+        insightBlock.style.display = 'none';
+    }
+    // --- КОНЕЦ АНАЛИЗА ---
+    // 3. Генерируем HTML для списка (ОДИН цикл, без дублей)
+    let html = '<div>';
+    sortedTriggers.forEach(t => {
+        let levelClass = '';
+        if (t.avgScore <= 2) levelClass = 'trigger-level-1';
+        else if (t.avgScore <= 4) levelClass = 'trigger-level-2';
+        else if (t.avgScore <= 6) levelClass = 'trigger-level-3';
+        else if (t.avgScore <= 8) levelClass = 'trigger-level-4';
+        else levelClass = 'trigger-level-5';
+
+        if (t.count < 2) levelClass = '';
+
+        html += `
+            <div class="trigger-list-row" onclick="applyTriggerFilterAndClose('${escapeHtml(t.trigger)}')">
+                <div style="display: flex; align-items: center;">
+                    <div class="trigger-list-indicator ${levelClass}"></div>
+                    <span class="trigger-list-name">${escapeHtml(t.trigger)}</span>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <span class="trigger-list-count">${t.count} ${t.count === 1 ? 'запись' : t.count < 5 ? 'записи' : 'записей'}</span>
+                    <span class="trigger-list-score">${t.emoji}</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Функция для перехода к записям по клику
+function applyTriggerFilterAndClose(triggerName) {
+    document.getElementById('triggers-list-modal').classList.add('hidden');
+    applyTriggerFilter(triggerName);
+}
+
 function drawTriggerChart(triggerData) {
     const canvas = document.getElementById('trigger-chart');
     if (!canvas || canvas.classList.contains('hidden')) return;
@@ -2774,9 +3193,11 @@ function drawTriggerChart(triggerData) {
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const styles = getComputedStyle(document.body);
-    const textColor = styles.getPropertyValue('--text-color').trim() || '#333';
-    const gridColor = styles.getPropertyValue('--border-color').trim() || '#ddd';
+    
+    // Проверяем тему: если тёмная, берем светлый текст, иначе — тёмный
+    const isDarkTheme = document.body.classList.contains('theme-dark');
+    const textColor = isDarkTheme ? '#ffffff' : '#333333';
+    const gridColor = isDarkTheme ? '#555555' : '#dddddd';
 
 
     ctx.clearRect(0, 0, width, height);
@@ -2889,29 +3310,6 @@ document.getElementById('trigger-filter-select').addEventListener('change', () =
     renderDeepStats();
 });
 
-// Обработчик клика по графику триггеров
-document.getElementById('trigger-chart').addEventListener('click', (e) => {
-    const canvas = e.target;
-    const rect = canvas.getBoundingClientRect();
-    
-    // Координаты клика относительно canvas (с учетом скролла и DPR)
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-
-    // Проверяем, в какой столбик попали
-    for (const pos of triggerChartPositions) {
-        // Проверяем попадание по X (хотя бы в зону графика) и по Y (строго в строку)
-        // Мы берем всю ширину от left до right, так как пользователь может кликнуть и по пустому месту справа
-        if (clickX >= pos.xStart - 100 && clickX <= pos.xEnd && clickY >= pos.yStart && clickY <= pos.yEnd) {
-            closeStatsModal();
-            applyTriggerFilter(pos.trigger);
-            return;
-        }
-    }
-});
 
 
 
@@ -2930,6 +3328,12 @@ document.getElementById('prev-month-btn').onclick = () => changeCalendarMonth(-1
 document.getElementById('next-month-btn').onclick = () => changeCalendarMonth(1);
 document.getElementById('prev-month-desktop').onclick = () => changeCalendarMonth(-1);
 document.getElementById('next-month-desktop').onclick = () => changeCalendarMonth(1);
+
+
+// Обработчики для модалки списка триггеров
+document.getElementById('close-triggers-list-btn').onclick = closeAllTriggersList;
+document.getElementById('open-triggers-list-hint').onclick = openAllTriggersList;
+document.querySelector('#triggers-list-modal .modal-backdrop').onclick = closeAllTriggersList;
 
 // === 🏷️ ТЕГИ ===
 function openTagsModal() {
@@ -4567,16 +4971,34 @@ document.getElementById('nav-menu-btn').onclick = () => {
 
 // 2. Записи — закрывает всё и показывает главную
 document.getElementById('nav-entries-btn').onclick = () => {
+    const wasActive = document.getElementById('nav-entries-btn').classList.contains('active');
+    
+    // Если мы уже на вкладке "Записи" и все модалки закрыты — скроллим наверх
+    if (wasActive) {
+        const entryModalOpen = !document.getElementById('entry-modal').classList.contains('hidden');
+        const statsOpen = !document.getElementById('stats-modal').classList.contains('hidden');
+        const calendarOpen = !document.getElementById('calendar-modal').classList.contains('hidden');
+        
+        if (!entryModalOpen && !statsOpen && !calendarOpen) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+    }
+
+    // Стандартное поведение (переключение на вкладку)
     setActiveNav('nav-entries-btn');
     closeStatsModal();
     closeCalendarScreen();
     closeSidebar();
-    // Если открыта запись, закрываем её (с сохранением)
+    
     const entryModal = document.getElementById('entry-modal');
     if (!entryModal.classList.contains('hidden')) {
         handleSaveCloseBtn();
     }
+    
+    // Рендерим список и сбрасываем скролл в начало
     renderEntries();
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // <--- ДОБАВИЛИ ЭТУ СТРОКУ
 };
 
 
@@ -4786,11 +5208,11 @@ async function initApp() {
         showToast('Ошибка хранилища данных', 'error');
         return;
     }
-    updateProgressCard();
     preloadMoodImages();
     loadTheme();
     updateSortButtons();
     await loadEntries();
+    updateProgressCard();
     renderCalendar();
     initMoodFilterGrid();
     initPinProtection();
@@ -4802,6 +5224,27 @@ async function initApp() {
     document.getElementById('icon-calendar').innerHTML = NAV_ICONS.calendar;
     document.getElementById('icon-plus').innerHTML = NAV_ICONS.plus;
     document.getElementById('icon-menu').innerHTML = NAV_ICONS.menu;
+
+    // Иконки "Назад"
+    const backCalendar = document.getElementById('icon-back-calendar');
+    if (backCalendar) backCalendar.innerHTML = NAV_ICONS.back;
+
+    const backTriggers = document.getElementById('icon-back-triggers');
+    if (backTriggers) backTriggers.innerHTML = NAV_ICONS.back;
+
+    const backStats = document.getElementById('icon-back-stats');
+    if (backStats) backStats.innerHTML = NAV_ICONS.back;
+
+    // Иконка для заголовка календаря
+    const calendarHeaderIcon = document.getElementById('calendar-header-icon');
+    if (calendarHeaderIcon) calendarHeaderIcon.innerHTML = NAV_ICONS.calendar;
+
+    // Иконки для статистики
+    const statsHeaderIcon = document.getElementById('stats-header-icon');
+    if (statsHeaderIcon) statsHeaderIcon.innerHTML = NAV_ICONS.stats;
+
+    const statsToggleIcon = document.getElementById('stats-toggle-icon');
+    if (statsToggleIcon) statsToggleIcon.innerHTML = NAV_ICONS.deepStats;
 
     // Вставляем иконки для плашек
     if (document.getElementById('icon-quick-mood')) {

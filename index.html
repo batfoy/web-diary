@@ -493,8 +493,12 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content calendar-modal-content fullscreen-content">
             <div class="entry-modal-header">
-                <button id="close-calendar-btn" class="back-btn">← Назад</button>
-                <h2>Календарь</h2>
+                <button id="close-calendar-btn" class="back-btn-icon" title="Назад">
+                    <span id="icon-back-calendar"></span>
+                </button>
+                <h2 style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.2em;">
+                    <span id="calendar-header-icon"></span> Календарь
+                </h2>
                 <span></span>
             </div>
             
@@ -614,12 +618,20 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content stats-modal-content fullscreen-content">
             <div class="entry-modal-header">
-                <h2>📈 Статистика</h2>
-                <button class="modal-close-btn" id="close-stats-modal">✕</button>
+                <button id="close-stats-modal" class="back-btn-icon" title="Назад">
+                    <span id="icon-back-stats"></span>
+                </button>
+                <h2 style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.2em;">
+                    <span id="stats-header-icon"></span> Статистика
+                </h2>
+                <span style="width: 34px;"></span> <!-- ПУСТАЯ РАСПОРКА -->
             </div>
 
             <div style="padding: 10px 20px; background: var(--mood-btn-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: center;">
-                <button id="stats-mode-toggle" class="chart-mode-btn">🔍 Глубокая статистика</button>
+                <button id="stats-mode-toggle" class="chart-mode-btn" style="display: flex; align-items: center; gap: 6px;">
+                    <span id="stats-toggle-icon"></span> 
+                    <span id="stats-toggle-text">Глубокая статистика</span>
+                </button>
             </div>
 
             <div id="stats-normal-body" class="stats-body"></div>
@@ -628,6 +640,11 @@
                 
                 <!-- НОВЫЙ БЛОК: Самая длинная полоса хорошего настроения -->
                 <div id="best-streak-container" style="margin-bottom: 25px; padding: 15px; background: var(--surface-variant); border-radius: 12px;">
+                    <!-- Сюда JS вставит линию -->
+                </div>
+
+                <!-- НОВЫЙ БЛОК: Настроение на прошлой неделе -->
+                <div id="last-week-mood-container" style="margin-bottom: 25px; padding: 15px; background: var(--surface-variant); border-radius: 12px;">
                     <!-- Сюда JS вставит линию -->
                 </div>
 
@@ -649,17 +666,52 @@
                     <select id="trigger-filter-select" class="modal-btn secondary" style="width: 100%; padding: 10px; font-size: 0.95em;">
                         <option value="all">Все триггеры</option>
                     </select>
-                    <!-- НОВАЯ ПОДСКАЗКА -->
-                    <p style="font-size: 0.75em; color: var(--text-muted); text-align: center; margin-top: 8px;">
-                        Нажмите на триггер на графике, чтобы перейти к триггеру
-                    </p>
+                    <!-- КНОПКА ПЕРЕХОДА К СПИСКУ ТРИГГЕРОВ -->
+                    <button id="open-triggers-list-hint" class="btn-secondary" style="width: 100%; margin-top: 10px; padding: 10px; font-size: 0.7em; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        Нажми чтобы узнать подробнее о триггерах
+                    </button>
                 </div>
                 <canvas id="trigger-chart" style="width: 100%; display: block; margin: 0 auto;"></canvas>
                 <div id="trigger-stats-list" style="margin-top: 15px;"></div>
             </div>
         </div>
     </div>
+    <!-- МОДАЛКА СПИСКА ВСЕХ ТРИГГЕРОВ -->
+    <div id="triggers-list-modal" class="modal hidden fullscreen-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content calendar-modal-content fullscreen-content" style="background: var(--surface);">
+            <div class="entry-modal-header">
+                <button id="close-triggers-list-btn" class="back-btn-icon" title="Назад">
+                    <span id="icon-back-triggers"></span>
+                </button>
+                <h2>Все триггеры</h2>
+                <span></span>
+            </div>
 
+            <div class="stats-body" style="padding: 15px 20px;">
+                 <!-- Блок с инсайтом -->
+                 <div id="triggers-insight-block" style="display: none; margin-bottom: 20px; padding: 15px; background: var(--surface-variant); border-left: 4px solid var(--accent-color); border-radius: 8px;">
+                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                         <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--accent-color)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                             <path d="M9 18h6"></path>
+                             <path d="M10 22h4"></path>
+                             <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path>
+                         </svg>
+                         <span style="font-weight: 600; font-size: 0.95em; color: var(--text-color);">Анализ</span>
+                     </div>
+                     <p id="triggers-insight-text" style="font-size: 0.9em; color: var(--text-color); margin: 0; line-height: 1.4;"></p>
+                 </div>
+
+                <!-- Список триггеров -->
+                <div id="all-triggers-list-container"></div>
+            </div>
+        </div>
+    </div>
     <!-- МОДАЛКА ШАБЛОНОВ -->
     <div id="templates-modal" class="modal hidden">
         <div class="modal-backdrop"></div>

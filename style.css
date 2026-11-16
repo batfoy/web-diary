@@ -42,7 +42,7 @@ body.theme-dark {
     --mood-btn-selected-bg: #2e4a2f;
     --danger-bg: #3d2222;
     --nav-bg: var(--surface);
-    --nav-active-bg: #37474f;
+    --nav-active-bg: rgba(46, 125, 50, 0.3); /* Полупрозрачный темно-зеленый */
     --nav-active-content: #cfd8dc;
     --nav-inactive-content: #808a8f;
     --surface: #2d2d2d;
@@ -3561,3 +3561,155 @@ body:not(.theme-dark) .entry-trigger-chip.trigger-level-4 { color: #33691e; }
     border-color: rgba(27, 94, 32, 0.4);
 }
 body:not(.theme-dark) .entry-trigger-chip.trigger-level-5 { color: #1b5e20; }
+
+
+/* Стили для списка триггеров */
+.trigger-list-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px; /* Уменьшили отступы (было 12px 15px) */
+    background: var(--surface-variant);
+    border-radius: 8px; /* Чуть меньше скругление */
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    margin-bottom: 6px; /* Добавили отступ между строками */
+}
+
+.trigger-list-row:hover {
+    background: var(--mood-btn-selected-bg);
+    transform: translateX(4px);
+}
+
+.trigger-list-indicator {
+    width: 10px; /* Уменьшили размер индикатора (было 12px) */
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    margin-right: 8px; /* Добавили отступ от текста */
+}
+
+.trigger-list-indicator.trigger-level-1 { background: #f44336; }
+.trigger-list-indicator.trigger-level-2 { background: #ff9800; }
+.trigger-list-indicator.trigger-level-3 { background: #0288d1; }
+.trigger-list-indicator.trigger-level-4 { background: #8bc34a; }
+.trigger-list-indicator.trigger-level-5 { background: #1b5e20; }
+
+.trigger-list-name {
+    font-size: 0.9em; /* Чуть меньше шрифт (было 0.95em) */
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.trigger-list-count {
+    font-size: 0.75em; /* Уменьшили шрифт (было 0.8em) */
+    color: var(--text-muted);
+    margin-right: 10px; /* Отступ от эмодзи */
+}
+
+.trigger-list-score {
+    font-size: 1.1em; /* Чуть меньше (было 1.2em) */
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Убираем отступ у последней строки, чтобы не было лишнего пространства снизу */
+.trigger-list-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Фикс невидимого заголовка "Статистика" в голубой теме */
+body.theme-blue #stats-modal .entry-modal-header h2 {
+    color: var(--text-color) !important;
+}
+
+/* Цветовые индикаторы для строк статистики */
+.stats-item {
+    position: relative;
+    padding-left: 15px; /* Освобождаем место под полоску */
+    transition: background-color 0.2s;
+}
+
+/* Общая полоска слева */
+.stats-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10%;
+    bottom: 10%;
+    width: 4px;
+    border-radius: 2px;
+    background: transparent; /* По умолчанию невидима */
+    transition: background-color 0.2s;
+}
+
+/* Уровень 1 (Красный) */
+.stats-item.stats-mood-1::before { background: #f44336; }
+.stats-item.stats-mood-1 { background: rgba(244, 67, 54, 0.05); }
+
+/* Уровень 2 (Оранжевый) */
+.stats-item.stats-mood-2::before { background: #ff9800; }
+.stats-item.stats-mood-2 { background: rgba(255, 152, 0, 0.05); }
+
+/* Уровень 3 (Голубой) */
+.stats-item.stats-mood-3::before { background: #0288d1; }
+.stats-item.stats-mood-3 { background: rgba(2, 136, 209, 0.05); }
+
+/* Уровень 4 (Светло-зеленый) */
+.stats-item.stats-mood-4::before { background: #8bc34a; }
+.stats-item.stats-mood-4 { background: rgba(139, 195, 74, 0.05); }
+
+/* Уровень 5 (Темно-зеленый) */
+.stats-item.stats-mood-5::before { background: #1b5e20; }
+.stats-item.stats-mood-5 { background: rgba(27, 94, 32, 0.05); }
+
+/* Кнопка Назад (SVG) */
+.back-btn-icon {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    transition: transform 0.2s, opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.back-btn-icon:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.back-btn-icon svg {
+    display: block;
+}
+
+/* Выравнивание иконок в заголовках модалок */
+#stats-header-icon,
+#calendar-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0; /* Убираем влияние базовой линии шрифта */
+    flex-shrink: 0; /* Чтобы иконка не сжималась, если текст длинный */
+}
+
+/* Убираем лишние отступы у самого SVG внутри */
+#stats-header-icon svg,
+#calendar-header-icon svg {
+    display: block;
+}
+
+/* Темно-зеленая кнопка "+" в темной теме */
+body.theme-dark .nav-center {
+    background: #2e7d32; /* Темно-зеленый */
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3); /* Легкое зеленое свечение */
+}
+
+body.theme-dark .nav-center:active {
+    background: #1b5e20; /* Еще темнее при нажатии */
+}
