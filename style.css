@@ -1,0 +1,3563 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Dancing+Script:wght@700&family=Pacifico&family=Great+Vibes&display=swap');
+/* ============================================
+   1. СБРОС И ПЕРЕМЕННЫЕ ТЕМ
+   ============================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    /* --- БАЗОВЫЕ ЦВЕТА --- */
+    --bg-color: #f5f5f5;
+    --card-bg: #ffffff;
+    --text-color: #333333;
+    --text-muted: #888888;
+    --border-color: #dddddd;
+    --accent-color: #4CAF50;
+    --accent-hover: #45a049;
+    --mood-btn-bg: #f0f0f0;
+    --mood-btn-selected-bg: #e8f5e9;
+    --danger-color: #f44336;
+    --danger-bg: #ffebee;
+    --nav-height: 70px;
+
+    /* --- РОЛИ: ПОВЕРХНОСТИ (ИСПРАВЛЕНО) --- */
+    --surface: #ffffff;          /* фон карточек и модалок */
+    --surface-variant: #f0f0f0;  /* фон плашек, кнопок, вторичных элементов */
+    
+    /* --- РОЛИ: НАВИГАЦИЯ --- */
+    --nav-bg: #ffffff;
+    --nav-active-bg: #e8f5e9;
+    --nav-active-content: #2e7d32;
+    --nav-inactive-content: #888888;
+}
+
+body.theme-dark {
+    --bg-color: #1e1e1e;
+    --card-bg: #2d2d2d;
+    --text-color: #e0e0e0;
+    --text-muted: #999999;
+    --border-color: #444444;
+    --accent-color: #b0bec5;  /* Светло-серый (Blue Grey 200) */
+    --accent-hover: #90a4ae;
+    --mood-btn-bg: #3a3a3a;
+    --mood-btn-selected-bg: #2e4a2f;
+    --danger-bg: #3d2222;
+    --nav-bg: var(--surface);
+    --nav-active-bg: #37474f;
+    --nav-active-content: #cfd8dc;
+    --nav-inactive-content: #808a8f;
+    --surface: #2d2d2d;
+    --surface-variant: #3a3a3a;
+    --nav-bg: #2d2d2d;
+    /* (--nav-active-bg и остальные у тебя уже есть) */
+}
+
+body.theme-pastel {
+    --bg-color: #fdf6f0;
+    --card-bg: #fff9f5;
+    --text-color: #5d4037;
+    --text-muted: #a1887f;
+    --border-color: #f0d9cc;
+    --accent-color: #f48fb1;
+    --accent-hover: #f06292;
+    --mood-btn-bg: #fce4ec;
+    --mood-btn-selected-bg: #f8bbd0;
+    --danger-bg: #ffebee;
+    --nav-bg: var(--surface);
+    --nav-active-bg: #f8bbd0;
+    --nav-active-content: #ad1457;
+    --nav-inactive-content: var(--text-muted);
+    --surface: #fff9f5;
+    --surface-variant: #fce4ec;
+    --nav-bg: #fff9f5;
+}
+
+/* ============================================
+   ТЕМА: МЯГКАЯ ГОЛУБАЯ (MY DIARY STYLE)
+   ============================================ */
+body.theme-blue {
+    --bg-color: #e3f2fd;           /* Очень светлый голубой (фон body) */
+    --card-bg: #ffffff;            /* Карточки почти белые */
+    --text-color: #1a2a3a;         /* Темный текст */
+    --text-muted: #6b7b8b;         /* Приглушенный серо-голубой */
+    --border-color: #bbdefb;       /* Светло-голубые границы */
+    
+    --accent-color: #2196F3;       /* Основной яркий голубой (кнопки) */
+    --accent-hover: #1976D2;       /* Темнее для нажатий */
+    
+    --mood-btn-bg: #bbdefb;        /* Фон кнопок настроения / плашек */
+    --mood-btn-selected-bg: #90caf9; /* Выбранные кнопки */
+    
+    --danger-color: #f44336;
+    --danger-bg: #ffebee;
+    --nav-bg: var(--surface);
+    --nav-active-bg: #bbdefb;
+    --nav-active-content: #0d47a1;
+    --nav-inactive-content: #6b7b8b;
+    --surface: #ffffff;
+    --surface-variant: #bbdefb;
+    --nav-bg: #ffffff;
+}
+
+/* ============================================
+   2. БАЗА
+   ============================================ */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    padding-bottom: calc(var(--nav-height, 70px) + 30px);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* ============================================
+   3. ШАПКА И ПОИСК
+   ============================================ */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    background: var(--bg-color);
+    z-index: 50;
+    transition: background-color 0.3s;
+}
+.main-header h1 { font-size: 1.3em; font-weight: 700; flex: 1; text-align: center; }
+.main-header h1.hidden { display: none; }
+
+.icon-btn {
+    background: none; border: none; font-size: 1.4em; cursor: pointer;
+    padding: 5px; color: var(--text-color);
+    transition: transform 0.2s, opacity 0.2s; flex-shrink: 0;
+}
+.icon-btn:active { transform: scale(0.9); }
+.icon-btn.hidden { display: none; }
+
+.search-bar {
+    display: flex; align-items: center; gap: 10px; flex: 1;
+    padding: 8px 12px; background: var(--surface-variant);
+    border-radius: 8px; animation: slideIn 0.3s ease-out;
+}
+.search-bar.hidden { display: none; }
+.search-bar input {
+    flex: 1; border: none; background: transparent;
+    font-size: 1em; color: var(--text-color); outline: none;
+}
+.search-bar input::placeholder { color: var(--text-muted); }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+#app-main.search-active .quote-section,
+#app-main.search-active .calendar-section-desktop { display: none !important; }
+
+/* ============================================
+   4. ЦИТАТА ДНЯ
+   ============================================ */
+.quote-section {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    color: white; padding: 16px 18px; border-radius: 12px;
+    margin-bottom: 15px; text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer;
+    transition: transform 0.15s; min-height: 90px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+}
+.quote-section:hover { transform: scale(1.01); }
+.quote-section:active { transform: scale(0.99); }
+#daily-quote-text {
+    font-size: 0.95em; font-style: italic; margin-bottom: 6px;
+    line-height: 1.4; max-width: 100%; opacity: 1; transition: opacity 0.25s ease;
+}
+#daily-quote-author {
+    font-size: 0.8em; opacity: 0.9; font-weight: 600; transition: opacity 0.25s ease;
+}
+.quote-hint {
+    font-size: 0.7em; opacity: 0.7; margin-top: 8px;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;
+}
+
+/* ============================================
+   5. БОКОВОЕ МЕНЮ
+   ============================================ */
+.sidebar {
+    position: fixed; top: 0; left: -300px; width: 280px; height: 100%;
+    background: var(--surface); z-index: 1000; padding: 20px;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+    transition: left 0.3s ease; overflow-y: auto;
+    z-index: 1000;
+}
+.sidebar.open { left: 0; }
+.sidebar-backdrop {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); z-index: 999;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+.sidebar-backdrop.hidden { display: none; }
+
+.sidebar-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+}
+.sidebar-header h2 { font-size: 1.2em; font-weight: 700; }
+.sidebar-menu { 
+    display: flex; 
+    flex-direction: column; 
+    /* Добавляем отступ снизу, чтобы последние кнопки не прятались под таб-бар */
+    padding-bottom: calc(var(--nav-height, 70px) + 20px); 
+}
+.sidebar-menu-btn {
+    width: 100%; 
+    text-align: left; 
+    background: none; 
+    border: none;
+    padding: 15px 10px; 
+    cursor: pointer; 
+    color: var(--text-color);
+    font-size: 1em; 
+    border-radius: 8px; 
+    transition: background-color 0.2s;
+    
+    /* Выравниваем иконку и текст по центру */
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Отступ между иконкой и текстом */
+}
+.sidebar-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.sidebar-icon svg {
+    display: block;
+}
+.sidebar-menu-btn:hover { background: var(--surface-variant); }
+.sidebar-divider { height: 1px; background: var(--border-color); margin: 5px 0; }
+.sidebar-submenu { position: relative; }
+
+.theme-options, .mood-filter-options, .export-import-options {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 10px 15px; background: var(--surface-variant);
+    border-radius: 8px; margin: 5px 0;
+}
+.theme-options.hidden, .mood-filter-options.hidden, .export-import-options.hidden { display: none; }
+
+.theme-btn, .export-import-btn {
+    text-align: left; background: var(--surface);
+    border: 2px solid transparent; border-radius: 6px;
+    padding: 8px 12px; cursor: pointer; color: var(--text-color);
+    font-size: 0.95em; transition: border-color 0.2s, background-color 0.2s;
+}
+.theme-btn:hover, .export-import-btn:hover { border-color: var(--accent-color); background: var(--mood-btn-selected-bg); }
+.theme-btn.selected { border-color: var(--accent-color); background: var(--mood-btn-selected-bg); }
+.theme-coming-soon {
+    text-align: center; font-size: 0.8em; color: var(--text-muted);
+    font-style: italic; padding: 5px;
+}
+
+.sidebar-pin-btn.hidden { display: none; }
+.sidebar-pin-btn { color: var(--text-muted); font-size: 0.9em; }
+.sidebar-pin-btn:hover { color: var(--danger-color); }
+
+/* ============================================
+   6. КАЛЕНДАРЬ (ПК)
+   ============================================ */
+.calendar-section-desktop {
+    background: var(--surface); padding: 15px; border-radius: 12px;
+    margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+@media (min-width: 769px) { .calendar-section-desktop { display: block !important; } }
+@media (max-width: 768px) { .calendar-section-desktop { display: none !important; } }
+
+/* ============================================
+   7. СПИСОК ЗАПИСЕЙ
+   ============================================ */
+
+/* Список записей */
+.entries-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 2px; /* Было 20px. Уменьшили отступ между днями */
+    padding-bottom: 20px;
+}
+
+/* Заголовок группы (дата) */
+.entries-date-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px; /* Было 4px. Чуть увеличили, чтобы карточки одного дня не слипались */
+}
+
+.entries-date-header {
+    text-align: center;
+    font-size: 0.75em; /* Было 0.85em. Уменьшили размер шрифта */
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 2px; /* Уменьшили отступ до карточек */
+    margin-top: 5px; /* Добавили небольшой отступ сверху */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Карточка записи */
+.entry-card {
+    position: relative; 
+    background: var(--surface); 
+    padding: 12px 15px; /* Было просто 15px. Сделали чуть тоньше сверху и снизу */
+    border-radius: 12px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    cursor: pointer; 
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid transparent;
+}
+.entry-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.entry-card.selected { background: var(--mood-btn-selected-bg); border-color: var(--accent-color); }
+.entry-card.selected::after {
+    content: '✓'; position: absolute; top: 10px; right: 10px;
+    width: 24px; height: 24px; background: var(--accent-color); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: bold;
+}
+.entry-header {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px;
+}
+.entry-title { font-size: 1.1em; font-weight: 600; color: var(--text-color); margin-bottom: 5px; }
+.entry-text {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; white-space: pre-wrap; line-height: 1.5; font-size: 0.95em;
+}
+
+/* ============================================
+   КНОПКА FAB (ЦВЕТ ЗАВИСИТ ОТ ТЕМЫ)
+   ============================================ */
+.fab-button {
+    position: fixed; 
+    bottom: 30px; 
+    left: 50%; 
+    transform: translateX(-50%);
+    width: 64px; 
+    height: 64px; 
+    border-radius: 50%;
+    
+    /* ТЕПЕРЬ ЦВЕТ БЕРЕТСЯ ИЗ ПЕРЕМЕННОЙ ТЕМЫ */
+    background: var(--accent-color); 
+    
+    color: #ffffff; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3); 
+    border: 1px solid var(--accent-hover); 
+    
+    font-size: 2.2em; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    cursor: pointer; 
+    
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s; 
+    z-index: 100;
+}
+
+.fab-button:hover { 
+    transform: translateX(-50%) scale(1.08); 
+}
+
+/* --- САМА ВОЛНА --- */
+.fab-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    
+    /* ВОЛНА ТОЖЕ БЕРЕТ ЦВЕТ ИЗ ТЕМЫ */
+    background: var(--accent-color); 
+    
+    z-index: -1; 
+    animation: wave 2.5s infinite ease-out;
+}
+
+/* --- АНИМАЦИЯ ВОЛНЫ --- */
+@keyframes wave {
+    0% {
+        transform: scale(1);
+        opacity: 0.6; 
+    }
+    100% {
+        transform: scale(1.8); 
+        opacity: 0; 
+    }
+}
+
+/* ============================================
+   9. ОБЩИЕ СТИЛИ МОДАЛОК
+   ============================================ */
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 999; display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.modal:not(.hidden) { opacity: 1; visibility: visible; }
+.modal-backdrop {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(2px); z-index: 1;
+}
+.modal-content {
+    position: relative; background: var(--surface); border-radius: 16px;
+    padding: 20px; width: 90%; max-width: 500px; max-height: 90vh;
+    overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 2;
+    transform: scale(0.95) translateY(10px); transition: transform 0.3s ease;
+}
+.modal:not(.hidden) .modal-content { transform: scale(1) translateY(0); }
+.hidden { display: none !important; }
+.modal.top-layer { z-index: 1001; }
+
+
+/* ============================================
+   10. МОДАЛКА ЗАПИСИ (НА ВЕСЬ ЭКРАН)
+   ============================================ */
+
+.entry-modal-content {
+    padding: 0; 
+    display: flex; 
+    flex-direction: column;
+    
+    /* По умолчанию (телефон) — на весь экран */
+    width: 100vw; 
+    height: 100vh; 
+    height: 100dvh;
+    max-height: 100vh; 
+    max-height: 100dvh;
+    max-width: 100vw;
+    border-radius: 0; 
+    overflow: hidden; 
+
+    background: var(--surface);
+}
+
+/* На компьютере — аккуратное окно по центру */
+@media (min-width: 769px) {
+    .entry-modal-content {
+        width: 90%;
+        max-width: 600px;
+        height: 85vh;
+        max-height: 85vh;
+        border-radius: 16px;
+    }
+}
+
+/* Шапка модалки (кнопки Сохранить, Удалить и т.д.) */
+.entry-modal-header {
+    display: flex; 
+    justify-content: space-between; /* Раздвигает крайние кнопки */
+    align-items: center;
+    padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; 
+    border-bottom: 1px solid var(--border-color); 
+    flex-shrink: 0;
+    background: var(--surface); 
+    position: relative;
+    width: 100%;
+    gap: 6px;
+}
+
+
+/* Строка с заголовком и датой */
+.entry-title-row {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    padding: 15px 20px 0 20px; 
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Форма (текст записи) */
+.entry-form {
+    flex: 1; 
+    padding: 15px; 
+    display: flex; 
+    flex-direction: column;
+    gap: 15px; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch;
+    transition: background 0.3s;
+}
+
+/* Поле ввода текста */
+.entry-text-input {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 1em;
+    font-weight: 400; 
+    color: var(--text-color);
+    outline: none;
+    line-height: 1.6;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    min-height: 150px;
+}
+
+/* ============================================
+   ВОЗВРАЩАЕМ КНОПКИ И РЕЖИМЫ
+   ============================================ */
+
+/* Календарь — обычный элемент, без absolute */
+.date-picker-display {
+    display: flex;
+    align-items: center; /* Выравниваем текст и стрелку по центру вертикали */
+    justify-content: center; /* Чтобы дата и стрелка были вместе */
+    gap: 2px; /* Минимальный отступ между текстом и стрелкой */
+    
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 10px; 
+    cursor: pointer;
+    font-size: 0.85em; 
+    color: var(--text-color);
+    transition: background-color 0.2s, transform 0.1s;
+    user-select: none;
+    flex-shrink: 0; 
+}
+
+.date-picker-display:active {
+    transform: scale(0.97);
+}
+
+/* Прижимаем календарь и карандаш к центру */
+#entry-date-display {
+    margin: 0 auto;
+    
+}
+
+/* Карандаш */
+#edit-mode-btn {
+    margin: 0 auto;
+    /* Убедимся, что он виден */
+    color: var(--text-color); 
+}
+
+.date-picker-display:hover { background: var(--mood-btn-selected-bg); }
+.date-picker-display:active { transform: scale(0.97); }
+.date-picker-icon { font-size: 1em; line-height: 1; }
+#entry-date-text { font-weight: 500; white-space: nowrap; }
+
+.selected-mood-display { font-size: 2em; transition: transform 0.2s; }
+#entry-modal:not(.is-editing) .selected-mood-display { cursor: default; pointer-events: none; opacity: 1; }
+#entry-modal.is-editing .selected-mood-display { cursor: pointer; pointer-events: auto; }
+.selected-mood-display:hover { transform: scale(1.2); }
+
+.modal-close-btn {
+    background: none; border: none; font-size: 1.5em;
+    cursor: pointer; color: var(--text-muted); transition: color 0.2s;
+}
+.modal-close-btn:hover { color: var(--text-color); }
+
+/* Карандаш */
+.edit-btn { 
+    transition: transform 0.2s; 
+    color: var(--text-color);
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.edit-btn:hover { transform: scale(1.1); }
+
+
+/* Стили для полей в режиме ПРОСМОТРА */
+#entry-modal:not(.is-editing) .entry-title-input,
+#entry-modal:not(.is-editing) .entry-text-input {
+    background: transparent; border-bottom: 2px solid transparent;
+    color: var(--text-color); cursor: default; opacity: 0.95;
+}
+#entry-modal:not(.is-editing) .entry-text-input { resize: none; }
+
+/* Стили для полей в режиме РЕДАКТИРОВАНИЯ */
+#entry-modal.is-editing .entry-title-input { border-bottom-color: var(--border-color); }
+#entry-modal.is-editing .entry-title-input:focus { border-bottom-color: var(--accent-color); }
+
+#entry-modal:not(.is-editing) .entry-actions { display: none; }
+
+.entry-title-input {
+    width: 100%; border: none; border-bottom: 2px solid var(--border-color);
+    background: transparent; font-size: 1.3em; font-weight: 600;
+    color: var(--text-color); padding: 5px 0; outline: none; transition: border-color 0.2s;
+}
+
+/* Кнопки сохранения и удаления */
+/* Левая кнопка */
+.save-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent-color); /* Зеленый цвет из темы */
+    cursor: pointer;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    transition: transform 0.2s, opacity 0.2s;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.save-close-btn:hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+/* Иконки внутри кнопок */
+.save-close-btn svg,
+.edit-btn svg,
+.header-delete-btn svg {
+    display: block;
+    pointer-events: none; /* Чтобы клик шел по кнопке, а не по SVG */
+}
+
+
+
+/* Корзина */
+.header-delete-btn {
+    background: var(--danger-bg); 
+    color: var(--danger-color);
+    border: 1px solid var(--danger-color); 
+    border-radius: 50%;
+    width: 40px; 
+    height: 40px; 
+    cursor: pointer;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    transition: opacity 0.2s, transform 0.15s; 
+    flex-shrink: 0;
+    padding: 0;
+}
+.header-delete-btn:hover { opacity: 0.85; transform: scale(1.05); }
+
+
+/* ============================================
+   11. МОДАЛКА ПОДТВЕРЖДЕНИЯ
+   ============================================ */
+.modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
+.modal-btn {
+    padding: 8px 16px; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 0.95em; transition: opacity 0.2s;
+}
+.modal-btn:hover { opacity: 0.85; }
+.modal-btn.primary { background: var(--accent-color); color: white; }
+.modal-btn.secondary { background: var(--surface-variant); color: var(--text-color); }
+.btn-danger {
+    background: var(--danger-bg); color: var(--danger-color);
+    border: 1px solid var(--danger-color); border-radius: 8px;
+    padding: 10px 20px; font-size: 1em; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s;
+}
+.btn-danger:hover { opacity: 0.85; }
+.btn-secondary {
+    background: var(--surface-variant); color: var(--text-color); border: none;
+    border-radius: 8px; padding: 10px 20px; font-size: 1em;
+    cursor: pointer; transition: background-color 0.2s;
+}
+.btn-secondary:hover { background: var(--mood-btn-selected-bg); }
+
+/* ============================================
+   12. КАЛЕНДАРЬ И ГРАФИК
+   ============================================ */
+.calendar-modal-content { padding: 0; }
+.calendar-modal-content.selecting-date .calendar-hint::after {
+    content: " (выберите нужный день)"; font-weight: 600; color: var(--accent-color);
+}
+.calendar-header {
+    display: flex; justify-content: space-between; align-items: center; padding: 10px 15px;
+}
+.calendar-header h3 { font-size: 1em; font-weight: 600; text-transform: capitalize; }
+.calendar-nav {
+    background: var(--surface-variant); color: var(--text-color); border: none;
+    border-radius: 8px; padding: 6px 12px; font-size: 1.1em; cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s;
+}
+.calendar-nav:hover { background: var(--mood-btn-selected-bg); }
+.calendar-nav:active { transform: scale(0.95); }
+.calendar-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr); text-align: center;
+    font-size: 0.75em; color: var(--text-muted); padding: 0 15px; margin-bottom: 8px; font-weight: 600;
+}
+.calendar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    padding: 0 15px; transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.calendar-grid.slide-left { animation: slideLeft 0.3s ease; }
+.calendar-grid.slide-right { animation: slideRight 0.3s ease; }
+@keyframes slideLeft { 0% { opacity: 0; transform: translateX(30px); } 100% { opacity: 1; transform: translateX(0); } }
+@keyframes slideRight { 0% { opacity: 0; transform: translateX(-30px); } 100% { opacity: 1; transform: translateX(0); } }
+.calendar-day {
+    aspect-ratio: 1; 
+    /* Тонкая рамка для сетки */
+    border: 1px solid var(--border-color); 
+    border-radius: 8px; 
+    background: var(--surface-variant); 
+    color: var(--text-color);
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-size: 1.1em; 
+    cursor: pointer; 
+    padding: 0;
+    transition: transform 0.15s, border-color 0.2s, background-color 0.2s;
+}
+.calendar-day:hover { transform: scale(1.06); background: var(--mood-btn-selected-bg); }
+.calendar-day.empty { 
+    background: transparent; 
+    border-color: transparent; /* Убираем рамку у пустых ячеек */
+    cursor: default; 
+}
+.calendar-day.empty:hover { transform: none; }
+.calendar-day.no-entry { font-size: 0.85em; color: var(--text-muted); }
+.calendar-day.today { border-color: var(--accent-color); }
+.calendar-hint { text-align: center; font-size: 0.8em; color: var(--text-muted); padding: 15px; margin: 0; }
+.back-btn {
+    background: var(--accent-color); color: white; border: none;
+    border-radius: 8px; padding: 8px 14px; font-size: 0.9em; font-weight: 600;
+    cursor: pointer; transition: background-color 0.2s, transform 0.15s;
+}
+.back-btn:hover { background: var(--accent-hover); transform: translateX(-2px); }
+
+.chart-modal-content { padding: 0; max-width: 600px; }
+.chart-modal-body { padding: 15px 20px 20px 20px; }
+.chart-modal-body .chart-header { justify-content: center; margin-bottom: 15px; }
+.chart-modal-body #mood-chart { height: 220px; display: block; width: 100%; }
+.chart-modal-body .chart-summary { margin-top: 12px; font-size: 0.8em; color: var(--text-muted); text-align: center; }
+
+/* ============================================
+   13. ТЕГИ, НАСТРОЕНИЕ, ШАБЛОНЫ, СТАТИСТИКА
+   ============================================ */
+.tags-list { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 20px 20px 20px; justify-content: center; max-height: 60vh; overflow-y: auto; }
+.tag-pill {
+    background: var(--surface-variant); color: var(--text-color); padding: 8px 16px;
+    border-radius: 20px; cursor: pointer; font-size: 0.95em; font-weight: 500;
+    transition: background-color 0.2s, transform 0.15s; border: 1px solid transparent;
+}
+.tag-pill:hover { background: var(--mood-btn-selected-bg); border-color: var(--accent-color); transform: translateY(-2px); }
+.tag-pill .count { font-size: 0.8em; opacity: 0.7; margin-left: 4px; }
+
+.active-filter-banner {
+    background: var(--mood-btn-selected-bg); color: var(--text-color);
+    padding: 10px 15px; border-radius: 8px; margin-bottom: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; border-left: 4px solid var(--accent-color); animation: slideIn 0.3s ease-out;
+}
+.clear-filter-btn { background: none; border: none; color: var(--danger-color); cursor: pointer; font-size: 1.2em; padding: 0 5px; transition: transform 0.2s; }
+.clear-filter-btn:hover { transform: scale(1.2); }
+
+.mood-modal-content { 
+    text-align: center; 
+    margin-bottom: var(--nav-height, 70px);
+    /* Уменьшаем высоту и отступы, чтобы помещалось без скролла */
+    max-height: calc(100vh - var(--nav-height, 70px) - 20px);
+    padding: 15px; 
+    overflow-y: auto;
+}
+
+/* Уменьшаем заголовок, чтобы не занимал много места */
+.mood-modal-content h2 { 
+    margin-bottom: 15px; 
+    font-size: 1.1em; 
+}
+/* Сетка: чуть меньше отступ между кнопками */
+.mood-grid { 
+    display: grid; 
+    grid-template-columns: repeat(5, 1fr); 
+    gap: 6px; 
+    margin-bottom: 0; /* Убираем отступ снизу */
+}
+
+/* Сама кнопка: делаем меньше и компактнее */
+.mood-option {
+    font-size: 1.6em; /* Уменьшили с 2em */
+    background: var(--mood-btn-bg); 
+    border: 2px solid transparent;
+    border-radius: 10px; 
+    padding: 6px 0; /* Убрали горизонтальные отступы, оставили вертикальные */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1; /* Делаем кнопку идеально квадратной */
+    transition: transform 0.15s, border-color 0.2s, background-color 0.2s;
+}
+
+/* Чуть уменьшаем эффект увеличения при наведении, чтобы не вылезало за края */
+.mood-option:hover { 
+    background: var(--mood-btn-selected-bg); 
+    border-color: var(--accent-color); 
+    transform: scale(1.08); 
+}
+/* Цветовые уровни для кнопок настроения */
+.mood-level-1 { 
+    background-color: rgba(244, 67, 54, 0.15);  /* Красный */
+    border-color: rgba(244, 67, 54, 0.4);
+}
+.mood-level-2 { 
+    background-color: rgba(255, 152, 0, 0.15);  /* Оранжевый */
+    border-color: rgba(255, 152, 0, 0.4);
+}
+.mood-level-3 { 
+    background-color: rgba(2, 136, 209, 0.15);  /* Голубой */
+    border-color: rgba(2, 136, 209, 0.4);
+}
+.mood-level-4 { 
+    background-color: rgba(139, 195, 74, 0.15); /* Светло-зеленый */
+    border-color: rgba(139, 195, 74, 0.4);
+}
+.mood-level-5 { 
+    background-color: rgba(27, 94, 32, 0.15);   /* Темно-зеленый */
+    border-color: rgba(27, 94, 32, 0.4);
+}
+
+/* При наведении делаем фон чуть ярче, сохраняя цвет уровня */
+.mood-level-1:hover { background-color: rgba(244, 67, 54, 0.25); border-color: #f44336; }
+.mood-level-2:hover { background-color: rgba(255, 152, 0, 0.25); border-color: #ff9800; }
+.mood-level-3:hover { background-color: rgba(2, 136, 209, 0.25); border-color: #0288d1; }
+.mood-level-4:hover { background-color: rgba(139, 195, 74, 0.25); border-color: #8bc34a; }
+.mood-level-5:hover { background-color: rgba(27, 94, 32, 0.25); border-color: #1b5e20; }
+.modal-close-text { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1em; text-decoration: underline; margin-top: 10px; transition: color 0.2s; }
+.modal-close-text:hover { color: var(--text-color); }
+.mood-option img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.mood-filter-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.mood-filter-emoji {
+    font-size: 1.5em; 
+    background: var(--surface); 
+    border: 2px solid transparent;
+    border-radius: 10px; 
+    padding: 4px; /* Уменьшили, так как картинка имеет свои размеры */
+    cursor: pointer; 
+    text-align: center;
+    transition: transform 0.15s, border-color 0.2s, background-color 0.2s; 
+    -webkit-tap-highlight-color: transparent;
+    
+    /* Для правильного отображения картинки */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+}
+.mood-filter-emoji:hover { border-color: var(--accent-color); background: var(--mood-btn-selected-bg); transform: scale(1.1); }
+.mood-filter-emoji:active { transform: scale(0.95); }
+
+.templates-modal-content { padding: 0; max-width: 500px; }
+.templates-list { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.template-item {
+    background: var(--surface-variant); border: 2px solid transparent; border-radius: 12px;
+    padding: 15px; cursor: pointer; text-align: left;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.15s;
+}
+.template-item:hover { border-color: var(--accent-color); background: var(--mood-btn-selected-bg); transform: translateY(-2px); }
+.template-title { font-size: 1.05em; font-weight: 600; color: var(--text-color); margin-bottom: 4px; }
+.template-desc { font-size: 0.85em; color: var(--text-muted); }
+
+.stats-modal-content { padding: 0; }
+.stats-body { padding: 20px; }
+.stats-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.stats-item:last-child { border-bottom: none; }
+.stats-label { font-size: 0.95em; color: var(--text-muted); }
+.stats-value { font-size: 1.1em; font-weight: 600; color: var(--text-color); }
+.stats-value.large { font-size: 1.3em; color: var(--accent-color); }
+
+/* ============================================
+   14. НАПОМИНАНИЕ, TOAST, PIN
+   ============================================ */
+.reminder-modal-content { text-align: center; }
+.reminder-modal-content h2 { margin-bottom: 15px; color: var(--accent-color); }
+#reminder-text { font-size: 1em; margin-bottom: 20px; color: var(--text-color); line-height: 1.5; }
+.reminder-actions { display: flex; gap: 10px; justify-content: center; }
+
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast {
+    background: var(--surface); color: var(--text-color); padding: 12px 20px; border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.9em; border-left: 4px solid var(--accent-color);
+    animation: toastSlideIn 0.3s ease-out; pointer-events: auto; transition: opacity 0.3s;
+}
+.toast.success { border-left-color: #4CAF50; }
+.toast.error { border-left-color: #f44336; }
+@keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.pin-modal { z-index: 5000; }
+.pin-modal .modal-backdrop.pin-backdrop { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); }
+.pin-modal-content { text-align: center; padding: 30px 20px; max-width: 360px; }
+.pin-modal-content h2 { margin-bottom: 8px; color: var(--accent-color); font-size: 1.3em; }
+.pin-subtitle { color: var(--text-muted); font-size: 0.9em; margin-bottom: 20px; min-height: 1.4em; transition: color 0.2s; }
+.pin-subtitle.error { color: var(--danger-color); font-weight: 600; }
+.pin-dots { display: flex; justify-content: center; gap: 16px; margin-bottom: 30px; }
+.pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--accent-color); transition: background-color 0.2s, transform 0.15s; }
+.pin-dot.filled { background-color: var(--accent-color); transform: scale(1.15); }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 280px; margin: 0 auto; }
+.pin-key {
+    aspect-ratio: 1.3; border: none; border-radius: 12px; background: var(--surface-variant);
+    color: var(--text-color); font-size: 1.5em; font-weight: 600; cursor: pointer;
+    transition: background-color 0.15s, transform 0.1s; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.pin-key:hover { background: var(--mood-btn-selected-bg); }
+.pin-key:active { transform: scale(0.93); }
+.pin-key-empty { background: transparent; cursor: default; }
+.pin-key-empty:hover { background: transparent; }
+.pin-key-empty:active { transform: none; }
+.pin-key-delete { font-size: 1.3em; }
+.pin-shake { animation: pinShake 0.4s ease; }
+@keyframes pinShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-12px); } 40% { transform: translateX(12px); } 60% { transform: translateX(-8px); } 80% { transform: translateX(8px); } }
+
+/* ============================================
+   15. АДАПТИВНОСТЬ И СВАЙПЫ
+   ============================================ */
+@media (max-width: 480px) {
+    body { padding: 12px; padding-bottom: 90px; }
+    .main-header h1 { font-size: 1.1em; }
+    .quote-section { padding: 10px 12px; }
+    .entry-title-input { font-size: 1.1em; }
+    .mood-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .mood-option { font-size: 1.6em; padding: 8px; }
+}
+
+body.multi-delete-active { touch-action: pan-y; }
+
+/* ============================================
+   СОРТИРОВКА ЗАПИСЕЙ
+   ============================================ */
+
+.sort-options {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 15px;
+    background: var(--surface-variant);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.sort-options.hidden {
+    display: none;
+}
+
+.sort-option-btn {
+    text-align: left;
+    background: var(--surface);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.95em;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.sort-option-btn:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+.sort-option-btn.selected {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+    font-weight: 600;
+}
+
+.entry-date-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.entry-edited {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    opacity: 0.85;
+}
+
+/* ============================================
+   КНОПКИ НАПОМИНАНИЯ (ГАРАНТИРОВАННЫЕ СТИЛИ)
+   ============================================ */
+.reminder-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--surface-variant);
+    color: var(--text-color);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--mood-btn-selected-bg);
+}
+
+/* ============================================
+   ПОДМЕНЮ PIN-КОДА
+   ============================================ */
+.pin-options {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 15px;
+    background: var(--surface-variant);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.pin-options.hidden {
+    display: none;
+}
+
+.pin-option-btn {
+    text-align: left;
+    background: var(--surface);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.95em;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.pin-option-btn:hover {
+    border-color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+.pin-option-btn.hidden {
+    display: none;
+}
+
+/* ============================================
+   ПАНЕЛЬ ИНСТРУМЕНТОВ (TOOLBAR)
+   ============================================ */
+.entry-toolbar {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.entry-toolbar.hidden {
+    display: none;
+}
+
+/* === 📱 МОБИЛЬНАЯ АДАПТАЦИЯ ТУЛБАРА ПОД КЛАВИАТУРУ === */
+@media (max-width: 768px) {
+    .entry-toolbar {
+        /* Убираем transform, который мог ломать высоту */
+        transform: none; 
+        position: relative; 
+        z-index: 20; 
+        width: 100%;
+        flex-shrink: 0;
+    }
+    
+    /* Если клавиатура открыта, мы просто уменьшаем высоту формы */
+    .entry-modal-content {
+        height: 100vh;
+        height: 100dvh;
+    }
+}
+
+/* Верхняя панель инструментов (выезжает над основным тулбаром) */
+.toolbar-panel {
+    position: relative;
+    max-height: 50vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-color);
+    animation: slideUp 0.25s ease-out;
+}
+
+.toolbar-panel.hidden {
+    display: none;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Подпанели инструментов */
+.toolbar-subpanel {
+    position: relative;
+    padding: 10px;
+}
+
+.toolbar-subpanel.hidden {
+    display: none;
+}
+
+/* Кнопка закрытия панели (галочка) */
+.toolbar-panel-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+    z-index: 10;
+}
+
+.toolbar-panel-close-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.1);
+}
+
+/* Основная панель кнопок */
+.toolbar-buttons {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.toolbar-buttons::-webkit-scrollbar {
+    height: 4px;
+}
+
+.toolbar-buttons::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.toolbar-btn {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: background-color 0.2s, transform 0.1s, border-color 0.2s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.toolbar-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+/* Стили для панели эмодзи внутри тулбара */
+.toolbar-subpanel .emoji-packs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 0;
+    padding-right: 50px; /* Отступ для кнопки закрытия */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.toolbar-subpanel .emoji-packs::-webkit-scrollbar {
+    height: 3px;
+}
+
+.toolbar-subpanel .emoji-packs::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.toolbar-subpanel .emoji-pack-btn {
+    background: var(--surface-variant);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 1.4em;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.toolbar-subpanel .emoji-pack-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-subpanel .emoji-pack-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-subpanel .emoji-pack-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-subpanel .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    padding: 10px 0;
+    max-height: 35vh;
+    overflow-y: auto;
+}
+
+.toolbar-subpanel .emoji-item {
+    font-size: 1.6em;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 0;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s, transform 0.1s;
+}
+
+.toolbar-subpanel .emoji-item:hover {
+    background: var(--mood-btn-selected-bg);
+    transform: scale(1.2);
+}
+
+.toolbar-subpanel .emoji-item:active {
+    transform: scale(0.9);
+}
+
+@media (max-width: 480px) {
+    .toolbar-subpanel .emoji-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+    .toolbar-subpanel .emoji-item {
+        font-size: 1.4em;
+    }
+}
+
+/* ============================================
+   МОДАЛКА ЭМОДЗИ
+   ============================================ */
+.emoji-modal-content {
+    padding: 0;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.emoji-modal-content .entry-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.emoji-modal-content .entry-modal-header h2 {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+/* Панель паков эмодзи */
+.emoji-packs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 15px;
+    background: var(--surface-variant);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.emoji-packs::-webkit-scrollbar {
+    height: 3px;
+}
+
+.emoji-packs::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.emoji-pack-btn {
+    background: var(--surface);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 1.4em;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.emoji-pack-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.emoji-pack-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.emoji-pack-btn:active {
+    transform: scale(0.95);
+}
+
+/* Сетка эмодзи */
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    padding: 15px;
+    overflow-y: auto;
+    max-height: 50vh;
+}
+
+.emoji-item {
+    font-size: 1.6em;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s, transform 0.1s;
+}
+
+.emoji-item:hover {
+    background: var(--mood-btn-selected-bg);
+    transform: scale(1.2);
+}
+
+.emoji-item:active {
+    transform: scale(0.9);
+}
+
+@media (max-width: 480px) {
+    .emoji-grid {
+        grid-template-columns: repeat(7, 1fr);
+    }
+    .emoji-item {
+        font-size: 1.4em;
+    }
+}
+
+/* ============================================
+   ПАНЕЛЬ ФОРМАТИРОВАНИЯ ТЕКСТА
+   ============================================ */
+.text-formatting-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.text-format-btn {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    user-select: none;
+}
+
+.text-format-btn:hover { 
+    background: var(--mood-btn-selected-bg); 
+    border-color: var(--accent-color); 
+}
+
+.text-format-btn:active { 
+    transform: scale(0.95); 
+}
+
+/* Скрываем стандартный input type="color", оставляем только красивую кнопку */
+.hidden-color-input { 
+    display: none; 
+}
+
+.color-picker-label {
+    cursor: pointer;
+}
+
+/* ============================================
+   МОДАЛКА ФОРМАТИРОВАНИЯ ТЕКСТА
+   ============================================ */
+.text-format-modal-content {
+    padding: 0;
+    max-width: 500px;
+}
+
+.format-section {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.format-section:last-child {
+    border-bottom: none;
+}
+
+.format-section-title {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+/* Цвета текста */
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+}
+
+.color-btn {
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.2s;
+}
+
+.color-btn:hover {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+}
+
+.color-btn:active {
+    transform: scale(0.95);
+}
+
+.color-btn.selected {
+    border-color: var(--accent-color);
+}
+
+/* Выравнивание текста */
+.align-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.align-btn {
+    background: var(--surface-variant);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 1.3em;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.align-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.align-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+/* Стили шрифта */
+.style-grid {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+}
+
+.style-grid::-webkit-scrollbar {
+    height: 4px;
+}
+
+.style-grid::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.style-btn {
+    background: var(--surface-variant);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.style-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.style-btn.selected {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+/* Размеры шрифта (H1-H5) */
+.size-btn {
+    font-size: 1em;
+}
+
+/* Жирность шрифта */
+.weight-btn {
+    font-size: 1em;
+}
+
+/* Принудительно убираем жирность у заголовков внутри поля ввода, 
+   оставляя только изменение размера, как ты и просил */
+#entry-text :is(h1, h2, h3, h4, h5) {
+    font-weight: normal !important;
+    margin: 0;
+    line-height: inherit;
+}
+
+
+/* Убираем жирный шрифт с самих кнопок, чтобы они выглядели аккуратно */
+/* Нижняя часть: Стили шрифта (КНОПКИ) */
+.font-styles-container {
+    display: flex;
+    gap: 6px;
+    padding: 12px 15px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.font-styles-container::-webkit-scrollbar {
+    height: 4px;
+}
+.font-styles-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.font-style-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.font-style-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.font-style-btn:active {
+    transform: scale(0.95);
+}
+
+/* ВАЖНО: Это правило остается! Оно убирает жирность у заголовков ВНУТРИ текста записи, 
+   но НЕ влияет на сами кнопки панели инструментов */
+#entry-text :is(h1, h2, h3, h4, h5) {
+    font-weight: normal !important;
+    margin: 0;
+    line-height: inherit;
+}
+
+/* ============================================
+   ПАНЕЛЬ ШРИФТА (ВСТРОЕННАЯ ПАНЕЛЬ #text-panel)
+   ============================================ */
+
+/* Шапка панели */
+.text-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 15px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface-variant);
+}
+
+.text-panel-title {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* Верхняя сетка: Выравнивание + Заголовки */
+.text-panel-top-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Левый блок: инструменты выравнивания и интервалов */
+.text-tools-left {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+}
+
+.text-tool-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex: 1;
+}
+
+.text-tool-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.text-tool-btn:active {
+    transform: scale(0.95);
+}
+
+/* Правый блок: размеры шрифта (H1-H5) с прокруткой */
+.text-tools-right {
+    display: flex;
+    gap: 6px;
+    flex: 1.5;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.text-tools-right::-webkit-scrollbar {
+    height: 4px;
+}
+.text-tools-right::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* Кнопки H1-H5: только размер, БЕЗ жирности */
+.heading-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-weight: normal !important; /* КЛЮЧЕВОЕ: убираем жирность */
+}
+
+.heading-btn:nth-child(1) { font-size: 1.4em; }
+.heading-btn:nth-child(2) { font-size: 1.25em; }
+.heading-btn:nth-child(3) { font-size: 1.1em; }
+.heading-btn:nth-child(4) { font-size: 1em; }
+.heading-btn:nth-child(5) { font-size: 0.85em; text-transform: uppercase; }
+
+.heading-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+.heading-btn:active {
+    transform: scale(0.95);
+}
+
+/* Палитра цветов */
+/* Внешний контейнер: именно он скроллится */
+.color-palette-container {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+    scrollbar-width: thin;
+}
+
+.color-palette-container::-webkit-scrollbar {
+    height: 4px;
+}
+.color-palette-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* Внутренний блок: просто flex, без своего скролла */
+.color-palette {
+    display: flex;
+    gap: 8px;
+}
+
+.color-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s, border-color 0.2s;
+}
+
+.color-circle:hover {
+    transform: scale(1.15);
+    border-color: var(--accent-color);
+}
+
+.color-circle:active {
+    transform: scale(0.95);
+}
+
+/* Нижняя часть: Стили шрифта (Default, Жирный, Курсив и т.д.) */
+.font-styles-container {
+    display: flex;
+    gap: 6px;
+    padding: 12px 15px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.font-styles-container::-webkit-scrollbar {
+    height: 4px;
+}
+.font-styles-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+
+
+/* ВАЖНО: Убираем жирность у самих заголовков, которые создаются внутри текста */
+#entry-text :is(h1, h2, h3, h4, h5) {
+    font-weight: normal !important;
+    margin: 0;
+    line-height: inherit;
+}
+
+/* ============================================
+   ПРЕСЕТЫ ШРИФТОВ (ЯВНОЕ ОПРЕДЕЛЕНИЕ)
+   ============================================ */
+.font-preset-default {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+.font-preset-bold {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: 700 !important;
+    font-style: normal !important;
+}
+.font-preset-italic {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
+}
+.font-preset-dancing {
+    font-family: 'Dancing Script', cursive !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+.font-preset-pacifico {
+    font-family: 'Pacifico', cursive !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+.font-preset-greatvibes {
+    font-family: 'Great Vibes', cursive !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+
+
+/* === 📱 ЗАЩИТА ТУЛБАРА ОТ СИСТЕМНОГО ВЫДЕЛЕНИЯ === */
+.entry-toolbar,
+.toolbar-panel,
+.toolbar-buttons,
+.toolbar-subpanel,
+.color-palette,
+.color-circle,
+.font-style-btn,
+.heading-btn {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* Критично для iOS: отключает меню при долгом нажатии */
+}
+
+/* === 📝 СТИЛИ ДЛЯ ПАНЕЛИ СПИСКОВ === */
+.list-options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding-right: 40px;
+    padding-top: 10px;
+}
+
+.list-option-btn {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 0;
+    font-size: 1.5em;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Специальный стиль для кнопки с цифрами, чтобы "123" смотрелось аккуратно */
+.list-btn-number {
+    font-size: 1.1em;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.list-option-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+/* === 📝 СТИЛИ ДЛЯ СПИСКОВ ВНУТРИ ТЕКСТА === */
+.custom-list-item {
+    display: flex;
+    align-items: flex-start;    /* ← возвращаем flex-start */
+    margin-bottom: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.custom-list-item[data-marker]::before {
+    content: attr(data-marker);
+    margin-right: 8px;
+    flex-shrink: 0;
+    user-select: none;
+    font-size: 1em;
+    line-height: 1.6;           /* ← как у текста */
+    height: 1.6em;              /* ← фиксируем высоту */
+    display: flex;
+    align-items: center;        /* ← центрируем эмодзи в этой высоте */
+}
+
+/* Нумерованный список через CSS-счетчики */
+#entry-text {
+    counter-reset: list-counter;
+}
+.custom-list-item.number-item {
+    counter-increment: list-counter;
+}
+.custom-list-item.number-item::before {
+    content: counter(list-counter) ".";
+    margin-right: 8px;
+    flex-shrink: 0;
+    user-select: none;
+    line-height: 1.6;
+    min-width: 24px;
+    text-align: right;
+    font-size: 1em; /* Цифры обычного размера */
+}
+
+/* === ✅ ИНТЕРАКТИВНЫЙ ЧЕКБОКС === */
+.custom-checkbox-marker {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    margin-right: 8px;
+    margin-top: 3px;
+    flex-shrink: 0; /* ФИКС: чекбокс всегда слева и не сжимается */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    user-select: none;
+    background: transparent;
+}
+
+.custom-checkbox-marker.checked {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.custom-checkbox-marker.checked::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.custom-list-item.checkbox-item.checked {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+#entry-text a {
+    color: var(--accent-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* ============================================
+   ТАБЛИЦЫ В РЕДАКТОРЕ
+   ============================================ */
+#entry-text .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 10px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+#entry-text table {
+    width: 100%;
+    max-width: 100%;           /* ← не больше редактора */
+    table-layout: fixed;       /* ← фиксируем ширину столбцов */
+    border-collapse: collapse;
+    font-size: 0.95em;
+    background: var(--surface);
+}
+
+#entry-text th,
+#entry-text td {
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    text-align: left;
+    /* min-width: 60px; ← УБРАТЬ (при fixed он не нужен) */
+    word-wrap: break-word;      /* ← длинные слова переносятся */
+    overflow-wrap: break-word;
+    vertical-align: top;
+}
+
+#entry-text th {
+    background-color: var(--surface-variant);
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.table-size-btn {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.table-size-btn:hover {
+    background: var(--mood-btn-selected-bg);
+    border-color: var(--accent-color);
+}
+
+.table-size-btn:active {
+    transform: scale(0.95);
+}
+
+/* === 🎨 ФОНЫ ЗАПИСЕЙ === */
+
+/* Панель выбора фона */
+.bg-options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 15px;
+}
+
+/* Кнопка-превью */
+.bg-option-btn {
+    aspect-ratio: 1;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.2s;
+    background: var(--surface-variant);
+}
+
+.bg-option-btn:hover {
+    transform: scale(1.05);
+    border-color: var(--accent-color);
+}
+
+.bg-option-btn.selected {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color) inset;
+}
+
+.bg-option-btn.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+/* Внутренний квадрат превью — тот же фон, что и в записи */
+.bg-option-preview {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 10px;
+}
+
+/* Название фона под превью */
+.bg-option-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 0.7em;
+    padding: 4px;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* === ФОНЫ (применяются и к #entry-text, и к превью) === */
+.bg-default {
+    background: transparent;
+}
+.bg-paper {
+    background: linear-gradient(135deg, #fdfbf7 0%, #f5efe6 100%);
+}
+.bg-night {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+.bg-forest {
+    background: linear-gradient(135deg, #d4e4d4 0%, #a8c5a8 100%);
+}
+.bg-sunset {
+    background: linear-gradient(135deg, #ffb997 0%, #f67e7d 50%, #843b62 100%);
+}
+.bg-lavender {
+    background: linear-gradient(135deg, #e8e0f5 0%, #c9b8e8 100%);
+}
+
+/* === ТЁМНЫЕ ФОНЫ: переопределение цветов для ВСЕХ элементов === */
+.entry-form.bg-night,
+.entry-form.bg-sunset,
+.entry-form.bg-wood,
+.entry-form.bg-stone {
+    color: #f0f0f0;
+    --text-color: #f0f0f0;
+    --text-muted: #b0b0b0;
+}
+
+.entry-form.bg-night a,
+.entry-form.bg-sunset a,
+.entry-form.bg-wood a,
+.entry-form.bg-stone a {
+    color: #87ceeb;
+}
+
+.entry-form.bg-night:empty:before,
+.entry-form.bg-sunset:empty:before,
+.entry-form.bg-wood:empty:before,
+.entry-form.bg-stone:empty:before {
+    color: #b0b0b0;
+}
+
+.entry-form.bg-night .custom-list-item::before,
+.entry-form.bg-sunset .custom-list-item::before,
+.entry-form.bg-wood .custom-list-item::before,
+.entry-form.bg-stone .custom-list-item::before {
+    color: #f0f0f0;
+}
+
+.entry-form.bg-night .custom-checkbox-marker,
+.entry-form.bg-sunset .custom-checkbox-marker,
+.entry-form.bg-wood .custom-checkbox-marker,
+.entry-form.bg-stone .custom-checkbox-marker {
+    border-color: #f0f0f0;
+}
+
+.entry-form.bg-night .custom-checkbox-marker.checked::after,
+.entry-form.bg-sunset .custom-checkbox-marker.checked::after,
+.entry-form.bg-wood .custom-checkbox-marker.checked::after,
+.entry-form.bg-stone .custom-checkbox-marker.checked::after {
+    color: #1a1a1a;
+}
+
+.entry-form.bg-night table,
+.entry-form.bg-sunset table,
+.entry-form.bg-wood table,
+.entry-form.bg-stone table {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.entry-form.bg-night th,
+.entry-form.bg-night td,
+.entry-form.bg-sunset th,
+.entry-form.bg-sunset td,
+.entry-form.bg-wood th,
+.entry-form.bg-wood td,
+.entry-form.bg-stone th,
+.entry-form.bg-stone td {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f0f0f0;
+}
+
+.entry-form.bg-night th,
+.entry-form.bg-sunset th,
+.entry-form.bg-wood th,
+.entry-form.bg-stone th {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.entry-form.bg-night .number-item::before,
+.entry-form.bg-sunset .number-item::before,
+.entry-form.bg-wood .number-item::before,
+.entry-form.bg-stone .number-item::before {
+    color: #f0f0f0;
+}
+
+/* Пейзаж всегда со светлым фоном — текст должен быть тёмным */
+.entry-form.bg-landscape {
+    color: #1a1a1a;
+}
+.entry-form.bg-landscape a {
+    color: #0066cc;
+}
+.entry-form.bg-landscape .custom-list-item::before {
+    color: #1a1a1a;
+}
+.entry-form.bg-landscape .custom-checkbox-marker {
+    border-color: #333;
+}
+.entry-form.bg-landscape .number-item::before {
+    color: #1a1a1a;
+}
+
+/* === 🎨 ДОПОЛНИТЕЛЬНЫЕ ФОНЫ === */
+
+/* Дерево — тёплые коричневые полосы (имитация древесных волокон) */
+.bg-wood {
+    background:
+        repeating-linear-gradient(
+            90deg,
+            #8b5a2b 0px,
+            #a0522d 4px,
+            #8b4513 8px,
+            #a0522d 12px,
+            #8b5a2b 16px
+        );
+    color: #fdf5e6;
+}
+
+/* Камень — серые пятна (имитация каменной поверхности) */
+.bg-stone {
+    background:
+        radial-gradient(circle at 20% 30%, #b0b0b0 0%, transparent 40%),
+        radial-gradient(circle at 70% 60%, #909090 0%, transparent 35%),
+        radial-gradient(circle at 40% 80%, #a8a8a8 0%, transparent 30%),
+        linear-gradient(135deg, #888 0%, #6a6a6a 50%, #7a7a7a 100%);
+    color: #f0f0f0;
+}
+
+/* 2D-пейзаж: небо с солнцем, зелёная гора, домик */
+.bg-landscape  {
+    background-image: url('bg-landscape.webp');
+    background-size: cover;         /* картинка заполняет всё пространство */
+    background-position: center;    /* по центру */
+    background-repeat: no-repeat;
+    color: #1a1a1a;
+}
+
+.bg-perry {
+    background-image: url('bg-perry.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #494949;   /* светлый текст, если фон тёмный */
+}
+
+/* Пейзаж всегда со светлым фоном — текст должен быть тёмным */
+#entry-text.bg-landscape {
+    color: #1a1a1a;
+}
+#entry-text.bg-landscape a {
+    color: #0066cc;
+}
+#entry-text.bg-landscape .custom-list-item::before {
+    color: #1a1a1a;
+}
+#entry-text.bg-landscape .custom-checkbox-marker {
+    border-color: #333;
+}
+#entry-text.bg-landscape .number-item::before {
+    color: #1a1a1a;
+}
+
+
+/* ============================================
+   КОМПАКТНАЯ ШАПКА И ТЕЛО ГРАФИКА
+   ============================================ */
+.chart-header-compact {
+    padding: 10px 15px !important;
+}
+.chart-header-compact h2 {
+    font-size: 1.1em !important;
+    margin: 0;
+}
+.chart-header-compact .calendar-nav {
+    padding: 4px 8px !important;
+    font-size: 1em !important;
+}
+
+.chart-body-compact {
+    padding: 10px 15px 15px 15px !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Центрируем график */
+}
+
+.chart-body-compact canvas {
+    width: 100% !important;
+    display: block;
+}
+
+.chart-body-compact .chart-header {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.chart-body-compact .chart-summary {
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 0.8em;
+    color: var(--text-muted);
+}
+
+/* ============================================
+   НИЖНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ
+   ============================================ */
+.chart-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    padding: 0;
+    max-width: 600px;
+}
+
+.chart-modal-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+
+.chart-mode-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.chart-mode-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.period-toggle-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+}
+
+
+/* ============================================
+ИСПРАВЛЕНИЕ ПОЗИЦИОНИРОВАНИЯ ГРАФИКА И НИЖНЯЯ ПАНЕЛЬ
+============================================ */
+
+/* Центрируем содержимое тела графика */
+.chart-body-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Центрирует canvas по горизонтали */
+    padding: 15px 10px 20px 10px;
+}
+
+/* Гарантируем, что canvas занимает доступную ширину, но не вылезает */
+.chart-body-compact canvas {
+    width: 100%;
+    max-width: 100%;
+    display: block;
+}
+
+/* Структура модалки графика: контент сверху, кнопки снизу */
+#chart-modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-modal-content {
+    margin-bottom: 0; /* Убираем отступ, чтобы кнопки прилипли */
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    width: 90%;
+    max-width: 600px;
+}
+
+/* Нижняя панель управления */
+.chart-controls-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    position: relative;
+    width: 90%;
+    max-width: 600px; /* Такая же ширина, как у контента */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 1002;
+}
+
+/* Кнопка переключения режима */
+.chart-mode-btn {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.chart-mode-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+/* Кнопка-стрелочка */
+.period-toggle-btn {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.period-toggle-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+/* Скрываем стрелочку, если она не нужна (для линейного графика) */
+.period-toggle-btn.hidden {
+    display: none !important;
+}
+
+/* Выпадающий список периодов (всплывает вверх) */
+.period-selector {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    z-index: 1003;
+}
+
+.period-selector.hidden {
+    display: none;
+}
+
+.period-selector-inner {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    min-width: 140px;
+}
+
+.period-option {
+    background: transparent;
+    border: none;
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 0.9em;
+    color: var(--text-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.period-option:hover {
+    background: var(--mood-btn-selected-bg);
+}
+
+.period-option.active {
+    background: var(--mood-btn-selected-bg);
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+
+
+.hidden {
+    display: none !important;
+}
+
+
+/* ============================================
+   ЗАСТАВКА (SPLASH SCREEN)
+   ============================================ */
+#splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Жестко задаем цвет фона заставки (светлый фон) */
+    background: #f5f5f5; 
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    overflow: hidden;
+}
+
+#splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* Фоновый слой — картинка или градиент */
+.splash-bg {
+    position: absolute;
+    inset: 0;
+    /* Жестко задаем цвета, без var(--accent-color), чтобы темы не влияли */
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    opacity: 0.15; /* Та самая мягкость */
+    z-index: 1;
+}
+
+/* Контент по центру */
+.splash-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    text-align: center;
+    animation: splashFadeIn 1s ease-out;
+}
+
+.splash-icon {
+    width: 180px;
+    height: 180px;
+    border-radius: 24px;
+    /* box-shadow: 0 10px 30px rgba(0,0,0,0.2); */
+    animation: splashPop 0.8s ease-out;
+}
+
+.splash-title-img {
+    width: 320px; /* Подгони под свой размер, чтобы выглядело красиво */
+    max-width: 85%; /* Чтобы не вылезала за края на маленьких экранах */
+    height: auto;
+    margin: 10px 0; /* Небольшой отступ сверху и снизу */
+    
+    /* Если хочешь тень под буквами, раскомментируй: */
+    /* filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); */
+}
+
+.splash-subtitle {
+    font-size: 1em;
+    font-weight: 400;
+    /* Жестко задаем серый цвет, чтобы в темной теме он не пропал */
+    color: #888888; 
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+/* Анимации */
+@keyframes splashFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashPop {
+    0% { transform: scale(0.7); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+
+/* ============================================
+   ИНДИВИДУАЛЬНЫЕ НАСТРОЙКИ ДЛЯ ГОЛУБОЙ ТЕМЫ
+   ============================================ */
+
+/* 1. Кнопка меню (гамбургер) — темная */
+body.theme-blue #menu-btn {
+    color: #0d47a1; /* Темно-синий */
+}
+
+/* 2. Кнопки FAB и Save-Close — темно-голубые */
+body.theme-blue .fab-button,
+body.theme-blue {
+    background: var(--accent-color) !important;
+    color: #ffffff !important;
+    /* box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4) !important; */
+}
+
+/* 3. Плашка с цитатой — чуть темнее, чем основной фон */
+body.theme-blue .quote-section {
+    background: #bbdefb !important; /* Средне-голубой */
+    color: #000000 !important;      /* Темно-синий текст */
+}
+
+/* 6. Карточки записей — белые с легкой голубой тенью */
+body.theme-blue .entry-card {
+    background: #ffffff !important;
+    border: 1px solid #e3f2fd;
+}
+
+/* 7. Кнопка "Меню" в шапке (три полоски) */
+body.theme-blue .main-header {
+    background: #e3f2fd; /* Как фон, чтобы не сливалось */
+}
+
+/* ============================================
+   ЦВЕТОВЫЕ ИНДИКАТОРЫ ТЕМ В БОКОВОМ МЕНЮ
+   ============================================ */
+
+/* Общие стили для всех кнопок тем */
+.theme-btn {
+    position: relative;
+    padding-left: 30px; /* Освобождаем место слева для полоски */
+    overflow: hidden;
+}
+
+/* Псевдоэлемент для цветной полоски */
+.theme-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 10px; /* Ширина полоски */
+    border-radius: 6px 0 0 6px; /* Скругление только слева */
+    border: 1px solid rgba(0,0,0,0.1); /* Легкая граница, чтобы светлые темы не сливались с фоном */
+    border-right: none;
+}
+
+/* 1. Светлая тема */
+.theme-btn[data-theme="light"]::before {
+    background-color: #f5f5f5; 
+}
+
+/* 2. Тёмная тема */
+.theme-btn[data-theme="dark"]::before {
+    background-color: #2d2d2d;
+}
+
+/* 3. Пастельная тема */
+.theme-btn[data-theme="pastel"]::before {
+    background-color: #fce4ec;
+}
+
+/* 4. Мягкая голубая тема (твоя новая) */
+.theme-btn[data-theme="blue"]::before {
+    background-color: #e3f2fd;
+}
+
+/* Чипсы триггеров */
+.triggers-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+}
+.trigger-chip {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.trigger-chip:hover {
+    background: var(--mood-btn-selected-bg);
+}
+.trigger-chip.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+#trigger-filter-select {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+
+/* Стили для селекта в глубокой статистике */
+#trigger-filter-select {
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    cursor: pointer;
+    outline: none;
+}
+
+/* Заголовок и иконка сортировки */
+.sort-toggle-container {
+    display: flex;
+    justify-content: space-between; /* Раздвигаем по краям */
+    align-items: center; /* Выравниваем по вертикали */
+    padding: 0 0 10px 0;
+    margin-top: 5px; /* Небольшой отступ сверху, если нужно */
+}
+
+/* Стили для нового заголовка */
+.entries-section-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+    letter-spacing: 0.02em;
+}
+
+.sort-toggle-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.sort-toggle-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+/* Эффект переворота иконки (если понадобится) */
+#sort-icon {
+    transition: transform 0.3s ease;
+}
+
+/* ============================================
+   ПОЛНОЭКРАННЫЕ МОДАЛКИ (Статистика, Календарь)
+   ============================================ */
+.fullscreen-modal {
+    align-items: flex-end; /* На телефоне выезжает снизу */
+}
+
+.fullscreen-content {
+    width: 100vw;
+    /* Высота = экран МИНУС таб-бар */
+    height: 100vh;
+    height: 100dvh;
+    max-width: 100vw;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border-radius: 0;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-out;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    
+    /* ВОТ ЭТО ДОБАВЛЕНО: прижимаем контент над таб-баром */
+    padding-bottom: var(--nav-height, 70px); 
+}
+
+.fullscreen-modal:not(.hidden) .fullscreen-content {
+    transform: translateY(0);
+}
+
+/* На ПК — обычное окно по центру */
+@media (min-width: 769px) {
+    .fullscreen-modal {
+        align-items: center;
+    }
+    .fullscreen-content {
+        width: 90%;
+        max-width: 600px;
+        height: 85vh;
+        max-height: 85vh;
+        border-radius: 16px;
+        transform: scale(0.95);
+        padding-bottom: 0; /* На ПК таб-бар не перекрывает */
+    }
+    .fullscreen-modal:not(.hidden) .fullscreen-content {
+        transform: scale(1);
+    }
+}
+
+/* Внутренние блоки для скролла */
+.stats-body, .calendar-modal-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Блок инсайтов месяца */
+.month-insights {
+    padding: 20px;
+    background: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.month-insights h3 {
+    font-size: 1em;
+    margin: 0 0 15px 0;
+    color: var(--text-color);
+    text-align: center;
+}
+
+.insight-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-left: 4px solid var(--accent-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.insight-card.bad {
+    border-left-color: var(--danger-color);
+}
+
+.insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.insight-date {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.insight-mood {
+    font-size: 1.4em;
+}
+
+.insight-content {
+    font-size: 0.9em;
+    color: var(--text-color);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.insight-triggers {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.insight-trigger-chip {
+    font-size: 0.7em;
+    background: var(--mood-btn-selected-bg);
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+/* Кнопка возврата к статистике */
+.back-to-stats-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.back-to-stats-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: var(--mood-btn-selected-bg);
+}
+
+/* ============================================
+   НИЖНИЙ ТАБ-БАР
+   ============================================ */
+body {
+    padding-bottom: 80px !important; /* Отступ, чтобы контент не залезал под таб-бар */
+}
+
+/* Скрываем старую шапку, если она осталась */
+.main-header {
+    display: none !important;
+}
+
+/* Сам таб-бар */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: var(--nav-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000; /* выше и модалок (999), и выше контента */
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    padding: 0 10px;
+    padding-bottom: env(safe-area-inset-bottom); /* Для iPhone */
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--nav-inactive-content);
+    font-size: 0.7em;
+    font-weight: 500;
+    gap: 4px;
+    flex: 1;
+    height: 100%;
+    transition: color 0.2s;
+    cursor: pointer;
+}
+
+/* Активная кнопка нижнего таб-бара */
+.nav-item {
+    /* Добавляем базовый фон для плавного перехода */
+    background: transparent;
+    /* Плавный переход для цвета текста */
+    transition: color 0.3s ease;
+    /* Создаем псевдоэлемент для плашки */
+    position: relative;
+    z-index: 1;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 4px;
+    right: 4px;
+    bottom: 6px;
+    background: var(--nav-active-bg);
+    border-radius: 12px;
+    /* Эффект "разъезжается из центра" */
+    transform: scaleX(0);
+    opacity: 0;
+    transition: 
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), /* плавный "выход" */
+    opacity 0.4s ease;
+    z-index: -1;
+}
+
+.nav-item.active {
+    color: var(--nav-active-content);
+}
+
+.nav-item.active::before {
+    transform: scaleX(1);
+    opacity: 1;
+}
+
+
+
+
+
+.nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px; /* Фиксируем высоту под размер SVG */
+    width: 24px;
+}
+
+.nav-center .nav-icon {
+    height: 32px;
+    width: 32px;
+}
+
+
+/* Центральная кнопка (Плюсик) */
+.nav-center {
+    flex: 0 0 auto;
+    width: 60px; 
+    height: 60px; 
+    background: var(--accent-color);
+    color: white;
+    border-radius: 50%;
+    
+    /* Опускаем кнопку вниз, чтобы её низ совпал с базовой линией текста */
+    transform: translateY(-12px); 
+    
+    border: none;
+    margin: 0 10px;
+    transition: transform 0.15s, background 0.2s;
+}
+
+
+
+.nav-center .nav-icon {
+    height: 32px;
+    width: 32px;
+    
+    /* Жесткое выравнивание по центру контейнера */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0; /* Убираем влияние базовой линии шрифта */
+}
+
+/* Обязательно добавим это для самого SVG внутри, чтобы убрать мифические отступы снизу */
+.nav-icon svg {
+    display: block;
+}
+
+@media (max-height: 700px) {
+    .mood-option { font-size: 1.4em; padding: 4px 0; }
+    .mood-grid { gap: 4px; }
+    .mood-modal-content { padding: 10px; margin-bottom: 10px; }
+    .mood-modal-content h2 { font-size: 1em; margin-bottom: 10px; }
+}
+
+/* Убираем пульсацию со старой кнопки (на всякий случай) */
+@keyframes glow {
+    from { box-shadow: none; }
+    to { box-shadow: none; }
+}
+
+/* Скрытие таб-бара при редактировании записи */
+.bottom-nav.nav-hidden {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Цвета для календаря (плотная заливка + цветная рамка) */
+.calendar-day.has-entry.mood-level-1 { background-color: rgba(244, 67, 54, 0.2); border-color: #f44336; }
+.calendar-day.has-entry.mood-level-2 { background-color: rgba(255, 152, 0, 0.2); border-color: #ff9800; }
+.calendar-day.has-entry.mood-level-3 { background-color: rgba(2, 136, 209, 0.2); border-color: #0288d1; }
+.calendar-day.has-entry.mood-level-4 { background-color: rgba(139, 195, 74, 0.2); border-color: #8bc34a; }
+.calendar-day.has-entry.mood-level-5 { background-color: rgba(27, 94, 32, 0.2); border-color: #1b5e20; }
+
+/* При наведении на день с записью рамка становится ярче (опционально) */
+.calendar-day.has-entry.mood-level-1:hover { border-color: #f44336; }
+.calendar-day.has-entry.mood-level-2:hover { border-color: #ff9800; }
+.calendar-day.has-entry.mood-level-3:hover { border-color: #0288d1; }
+.calendar-day.has-entry.mood-level-4:hover { border-color: #8bc34a; }
+.calendar-day.has-entry.mood-level-5:hover { border-color: #1b5e20; }
+
+/* Цветовые уровни для карточек записей на главной (только полоска) */
+.entry-card.entry-mood-level-1 { border-left: 4px solid #f44336; }
+.entry-card.entry-mood-level-2 { border-left: 4px solid #ff9800; }
+.entry-card.entry-mood-level-3 { border-left: 4px solid #0288d1; }
+.entry-card.entry-mood-level-4 { border-left: 4px solid #8bc34a; }
+.entry-card.entry-mood-level-5 { border-left: 4px solid #1b5e20; }
+
+
+/* Плавающая панель удаления */
+.multi-delete-panel {
+    position: fixed;
+    bottom: 90px; /* Над таб-баром */
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    padding: 10px 15px;
+    border-radius: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    z-index: 1005;
+    border: 1px solid var(--border-color);
+}
+
+.multi-delete-panel.hidden {
+    display: none !important;
+}
+
+#delete-selected-btn {
+    background: var(--danger-bg);
+    color: var(--danger-color);
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+#delete-selected-btn:hover {
+    opacity: 0.8;
+}
+
+
+/* ============================================
+   ВЕРХНЯЯ ШАПКА (ЭФФЕКТ СЖАТИЯ К ЦЕНТРУ)
+   ============================================ */
+.top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    /* Отступы */
+    padding: 10px 15px; 
+    margin: 0 -20px 10px -20px; 
+    
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    
+    /* Грязно-серый фон */
+    background: #e5e5e5; /* Светло-серый для светлой темы */
+    border-bottom: 1px solid var(--border-color);
+    
+    /* Изначально шапка развернута */
+    transform-origin: center center;
+    transform: scaleY(1);
+    opacity: 1;
+    
+    /* Тайминг 0.35s — идеален для "доводки" */
+    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                opacity 0.35s ease;
+    will-change: transform, opacity;
+}
+
+/* Для тёмной темы — темно-серый */
+body.theme-dark .top-header {
+    background: #444;
+}
+
+/* Скрытое состояние: сжимается в центр и исчезает */
+.top-header.header-hidden {
+    transform: scaleY(0); /* Сжимаем в 0 по вертикали */
+    opacity: 0;
+    margin-bottom: 0; /* Убираем нижний отступ */
+    pointer-events: none;
+}
+
+/* Адаптив для маленьких экранов */
+@media (max-width: 480px) {
+    .top-header {
+        margin: 0 -12px 10px -12px;
+        padding: 10px 12px;
+    }
+}
+
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--accent-color);
+}
+
+.header-title {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-color);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface-variant);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    animation: slideIn 0.3s ease-out;
+}
+#search-bar.hidden {
+    display: none;
+}
+#search-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 1em;
+    color: var(--text-color);
+    outline: none;
+}
+#search-bar input::placeholder {
+    color: var(--text-muted);
+}
+
+.favorite-btn {
+    color: #FFD700; /* Золотой цвет */
+    transition: transform 0.2s, opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Кнопка сброса фильтра (крестик в шапке) */
+#header-clear-filter-btn {
+    color: var(--danger-color); /* Красный цвет, как в баннерах */
+    transition: transform 0.2s, opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+#header-clear-filter-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+/* ============================================
+   ПЛАШКИ БЫСТРОЙ ЗАПИСИ И ПРОГРЕССА
+   ============================================ */
+
+/* Общие стили для плашек */
+.quick-mood-card, .progress-card {
+    border-radius: 16px;
+    margin-bottom: 15px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.quick-mood-card:hover, .progress-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+/* Светло-зеленая металлическая плашка (Быстрая запись) */
+.quick-mood-card {
+    background: linear-gradient(135deg, #8bc34a 0%, #558b2f 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+}
+
+/* Темно-зеленая металлическая плашка (Прогресс) */
+.progress-card {
+    background: linear-gradient(135deg, #33691e 0%, #1b5e20 100%);
+    padding: 15px 20px;
+    cursor: default; /* Прогресс не нужно нажимать */
+}
+
+.quick-mood-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.quick-mood-title {
+    font-size: 1.1em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.quick-mood-subtitle {
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.quick-mood-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+/* Прогресс-бар */
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.progress-icon {
+    display: flex;
+    align-items: center;
+    color: #ffd700; /* Золотой огонек */
+}
+
+.progress-bar-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: #ffd700; /* Золотая полоса заполнения */
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Модалка быстрой записи (триггеры) */
+.quick-entry-modal-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    border-radius: 16px;
+}
+
+.quick-entry-body {
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+
+/* Кнопки в шапке быстрой записи */
+#quick-entry-cancel-btn, #quick-entry-save-btn {
+    flex-shrink: 0;
+}
+
+#cancel-entry-btn {
+    color: var(--danger-color);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+#cancel-entry-btn:hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+/* Кнопки действий в шапке записи */
+.action-btn-save {
+    background: transparent !important;
+    border: none !important;
+    color: #4CAF50 !important; /* Жесткий зеленый цвет (как в светлой теме) */
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    padding: 0;
+    font-size: 1rem; /* Сбрасываем огромный шрифт от .icon-btn */
+}
+
+.action-btn-save:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.action-btn-cancel {
+    color: var(--danger-color);
+    background: transparent;
+    border: none;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    padding: 0;
+}
+
+.action-btn-cancel:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.action-btn-delete {
+    color: var(--danger-color);
+    background: transparent;
+    border: none;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    padding: 0;
+}
+
+.action-btn-delete:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+/* Стили для триггеров внутри карточек записей */
+.entry-trigger-chip {
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    /* Базовые цвета (для 5 уровня / по умолчанию) */
+    background: var(--surface-variant);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+/* Уровень 1 (Красный) */
+.entry-trigger-chip.trigger-level-1 {
+    background: rgba(244, 67, 54, 0.15);
+    color: #e57373;
+    border-color: rgba(244, 67, 54, 0.3);
+}
+body:not(.theme-dark) .entry-trigger-chip.trigger-level-1 { color: #c62828; }
+
+/* Уровень 2 (Оранжевый) */
+.entry-trigger-chip.trigger-level-2 {
+    background: rgba(255, 152, 0, 0.15);
+    color: #ffb74d;
+    border-color: rgba(255, 152, 0, 0.3);
+}
+body:not(.theme-dark) .entry-trigger-chip.trigger-level-2 { color: #e65100; }
+
+/* Уровень 3 (Голубой) */
+.entry-trigger-chip.trigger-level-3 {
+    background: rgba(2, 136, 209, 0.15);
+    color: #4fc3f7;
+    border-color: rgba(2, 136, 209, 0.3);
+}
+body:not(.theme-dark) .entry-trigger-chip.trigger-level-3 { color: #0277bd; }
+
+/* Уровень 4 (Светло-зеленый) */
+.entry-trigger-chip.trigger-level-4 {
+    background: rgba(139, 195, 74, 0.15);
+    color: #aed581;
+    border-color: rgba(139, 195, 74, 0.3);
+}
+body:not(.theme-dark) .entry-trigger-chip.trigger-level-4 { color: #33691e; }
+
+/* Уровень 5 (Темно-зеленый) */
+.entry-trigger-chip.trigger-level-5 {
+    background: rgba(27, 94, 32, 0.15);
+    color: #81c784;
+    border-color: rgba(27, 94, 32, 0.4);
+}
+body:not(.theme-dark) .entry-trigger-chip.trigger-level-5 { color: #1b5e20; }

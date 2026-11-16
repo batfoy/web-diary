@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png" type="image/png">
+    <title>Мой Веб-Дневник</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ЗАСТАВКА -->
+    <div id="splash-screen">
+        <div class="splash-bg"></div>
+        <div class="splash-content">
+            <img src="logo-transparent.png" alt="Иконка" class="splash-icon">
+            <img src="pages.png" alt="Страницы" class="splash-title-img">
+            <p class="splash-subtitle">Дневник и настроение</p>
+        </div>
+    </div>
+
+    <!-- БОКОВОЕ МЕНЮ -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2>Меню</h2>
+            <button id="close-sidebar-btn" class="icon-btn">✕</button>
+        </div>
+        <div class="sidebar-menu">
+
+            <!-- Сортировка -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-sort-toggle" class="sidebar-menu-btn">
+                    <span class="sidebar-icon" id="icon-sort"></span>Сортировать записи по...
+                </button>
+                <div id="sort-options" class="sort-options hidden">
+                    <button class="sort-option-btn" data-sort="created">📅 Дате создания</button>
+                    <button class="sort-option-btn" data-sort="updated">🕒 Дате изменения</button>
+                </div>
+            </div>
+            <div class="sidebar-divider"></div>
+
+            <!-- Тема -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-theme-toggle" class="sidebar-menu-btn">
+                    <span class="sidebar-icon" id="icon-theme"></span>Тема
+                </button>
+                <div id="theme-options" class="theme-options hidden">
+                    <button class="theme-btn" data-theme="light">☀️ Светлая</button>
+                    <button class="theme-btn" data-theme="dark">🌙 Тёмная</button>
+                    <button class="theme-btn" data-theme="pastel">🌸 Пастельная</button>
+                    <button class="theme-btn" data-theme="blue">🌊 Мягкая голубая</button>
+                    <div class="theme-coming-soon">Следующие темы скоро...</div>
+                </div>
+            </div>
+            <div class="sidebar-divider"></div>
+
+            <!-- Настроение -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-mood-filter-toggle" class="sidebar-menu-btn">
+                    <span class="sidebar-icon" id="icon-mood"></span>Настроение
+                </button>
+                <div id="mood-filter-options" class="mood-filter-options hidden">
+                    <div class="mood-filter-grid" id="mood-filter-grid"></div>
+                </div>
+            </div>
+            <div class="sidebar-divider"></div>
+
+            <!-- График настроений -->
+            <button id="sidebar-chart-btn" class="sidebar-menu-btn">
+                <span class="sidebar-icon" id="icon-chart"></span>График настроений
+            </button>
+            <div class="sidebar-divider"></div>
+            
+            <!-- Избранное -->
+            <button id="sidebar-favorites-btn" class="sidebar-menu-btn">
+                <span class="sidebar-icon" id="icon-favorites"></span>Избранные
+            </button>
+            <div class="sidebar-divider"></div>
+
+            <!-- Теги -->
+            <button id="sidebar-tags-btn" class="sidebar-menu-btn">
+                <span class="sidebar-icon" id="icon-tags"></span>Теги
+            </button>
+            <div class="sidebar-divider"></div>
+
+            <!-- Экспорт / Импорт -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-export-import-toggle" class="sidebar-menu-btn">
+                    <span class="sidebar-icon" id="icon-export"></span>Экспорт / Импорт
+                </button>
+                <div id="export-import-options" class="export-import-options hidden">
+                    <button id="sidebar-export-btn" class="export-import-btn">📤 Экспорт в JSON</button>
+                    <button id="sidebar-import-btn" class="export-import-btn">📥 Импорт из JSON</button>
+                    <button id="sidebar-markdown-btn" class="export-import-btn">📝 Экспорт в Markdown</button>
+                </div>
+            </div>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+            <div class="sidebar-divider"></div>
+
+            <!-- PIN-код -->
+            <div class="sidebar-submenu">
+                <button id="sidebar-pin-toggle" class="sidebar-menu-btn">
+                    <span class="sidebar-icon" id="icon-pin"></span>PIN-код
+                </button>
+                <div id="pin-options" class="pin-options hidden">
+                    <button id="sidebar-create-pin-btn" class="pin-option-btn hidden">🔒 Создать PIN-код</button>
+                    <button id="sidebar-reset-pin-btn" class="pin-option-btn hidden">🔓 Сбросить PIN-код</button>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- ГЛАВНЫЙ ЭКРАН -->
+    <main id="app-main">
+        <!-- ШАПКА -->
+        <header class="top-header">
+            <div class="header-left">
+                <span class="header-icon" id="header-logo-icon"></span>
+                <h1 class="header-title" id="header-title">Мой дневник</h1>
+            </div>
+
+            <div class="header-right">
+                <!-- Кнопка поиска -->
+                <button id="search-btn" class="icon-btn" title="Поиск">
+                    <span id="icon-search"></span>
+                </button>
+
+                <!-- КНОПКА СБРОСА ФИЛЬТРА (КРЕСТИК) -->
+                <button id="header-clear-filter-btn" class="icon-btn hidden" title="Закрыть фильтр">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- ПАНЕЛЬ ПОИСКА (скрыта по умолчанию) -->
+        <div id="search-bar" class="search-bar hidden">
+            <input type="text" id="search-input" placeholder="Поиск по записям...">
+            <button id="close-search-btn" class="icon-btn">✕</button>
+        </div>
+
+        <!-- Кнопка Назад (скрыта по умолчанию) -->
+        <button id="back-to-stats-btn" class="back-to-stats-btn hidden">
+            ← Назад к статистике
+        </button>
+
+        <!-- ПЛАШКА БЫСТРОЙ ЗАПИСИ -->
+        <section class="quick-mood-card" id="quick-mood-card">
+            <div class="quick-mood-content">
+                <span class="quick-mood-title">Лень писать?</span>
+                <span class="quick-mood-subtitle">Просто отметь настроение</span>
+            </div>
+            <div class="quick-mood-icon" id="icon-quick-mood"></div>
+        </section>
+
+        <!-- ПЛАШКА ПРОГРЕССА -->
+        <section class="progress-card">
+            <div class="progress-header">
+                <span id="progress-days-text">Вы пишете 0 дней подряд</span>
+                <div class="progress-icon" id="icon-progress-flame"></div>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+        </section>
+        
+        <!-- Календарь на десктопе -->
+        <section class="calendar-section-desktop">
+            <div class="calendar-header">
+                <button id="prev-month-desktop" class="calendar-nav">←</button>
+                <h3 id="calendar-month-label-desktop"></h3>
+                <button id="next-month-desktop" class="calendar-nav">→</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div>Пн</div><div>Вт</div><div>Ср</div>
+                <div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+            </div>
+            <div id="calendar-grid-desktop" class="calendar-grid"></div>
+        </section>
+
+        <!-- Заголовок и иконка сортировки -->
+        <div class="sort-toggle-container">
+            <h2 class="entries-section-title">Мои записи</h2>
+            <button id="sort-toggle-btn" class="sort-toggle-btn" title="Сортировка записей">
+                <svg id="sort-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="6" x2="20" y2="6"></line>
+                    <line x1="4" y1="12" x2="14" y2="12"></line>
+                    <line x1="4" y1="18" x2="8" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Список записей -->
+        <section id="entries-list" class="entries-list"></section>
+    </main>
+
+    <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ -->
+    <div id="mood-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content mood-modal-content">
+            <h2>Как прошел ваш день?</h2>
+            <div class="mood-grid" id="mood-grid"></div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА БЫСТРОЙ ЗАПИСИ (ТРИГГЕРЫ) -->
+    <div id="quick-entry-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content quick-entry-modal-content">
+            <div class="entry-modal-header" style="justify-content: space-between; border-bottom: none; padding-bottom: 0;">
+                <!-- Кнопка Отмена (крестик красный) -->
+                <button id="quick-entry-cancel-btn" class="header-delete-btn" style="width: 36px; height: 36px;" title="Отмена">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+
+                <h3 style="font-size: 1.1em; margin: 0; flex: 1; text-align: center;">Что повлияло на настроение?</h3>
+
+                <!-- Кнопка Сохранить (зеленая галочка) -->
+                <button id="quick-entry-save-btn" class="save-close-btn" style="width: 36px; height: 36px;" title="Сохранить">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="quick-entry-body">
+                <div class="triggers-grid" id="quick-triggers-grid" style="padding: 15px; justify-content: center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СОЗДАНИЯ / РЕДАКТИРОВАНИЯ -->
+    <div id="entry-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content entry-modal-content">
+            <div class="entry-modal-header">
+                <!-- Кнопки Сохранить и Отмена -->
+                <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                    <!-- Кнопка Сохранить (галочка) -->
+                    <button id="save-close-btn" class="icon-btn action-btn-save" title="Сохранить">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </button>
+
+                    <!-- Кнопка Отмена (крестик) -->
+                    <button id="cancel-entry-btn" class="icon-btn action-btn-cancel" title="Отмена">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Календарь -->
+                <div id="entry-date-display" class="date-picker-display">
+                    <span id="entry-date-text">Сегодня</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; margin-top: 2px;">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+
+                <!-- Карандаш (Редактировать) -->
+                <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                </button>
+
+                <!-- Избранное (Звездочка) -->
+                <button id="header-favorite-btn" class="icon-btn favorite-btn" title="В избранное">
+                    <span id="icon-star-slot"></span>
+                </button>
+
+                <!-- Корзина (Удалить) -->
+                <button id="header-delete-btn" class="icon-btn action-btn-delete" title="Удалить запись">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="entry-title-row">
+                <input type="text" id="entry-title" class="entry-title-input" placeholder="Оглавление (необязательно)" readonly>
+                <span id="selected-mood-display" class="selected-mood-display">😐</span>
+            </div>
+            
+            <div class="entry-form" id="entry-form">
+                <div id="entry-text" class="entry-text-input" contenteditable="true" autocorrect="off" spellcheck="false" data-placeholder="О чем вы хотите написать?"></div>
+            </div>
+            
+            <!-- ПАНЕЛЬ ИНСТРУМЕНТОВ (TOOLBAR) -->
+            <div id="entry-toolbar" class="entry-toolbar hidden">
+                <div id="toolbar-panel" class="toolbar-panel hidden">
+                    <!-- Панель эмодзи -->
+                    <div id="emoji-panel" class="toolbar-subpanel hidden">
+                        <div class="emoji-packs" id="emoji-packs"></div>
+                        <div class="emoji-grid" id="emoji-grid"></div>
+                        <button class="toolbar-panel-close-btn" id="close-toolbar-panel" title="Закрыть">✓</button>
+                    </div>
+                    
+                    <!-- Панель форматирования текста (Шрифт) -->
+                    <div id="text-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Шрифт</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+
+                        <div class="text-panel-top-grid">
+                            <div class="text-tools-left">
+                                <button class="text-tool-btn" id="btn-h-align" title="Выравнивание по горизонтали">
+                                    <svg id="icon-align-left" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                                </button>
+                                <button class="text-tool-btn" id="btn-line-decrease" title="Уменьшить межстрочный интервал">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6v12"></path><path d="M20 6v12"></path><path d="M12 9l-3-3"></path><path d="M12 9l3-3"></path><path d="M12 15l-3 3"></path><path d="M12 15l3 3"></path></svg>
+                                </button>
+                                <button class="text-tool-btn" id="btn-line-increase" title="Увеличить межстрочный интервал">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6v12"></path><path d="M20 6v12"></path><path d="M12 3l-3 3"></path><path d="M12 3l3 3"></path><path d="M12 21l-3-3"></path><path d="M12 21l3-3"></path></svg>
+                                </button>
+                            </div>
+
+                            <div class="text-tools-right">
+                                <button class="heading-btn" data-size="2.2em" title="Очень крупный (H1)">H1</button>
+                                <button class="heading-btn" data-size="1.8em" title="Крупный (H2)">H2</button>
+                                <button class="heading-btn" data-size="1.5em" title="Средний (H3)">H3</button>
+                                <button class="heading-btn" data-size="1em" title="Стандартный (H4)">H4</button>
+                                <button class="heading-btn" data-size="0.8em" title="Мелкий (H5)">H5</button>
+                            </div>
+                        </div>
+
+                        <div class="color-palette-container">
+                            <div class="color-palette" id="color-palette"></div>
+                        </div>
+
+                        <div class="font-styles-container">
+                            <button class="font-style-btn" data-preset="default" style="font-family: 'Roboto', sans-serif; font-weight: 400; font-style: normal;">Default</button>
+                            <button class="font-style-btn" data-preset="bold" style="font-family: 'Roboto', sans-serif; font-weight: 700; font-style: normal;">Bold</button>
+                            <button class="font-style-btn" data-preset="italic" style="font-family: 'Roboto', sans-serif; font-weight: 400; font-style: italic;">Italic</button>
+                            <button class="font-style-btn" data-preset="dancing" style="font-family: 'Dancing Script', cursive; font-weight: 400; font-style: normal; font-size: 1.1em;">Dancing Script</button>
+                            <button class="font-style-btn" data-preset="pacifico" style="font-family: 'Pacifico', cursive; font-weight: 400; font-style: normal; font-size: 1.1em;">Pacifico</button>
+                            <button class="font-style-btn" data-preset="greatvibes" style="font-family: 'Great Vibes', cursive; font-weight: 400; font-style: normal; font-size: 1.3em;">Great Vibes</button>
+                        </div>
+                    </div>
+
+                    <div id="triggers-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Что повлияло на настроение?</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div class="triggers-grid" id="triggers-grid" style="padding: 10px; justify-content: flex-start;"></div>
+                    </div>
+
+                    <div id="list-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Список</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div class="list-options-grid">
+                            <button class="list-option-btn" data-type="circle" title="Маркированный список">●</button>
+                            <button class="list-option-btn" data-type="asterisk" title="Список со звездочками">⭐</button>
+                            <button class="list-option-btn" data-type="heart" title="Список с сердечками">❤️</button>
+                            <button class="list-option-btn" data-type="thumbs" title="Список с пальцем">👌</button>
+                            <button class="list-option-btn list-btn-number" data-type="number" title="Нумерованный список">123</button>
+                            <button class="list-option-btn" data-type="checkbox" title="Чек-лист">✅</button>
+                            <button class="list-option-btn" data-type="remove" title="Убрать список">⊘</button>
+                        </div>
+                    </div>
+
+                    <div id="table-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Таблица</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div style="display: flex; gap: 10px; padding: 15px; justify-content: center; flex-wrap: wrap;">
+                            <button class="table-size-btn" data-rows="2" data-cols="2" title="2 строки, 2 столбца">2 × 2</button>
+                            <button class="table-size-btn" data-rows="2" data-cols="3" title="2 строки, 3 столбца">2 × 3</button>
+                            <button class="table-size-btn" data-rows="3" data-cols="2" title="3 строки, 2 столбца">3 × 2</button>
+                            <button class="table-size-btn" data-rows="3" data-cols="3" title="3 строки, 3 столбца">3 × 3</button>
+                            <button class="table-size-btn" data-rows="3" data-cols="4" title="3 строки, 4 столбца">3 × 4</button>
+                            <button class="table-size-btn" data-rows="4" data-cols="2" title="4 строки, 2 столбца">4 × 2</button>
+                            <button class="table-size-btn" data-rows="4" data-cols="3" title="4 строки, 3 столбца">4 × 3</button>
+                            <button class="table-size-btn" data-rows="4" data-cols="4" title="4 строки, 4 столбца">4 × 4</button>
+                            <button class="table-size-btn" data-rows="5" data-cols="2" title="5 строк, 2 столбца">5 × 2</button>
+                            <button class="table-size-btn" data-rows="5" data-cols="3" title="5 строк, 3 столбца">5 × 3</button>
+                            <button class="table-size-btn" id="table-remove-btn" title="Удалить таблицу" style="background: var(--danger-bg); color: var(--danger-color); border-color: var(--danger-color);">🗑️ Удалить</button>
+                        </div>
+                    </div>
+
+                    <div id="bg-panel" class="toolbar-subpanel hidden">
+                        <div class="text-panel-header">
+                            <span class="text-panel-title">Фон записи</span>
+                            <button class="toolbar-panel-close-btn" onclick="closeToolbarPanel()" title="Закрыть">✓</button>
+                        </div>
+                        <div class="bg-options-grid" id="bg-options-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Основная панель кнопок -->
+                <div class="toolbar-buttons">
+                    <button class="toolbar-btn" id="toolbar-templates-btn" title="Шаблоны">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-bg-btn" title="Фон записи">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round">
+                            <line x1="3" y1="21" x2="21" y2="3"></line>
+                            <line x1="3" y1="15" x2="15" y2="3"></line>
+                            <line x1="9" y1="21" x2="21" y2="9"></line>
+                            <line x1="3" y1="9" x2="9" y2="3"></line>
+                            <line x1="15" y1="21" x2="21" y2="15"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-emoji-btn" title="Эмодзи">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-tag-btn" title="Теги">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" y1="9" x2="20" y2="9"></line>
+                            <line x1="4" y1="15" x2="20" y2="15"></line>
+                            <line x1="10" y1="3" x2="8" y2="21"></line>
+                            <line x1="16" y1="3" x2="14" y2="21"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-triggers-btn" title="Что повлияло на настроение?">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            <line x1="9" y1="10" x2="15" y2="10"></line>
+                            <line x1="9" y1="14" x2="15" y2="14"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-text-btn" title="Текст">
+                        <span style="font-weight: 400; font-size: 1.1em;">Aa</span>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-list-btn" title="Список">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="toolbar-table-btn" title="Таблица">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="12" y1="3" x2="12" y2="21"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <p id="confirm-message">Вы уверены?</p>
+            <div class="modal-buttons">
+                <button type="button" id="confirm-cancel" class="modal-btn secondary">Отмена</button>
+                <button type="button" id="confirm-ok" class="modal-btn primary">Да</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА КАЛЕНДАРЯ -->
+    <div id="calendar-modal" class="modal hidden fullscreen-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content calendar-modal-content fullscreen-content">
+            <div class="entry-modal-header">
+                <button id="close-calendar-btn" class="back-btn">← Назад</button>
+                <h2>Календарь</h2>
+                <span></span>
+            </div>
+            
+            <div class="calendar-header">
+                <button id="prev-month-btn" class="calendar-nav">←</button>
+                <h3 id="calendar-month-label"></h3>
+                <button id="next-month-btn" class="calendar-nav">→</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div>Пн</div><div>Вт</div><div>Ср</div>
+                <div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+            </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+            
+            <div id="month-insights" class="month-insights"></div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ВСЕХ ТЕГОВ -->
+    <div id="tags-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content tags-modal-content">
+            <div class="entry-modal-header">
+                <h2>Все теги</h2>
+                <button class="modal-close-btn" id="close-tags-modal">✕</button>
+            </div>
+            <div id="tags-list" class="tags-list"></div>
+            <p class="calendar-hint">Нажмите на тег, чтобы увидеть записи</p>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА PIN-КОДА -->
+    <div id="pin-modal" class="modal hidden pin-modal">
+        <div class="modal-backdrop pin-backdrop"></div>
+        <div class="modal-content pin-modal-content">
+            <h2 id="pin-title">🔐 Введите PIN-код</h2>
+            <p id="pin-subtitle" class="pin-subtitle"></p>
+            <div class="pin-dots">
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+            </div>
+            <div class="pin-pad">
+                <button class="pin-key" data-key="1">1</button>
+                <button class="pin-key" data-key="2">2</button>
+                <button class="pin-key" data-key="3">3</button>
+                <button class="pin-key" data-key="4">4</button>
+                <button class="pin-key" data-key="5">5</button>
+                <button class="pin-key" data-key="6">6</button>
+                <button class="pin-key" data-key="7">7</button>
+                <button class="pin-key" data-key="8">8</button>
+                <button class="pin-key" data-key="9">9</button>
+                <button class="pin-key pin-key-empty"></button>
+                <button class="pin-key" data-key="0">0</button>
+                <button class="pin-key pin-key-delete">⌫</button>
+            </div>
+            <button id="pin-skip-btn" class="modal-close-text hidden">Пропустить</button>
+        </div>
+    </div>
+
+    <!-- НАПОМИНАНИЕ -->
+    <div id="reminder-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content reminder-modal-content">
+            <h2>👋 Давно не виделись!</h2>
+            <p id="reminder-text">Последняя запись была...</p>
+            <div class="reminder-actions">
+                <button id="reminder-later-btn" class="btn-secondary">Позже</button>
+                <button id="reminder-write-btn" class="btn-primary">Написать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ГРАФИКА НАСТРОЕНИЙ -->
+    <div id="chart-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content chart-modal-content">
+            <div class="entry-modal-header chart-header-compact">
+                <button id="prev-month-chart" class="calendar-nav">←</button>
+                <h2 id="chart-modal-title">Настроение</h2>
+                <button id="next-month-chart" class="calendar-nav">→</button>
+                <button class="modal-close-btn" id="close-chart-modal">✕</button>
+            </div>
+
+            <div class="chart-modal-body chart-body-compact">
+                <div class="chart-header">
+                    <span id="chart-average">—</span>
+                </div>
+                <canvas id="mood-chart" aria-label="График настроений"></canvas>
+                <canvas id="bar-chart" aria-label="Гистограмма настроений" class="hidden"></canvas>
+                <div id="chart-summary" class="chart-summary">Записей за месяц: 0</div>
+            </div>
+        </div>
+
+        <div class="chart-controls-bottom">
+            <button id="chart-mode-toggle" class="chart-mode-btn">📈 Гистограмма</button>
+
+            <button id="chart-period-toggle" class="period-toggle-btn" title="Выбрать период">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M7 10l5 5 5-5z"/>
+                </svg>
+            </button>
+
+            <div id="chart-period-selector" class="period-selector hidden">
+                <div class="period-selector-inner">
+                    <button class="period-option" data-period="all">За всё время</button>
+                    <button class="period-option" data-period="month">За месяц</button>
+                    <button class="period-option" data-period="week">За неделю</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СТАТИСТИКИ -->
+    <div id="stats-modal" class="modal hidden fullscreen-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content stats-modal-content fullscreen-content">
+            <div class="entry-modal-header">
+                <h2>📈 Статистика</h2>
+                <button class="modal-close-btn" id="close-stats-modal">✕</button>
+            </div>
+
+            <div style="padding: 10px 20px; background: var(--mood-btn-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: center;">
+                <button id="stats-mode-toggle" class="chart-mode-btn">🔍 Глубокая статистика</button>
+            </div>
+
+            <div id="stats-normal-body" class="stats-body"></div>
+
+            <div id="stats-deep-body" class="stats-body hidden">
+                
+                <!-- НОВЫЙ БЛОК: Самая длинная полоса хорошего настроения -->
+                <div id="best-streak-container" style="margin-bottom: 25px; padding: 15px; background: var(--surface-variant); border-radius: 12px;">
+                    <!-- Сюда JS вставит линию -->
+                </div>
+
+                <!-- 1. График по дням недели -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="font-size: 1em; margin: 0 0 15px 0; color: var(--text-color);">Настроение по дням недели</h3>
+                    <canvas id="weekday-chart" style="width: 100%; height: 200px; display: block; margin: 0 auto;"></canvas>
+                </div>
+
+                <!-- 2. Блок Топ-3 -->
+                <div id="top-triggers-section" style="margin-bottom: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <div id="top-good-triggers" style="margin-bottom: 15px;"></div>
+                    <div id="top-bad-triggers"></div>
+                </div>
+
+                <!-- 3. Все триггеры -->
+                <h3 style="font-size: 1em; margin: 0 0 15px 0; color: var(--text-color);">Все триггеры</h3>
+                <div style="margin-bottom: 15px;">
+                    <select id="trigger-filter-select" class="modal-btn secondary" style="width: 100%; padding: 10px; font-size: 0.95em;">
+                        <option value="all">Все триггеры</option>
+                    </select>
+                    <!-- НОВАЯ ПОДСКАЗКА -->
+                    <p style="font-size: 0.75em; color: var(--text-muted); text-align: center; margin-top: 8px;">
+                        Нажмите на триггер на графике, чтобы перейти к триггеру
+                    </p>
+                </div>
+                <canvas id="trigger-chart" style="width: 100%; display: block; margin: 0 auto;"></canvas>
+                <div id="trigger-stats-list" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ШАБЛОНОВ -->
+    <div id="templates-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content templates-modal-content">
+            <div class="entry-modal-header">
+                <h2>📝 Выберите шаблон</h2>
+                <button class="modal-close-btn" id="close-templates-modal">✕</button>
+            </div>
+            <div class="templates-list">
+                <button class="template-item" data-template="gratitude">
+                    <div class="template-title">🙏 Благодарности дня</div>
+                    <div class="template-desc">За что я благодарен сегодня?</div>
+                </button>
+                <button class="template-item" data-template="summary">
+                    <div class="template-title">📊 Итоги дня</div>
+                    <div class="template-desc">Что получилось? Что улучшить?</div>
+                </button>
+                <button class="template-item" data-template="ideas">
+                    <div class="template-title">💡 Идеи на будущее</div>
+                    <div class="template-desc">Мысли, планы, мечты</div>
+                </button>
+                <button class="template-item" data-template="empty">
+                    <div class="template-title">📄 Пустой шаблон</div>
+                    <div class="template-desc">Начать с чистого листа</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- НИЖНИЙ ТАБ-БАР -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="nav-item" id="nav-menu-btn" title="Меню">
+            <span class="nav-icon" id="icon-menu"></span>
+            <span class="nav-label">Меню</span>
+        </button>
+
+        <button class="nav-item" id="nav-entries-btn" title="Записи">
+            <span class="nav-icon" id="icon-entries"></span>
+            <span class="nav-label">Записи</span>
+        </button>
+
+        <button class="nav-item nav-center" id="nav-add-btn" title="Новая запись">
+            <span class="nav-icon" id="icon-plus"></span>
+        </button>
+
+        <button class="nav-item" id="nav-stats-btn" title="Статистика">
+            <span class="nav-icon" id="icon-stats"></span>
+            <span class="nav-label">Статистика</span>
+        </button>
+
+        <button class="nav-item" id="nav-calendar-btn" title="Календарь">
+            <span class="nav-icon" id="icon-calendar"></span>
+            <span class="nav-label">Календарь</span>
+        </button>
+    </nav>
+
+    <!-- ПАНЕЛЬ МАССОВОГО УДАЛЕНИЯ -->
+    <div id="multi-delete-panel" class="multi-delete-panel hidden">
+        <button id="cancel-multi-delete-btn" class="btn-secondary" style="border-radius: 20px; display: flex; align-items: center; gap: 6px;">
+            ✕ Отмена
+        </button>
+        <button id="delete-selected-btn" class="btn-danger" style="border-radius: 20px; display: flex; align-items: center; gap: 8px; border: none;">
+            <span id="delete-icon-slot"></span> 
+            <span id="delete-count-text">Удалить</span>
+        </button>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+    
+    <script src="db.js"></script>
+    <script src="purify.min.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then((registration) => {
+                    console.log('Service Worker зарегистрирован:', registration.scope);
+                })
+                .catch((error) => {
+                    console.log('Ошибка регистрации Service Worker:', error);
+                });
+        }
+    </script>
+    <script src="script.js" defer></script>
+</body>
+</html>
