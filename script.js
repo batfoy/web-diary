@@ -1767,6 +1767,15 @@ function openCalendarScreen() {
     datePickerCallback = null;
     renderCalendar();
     document.getElementById('calendar-modal').classList.remove('hidden');
+    
+    // Сброс скролла внутри модалки
+    setTimeout(() => {
+        const modalContent = document.querySelector('#calendar-modal .modal-content');
+        if (modalContent) modalContent.scrollTop = 0;
+        const calendarBody = document.querySelector('#calendar-modal .calendar-modal-content');
+        if (calendarBody) calendarBody.scrollTop = 0;
+    }, 50);
+    updateBodyScrollLock();
 }
 
 function openDatePicker(callback) {
@@ -1776,7 +1785,10 @@ function openDatePicker(callback) {
     document.querySelector('.calendar-modal-content').classList.add('selecting-date');
 }
 
-function closeCalendarScreen() { document.getElementById('calendar-modal').classList.add('hidden'); }
+function closeCalendarScreen() { 
+    document.getElementById('calendar-modal').classList.add('hidden'); 
+    updateBodyScrollLock();
+}
 
 function changeCalendarMonth(delta) {
     const grid = document.getElementById('calendar-grid');
@@ -2373,6 +2385,29 @@ function drawBarChart() {
     if (currentBarPeriod === 'month') periodLabel = 'За текущий месяц';
     
     document.getElementById('chart-summary').textContent = `${periodLabel} · Всего записей: ${totalEntries}`;
+    
+}
+
+
+
+// Пересчёт скролла активной вкладки статистики (лечит "залипание" на iOS)
+function refreshStatsScroll() {
+    requestAnimationFrame(() => {
+        const activeBody = document.querySelector('#stats-modal .stats-body:not(.hidden)');
+        if (!activeBody) return;
+        activeBody.scrollTop = 0;               // сбрасываем старую позицию
+        // Принудительный пересчёт области прокрутки (iOS-нюд)
+        activeBody.style.overflow = 'hidden';
+        void activeBody.offsetHeight;           // форсируем reflow
+        activeBody.style.overflow = '';
+    });
+}
+
+// Блокировка скролла страницы, пока открыта полноэкранная модалка
+function updateBodyScrollLock() {
+    const anyOpen = ['stats-modal', 'calendar-modal', 'triggers-list-modal']
+        .some(id => !document.getElementById(id).classList.contains('hidden'));
+    document.body.classList.toggle('modal-lock', anyOpen);
 }
 
 // === 📈 СТАТИСТИКА ===
@@ -2581,34 +2616,32 @@ function openStatsModal() {
     `;
 
     document.getElementById('stats-modal').classList.remove('hidden');
+    // Сброс скролла внутри модалки
+    refreshStatsScroll();
+    updateBodyScrollLock();
 }
 
 // Переключатель режимов статистики
 document.getElementById('stats-mode-toggle').onclick = () => {
     if (currentStatsMode === 'normal') {
-        // Переключаемся на ГЛУБОКУЮ статистику
         currentStatsMode = 'deep';
-        
-        // Меняем текст и иконку на кнопке
         document.getElementById('stats-toggle-text').textContent = 'Обычная статистика';
-        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.stats; 
-        
-        // Показываем глубокую статистику
+        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.stats;
         document.getElementById('stats-normal-body').classList.add('hidden');
         document.getElementById('stats-deep-body').classList.remove('hidden');
-        
-        renderDeepStats();
+        // Рендерим ВНУТРИ requestAnimationFrame: контейнер уже видим,
+        // canvas получит корректную ширину, скролл пересчитается
+        requestAnimationFrame(() => {
+            renderDeepStats();
+            refreshStatsScroll();
+        });
     } else {
-        // Возвращаемся к ОБЫЧНОЙ статистике
         currentStatsMode = 'normal';
-        
-        // Меняем текст и иконку обратно на "Глубокую"
         document.getElementById('stats-toggle-text').textContent = 'Глубокая статистика';
-        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.deepStats; 
-        
-        // Показываем обычную статистику
+        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.deepStats;
         document.getElementById('stats-normal-body').classList.remove('hidden');
         document.getElementById('stats-deep-body').classList.add('hidden');
+        refreshStatsScroll();
     }
 };
 
@@ -3025,18 +3058,15 @@ function openAllTriggersList() {
     closeStatsModal(); // Закрываем глубокую статистику
     document.getElementById('triggers-list-modal').classList.remove('hidden');
     renderAllTriggersList();
+    updateBodyScrollLock();
 }
 
 // Функция для закрытия модалки
 function closeAllTriggersList() {
     document.getElementById('triggers-list-modal').classList.add('hidden');
-    // Возвращаемся в статистику
     openStatsModal();
-    setTimeout(() => {
-        if (currentStatsMode === 'normal') {
-            document.getElementById('stats-mode-toggle').click();
-        }
-    }, 50);
+    // Убираем setTimeout с click() — больше не переключаем на глубокую автоматически
+    updateBodyScrollLock();
 }
 
 // Функция отрисовки списка
@@ -3369,6 +3399,7 @@ document.getElementById('trigger-filter-select').addEventListener('change', () =
 
 function closeStatsModal() {
     document.getElementById('stats-modal').classList.add('hidden');
+    updateBodyScrollLock();
 }
 
 
@@ -4157,26 +4188,65 @@ document.getElementById('entry-text').addEventListener('click', (e) => {
     onEntryFieldInput();
 });
 
-// 4. НАДЕЖНЫЙ ОБРАБОТЧИК ENTER ДЛЯ СПИСКОВ (с учётом Shift+Enter и чек-листов)
-document.getElementById('entry-text').addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || e.shiftKey) return;
 
+
+// 4. НАДЕЖНЫЙ ОБРАБОТЧИК ENTER ДЛЯ СПИСКОВ (с учётом Shift+Enter и чек-листов)
+// 4. НАДЕЖНЫЙ ОБРАБОТЧИК КЛАВИШ (ENTER и BACKSPACE) ДЛЯ СПИСКОВ
+document.getElementById('entry-text').addEventListener('keydown', (e) => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
 
     const anchorNode = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
     const item = anchorNode ? anchorNode.closest('.custom-list-item') : null;
-    if (!item) return; // не в списке — обычный Enter
+    if (!item) return; // не в списке — не мешаем браузеру
 
-    // Проверяем, пустая ли текущая строка списка (только \u200B или чекбокс без текста)
+    // --- 1. ОБРАБОТКА BACKSPACE ---
+    if (e.key === 'Backspace') {
+        // Проверяем, пустая ли строка (только \u200B или пробелы)
+        const textContent = item.textContent.replace(/\u200B/g, '').trim();
+        
+        if (textContent === '') {
+            // Если строка пустая — выходим из списка
+            e.preventDefault();
+
+            // Убираем классы списка
+            item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
+            item.removeAttribute('data-marker');
+            item.style.listStyleType = '';
+            item.style.paddingLeft = '';
+            item.style.display = '';
+
+            // Удаляем чекбокс, если был
+            const cb = item.querySelector('.custom-checkbox-marker');
+            if (cb) cb.remove();
+
+            // Оставляем невидимый символ, чтобы блок не схлопнулся
+            item.innerHTML = '\u200B';
+
+            // Ставим курсор после него
+            const range = document.createRange();
+            range.setStart(item.firstChild, 1);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            onEntryFieldInput();
+        }
+        // Если в строке есть текст, ничего не делаем — даем браузеру удалить символ
+        return;
+    }
+
+    // --- 2. ОБРАБОТКА ENTER ---
+    if (e.key !== 'Enter' || e.shiftKey) return;
+
+    // Проверяем, пустая ли текущая строка
     const textContent = item.textContent.replace(/\u200B/g, '').trim();
     const isEmptyItem = textContent === '';
 
     if (isEmptyItem) {
-        // === ВЫХОД ИЗ СПИСКА ===
+        // Если пустая — выходим из списка
         e.preventDefault();
 
-        // Убираем список с этой строки
         item.classList.remove('custom-list-item', 'checkbox-item', 'number-item', 'checked');
         item.removeAttribute('data-marker');
         item.style.listStyleType = '';
@@ -4186,12 +4256,10 @@ document.getElementById('entry-text').addEventListener('keydown', (e) => {
         const cb = item.querySelector('.custom-checkbox-marker');
         if (cb) cb.remove();
 
-        // Убираем \u200B в начале, ставим обычный текст
-        item.innerHTML = '';
+        item.innerHTML = '\u200B';
 
-        // Ставим курсор внутрь
         const range = document.createRange();
-        range.selectNodeContents(item);
+        range.setStart(item.firstChild, 1);
         range.collapse(true);
         sel.removeAllRanges();
         sel.addRange(range);
@@ -4200,7 +4268,7 @@ document.getElementById('entry-text').addEventListener('keydown', (e) => {
         return;
     }
 
-    // === ОБЫЧНЫЙ ENTER В СПИСКЕ ===
+    // === ОБЫЧНЫЙ ENTER В СПИСКЕ (создаем новый пункт) ===
     e.preventDefault();
 
     const newItem = document.createElement('div');
@@ -4236,6 +4304,8 @@ document.getElementById('entry-text').addEventListener('keydown', (e) => {
 
     onEntryFieldInput();
 });
+
+
 // === Глобальное изменение межстрочного интервала ===
 function changeLineHeight(multiplier) {
     const editor = document.getElementById('entry-text');
@@ -5061,6 +5131,7 @@ document.getElementById('nav-menu-btn').onclick = () => {
 
 // 2. Записи — закрывает всё и показывает главную
 document.getElementById('nav-entries-btn').onclick = () => {
+    closeAllTriggersList();
     const wasActive = document.getElementById('nav-entries-btn').classList.contains('active');
     
     // Если мы уже на вкладке "Записи" и все модалки закрыты — скроллим наверх
@@ -5094,6 +5165,7 @@ document.getElementById('nav-entries-btn').onclick = () => {
 
 // 3. Плюсик — новая запись
 document.getElementById('nav-add-btn').onclick = () => {
+    closeAllTriggersList();
     // Принудительно закрываем все открытые полноэкранные модалки и сайдбар
     closeStatsModal();
     closeCalendarScreen();
@@ -5102,21 +5174,34 @@ document.getElementById('nav-add-btn').onclick = () => {
     openMoodModal(true, false); // true = новая запись, false = обычный режим
 };
 
-// 4. Статистика — открывает статистику, закрывает календарь
+
+
+// 4. Статистика — открывает статистику
 document.getElementById('nav-stats-btn').onclick = () => {
+    closeAllTriggersList();
     setActiveNav('nav-stats-btn');
     closeCalendarScreen();
     closeSidebar();
+    
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    
     openStatsModal();
 };
 
-// 5. Календарь — открывает календарь, закрывает статистику
+// 5. Календарь — открывает календарь
 document.getElementById('nav-calendar-btn').onclick = () => {
+    closeAllTriggersList();
     setActiveNav('nav-calendar-btn');
     closeStatsModal();
     closeSidebar();
+    
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    
     openCalendarScreen();
 };
+
+
+
 
 // Заглушка для отсутствующего поля поиска (чтобы не было ошибок)
 const searchInputEl = document.getElementById('search-input');

@@ -3713,3 +3713,49 @@ body.theme-dark .nav-center {
 body.theme-dark .nav-center:active {
     background: #1b5e20; /* Еще темнее при нажатии */
 }
+
+
+
+/* ============================================
+   ПЛАВНАЯ ПРОКРУТКА В МОДАЛКАХ
+   (как на главной странице у записей)
+   ============================================ */
+
+/* 1. Сами скроллящиеся контейнеры модалок */
+#stats-modal .modal-content,
+#stats-modal .stats-body,
+#stats-modal #stats-normal-body,
+#stats-modal #stats-deep-body,
+#calendar-modal .modal-content,
+#calendar-modal .calendar-modal-content,
+#calendar-modal #calendar-grid {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* Плавный инерционный скролл на iOS */
+}
+
+/* 2. Бонус: плавная прокрутка и в других модалках */
+#tags-modal .tags-list,
+#templates-modal .templates-list,
+#triggers-list-modal .modal-content,
+.quick-entry-body {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Блокируем прокрутку страницы под полноэкранной модалкой */
+body.modal-lock {
+    overflow: hidden;
+}
+
+
+/* Запрещаем скроллу "убегать" из контейнера на страницу (scroll chaining) */
+.stats-body,
+.calendar-modal-content,
+.fullscreen-content,
+.quick-entry-body {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+
+
