@@ -352,6 +352,50 @@ function getEmojiByScore(score) {
     return found ? found.emoji : '😐';
 }
 
+// === 🧠 УМНЫЙ РАСЧЕТ НАСТРОЕНИЯ ЗА ДЕНЬ (С УЧЕТОМ ВРЕМЕНИ) ===
+function calculateSmartDayScore(entriesOfDay) {
+    if (!entriesOfDay || entriesOfDay.length === 0) return null;
+
+    // 1. Если запись одна — просто возвращаем её балл
+    if (entriesOfDay.length === 1) {
+        return getMoodScore(entriesOfDay[0].mood);
+    }
+
+    // 2. Сортируем записи по времени создания (от утра к вечеру)
+    // Используем createdAt, так как date может быть одинаковым (полдень)
+    const sorted = [...entriesOfDay].sort((a, b) => a.createdAt - b.createdAt);
+
+    // 3. Высчитываем "вес" для каждой записи
+    let totalWeightedScore = 0;
+    let totalWeight = 0;
+
+    sorted.forEach((entry, index) => {
+        const score = getMoodScore(entry.mood);
+        if (score === null) return;
+
+        let weight = 1.0;
+        
+        // Если это не первая запись, проверяем разницу с предыдущей
+        if (index > 0) {
+            const prevScore = getMoodScore(sorted[index - 1].mood);
+            if (prevScore !== null) {
+                const diff = Math.abs(score - prevScore);
+                // Если разница больше 1 (например, 9 и 1), включаем взвешивание
+                if (diff > 1) {
+                    // Чем позже запись, тем больше её вес (до 1.5)
+                    weight = 1.0 + (index * 0.2); 
+                }
+            }
+        }
+
+        totalWeightedScore += score * weight;
+        totalWeight += weight;
+    });
+
+    if (totalWeight === 0) return null;
+    return totalWeightedScore / totalWeight;
+}
+
 function getDateKey(date) {
     const d = new Date(date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1652,18 +1696,10 @@ function renderCalendar() {
             const dayEntries = diaryEntries.filter(e => getDateKey(e.date) === dateStr);
 
             if (dayEntries.length > 0) {
-                // Среднее настроение за день
-                let totalScore = 0;
-                let validMoodsCount = 0;
-                dayEntries.forEach(e => {
-                    const score = getMoodScore(e.mood);
-                    if (score !== null) {
-                        totalScore += score;
-                        validMoodsCount++;
-                    }
-                });
-
-                const avgScore = validMoodsCount > 0 ? (totalScore / validMoodsCount) : 5;
+                // умное настроение за день
+                const smartAvg = calculateSmartDayScore(dayEntries);
+                const avgScore = smartAvg !== null ? smartAvg : 5;
+                
                 const dayMood = getEmojiByScore(avgScore);
 
                 cell.innerHTML = getMoodSvg(dayMood, 24);
@@ -2723,22 +2759,21 @@ function renderLastWeekMood() {
         weekDays.push(d);
     }
 
+  
     // 2. Собираем настроение по дням
     const dayScores = weekDays.map(date => {
         const dateKey = getDateKey(date);
-        let total = 0, count = 0;
-        diaryEntries.forEach(e => {
-            if (getDateKey(e.date) === dateKey) {
-                const s = getMoodScore(e.mood);
-                if (s !== null) { total += s; count++; }
-            }
-        });
+        const dayEntries = diaryEntries.filter(e => getDateKey(e.date) === dateKey);
+
+        // Считаем "умный" балл через нашу новую функцию
+        const avg = calculateSmartDayScore(dayEntries);
+
         return {
             date,
             dateKey,
-            avg: count > 0 ? (total / count) : null,
-            emoji: count > 0 ? getEmojiByScore(total / count) : null,
-            count
+            avg: avg, // Теперь тут либо число, либо null
+            emoji: avg !== null ? getEmojiByScore(avg) : null, // Берем эмодзи, если есть avg
+            count: dayEntries.length // Количество записей (для проверки заполненности)
         };
     });
 
@@ -2781,19 +2816,32 @@ function renderLastWeekMood() {
     const firstIdx = validIndices[0];
     const lastIdx = validIndices[validIndices.length - 1];
 
-    // Строим градиент
+    // Строим градиент по отрезкам
     let gradientStops = [];
-    const totalSteps = lastIdx - firstIdx;
-    
-    if (totalSteps === 0) {
-        // Если данные только за 1 день
+    const numSegments = lastIdx - firstIdx;
+
+    if (numSegments === 0) {
+        // Если только один день с данными
         const color = getMoodColorHex(dayScores[firstIdx].avg);
         gradientStops.push(`${color} 0%`, `${color} 100%`);
     } else {
-        for (let i = firstIdx; i <= lastIdx; i++) {
-            const percent = ((i - firstIdx) / totalSteps) * 100;
-            const color = dayScores[i].avg !== null ? getMoodColorHex(dayScores[i].avg) : '#cccccc';
-            gradientStops.push(`${color} ${percent}%`);
+        for (let i = firstIdx; i < lastIdx; i++) {
+            const currentDay = dayScores[i];
+            const nextDay = dayScores[i + 1];
+
+            const startPercent = ((i - firstIdx) / numSegments) * 100;
+            const endPercent = ((i + 1 - firstIdx) / numSegments) * 100;
+
+            const startColor = currentDay.avg !== null ? getMoodColorHex(currentDay.avg) : '#cccccc';
+            const endColor = nextDay.avg !== null ? getMoodColorHex(nextDay.avg) : '#cccccc';
+
+            // Если это первый отрезок, добавляем начальный цвет
+            if (i === firstIdx) {
+                gradientStops.push(`${startColor} ${startPercent}%`);
+            }
+
+            // Добавляем конечный цвет этого отрезка
+            gradientStops.push(`${endColor} ${endPercent}%`);
         }
     }
 
@@ -3028,24 +3076,27 @@ function renderAllTriggersList() {
     }
 
     
-    // --- УМНЫЙ АНАЛИЗ (ИНСАЙТ) ---
-    const insightBlock = document.getElementById('triggers-insight-block');
-    const insightText = document.getElementById('triggers-insight-text');
+    // --- УМНЫЙ АНАЛИЗ (ДВА ИНСАЙТА) ---
+    const posBlock = document.getElementById('triggers-insight-pos-block');
+    const posText = document.getElementById('triggers-insight-pos-text');
+    const negBlock = document.getElementById('triggers-insight-neg-block');
+    const negText = document.getElementById('triggers-insight-neg-text');
 
-    // 1. Считаем глобальное среднее настроение
-    let globalTotal = 0;
-    let globalCount = 0;
+    // 1. Глобальное среднее
+    let globalTotal = 0, globalCount = 0;
     diaryEntries.forEach(e => {
         const s = getMoodScore(e.mood);
         if (s !== null) { globalTotal += s; globalCount++; }
     });
     const globalAvg = globalCount > 0 ? (globalTotal / globalCount) : 0;
 
-    // 2. Ищем лучший триггер (с учетом следующего дня и уровня уверенности)
-    let bestInsight = null;
-    let highestScore = -999;
+    // 2. Ищем лучший позитивный и худший негативный триггеры
+    let bestPositive = null;
+    let bestNegative = null;
+    let maxPosImpact = 0;
+    let maxNegImpact = 0;
 
-    // Группируем записи по дням для проверки "следующего дня"
+    // Группируем по дням для проверки "следующего дня"
     const entriesByDay = {};
     diaryEntries.forEach(e => {
         const key = getDateKey(e.date);
@@ -3054,20 +3105,16 @@ function renderAllTriggersList() {
     });
 
     Object.entries(triggerStats).forEach(([triggerName, data]) => {
-        // Считаем уровень уверенности
+        // --- НОВЫЕ ПОРОГИ УВЕРЕННОСТИ ---
         let confidence = 'low';
-        if (data.count >= 9) confidence = 'high';
-        else if (data.count >= 6) confidence = 'medium';
-        else if (data.count >= 3) confidence = 'low';
-        else return; // Если меньше 3, вообще не берем в расчет
+        if (data.count >= 15) confidence = 'high';      // было 9
+        else if (data.count >= 8) confidence = 'medium'; // было 6
+        else if (data.count >= 5) confidence = 'low';    // было 3
+        else return; // Меньше 5 записей вообще не анализируем
 
-        // Считаем среднее настроение В ТОТ ЖЕ ДЕНЬ с триггером
         const sameDayAvg = data.total / data.count;
 
-        // Считаем среднее настроение НА СЛЕДУЮЩИЙ ДЕНЬ после триггера
-        let nextDayTotal = 0;
-        let nextDayCount = 0;
-
+        let nextDayTotal = 0, nextDayCount = 0;
         diaryEntries.forEach(e => {
             if (e.triggers && e.triggers.includes(triggerName)) {
                 const d = new Date(e.date);
@@ -3083,55 +3130,62 @@ function renderAllTriggersList() {
         });
 
         const nextDayAvg = nextDayCount > 0 ? (nextDayTotal / nextDayCount) : sameDayAvg;
-
-        // Ищем максимальное отклонение (влияние)
         const sameDayDiff = sameDayAvg - globalAvg;
         const nextDayDiff = nextDayAvg - globalAvg;
-
-        // Выбираем то, что сильнее влияет (по модулю)
         const impact = Math.abs(sameDayDiff) > Math.abs(nextDayDiff) ? sameDayDiff : nextDayDiff;
         const impactType = Math.abs(sameDayDiff) > Math.abs(nextDayDiff) ? 'same' : 'next';
 
-        // Если этот триггер влияет сильнее предыдущих, запоминаем
-        if (Math.abs(impact) > Math.abs(highestScore)) {
-            highestScore = impact;
-            bestInsight = {
-                trigger: triggerName,
-                confidence: confidence,
-                diff: impact,
-                percent: Math.round((Math.abs(impact) / 10) * 100),
-                type: impactType, // 'same' или 'next'
-                isPositive: impact > 0
-            };
+        // Позитивный триггер (impact > 0)
+        if (impact > 0.3 && impact > maxPosImpact) {
+            maxPosImpact = impact;
+            bestPositive = { trigger: triggerName, confidence, diff: impact, percent: Math.round((impact / 10) * 100), type: impactType };
+        }
+
+        // Негативный триггер (impact < 0)
+        if (impact < -0.3 && impact < maxNegImpact) {
+            maxNegImpact = impact;
+            bestNegative = { trigger: triggerName, confidence, diff: impact, percent: Math.round((Math.abs(impact) / 10) * 100), type: impactType };
         }
     });
 
-    // 3. Формируем текст
-    if (bestInsight && Math.abs(bestInsight.diff) > 0.3) { 
-        let confidenceText = '';
-        let cautionText = '';
+    // 3. Формируем текст для позитивного инсайта
+    if (bestPositive) {
+        let caution = bestPositive.confidence === 'low' ? 'Возможно, ' : '';
+        let confText = bestPositive.confidence === 'low' ? ' (мало данных)' : 
+                       bestPositive.confidence === 'medium' ? ' (средняя уверенность)' : '';
 
-        if (bestInsight.confidence === 'low') {
-            confidenceText = ' (низкая уверенность, мало данных)';
-            cautionText = 'Возможно, ';
-        } else if (bestInsight.confidence === 'medium') {
-            confidenceText = ' (средняя уверенность)';
-        }
+        const timeLabel = bestPositive.type === 'next' ? 'на следующий день после' : 'в день, когда вы отмечаете';
 
-        const direction = bestInsight.isPositive ? 'выше' : 'ниже';
-        const impactTime = bestInsight.type === 'next' ? 'на следующий день после' : 'в день, когда вы отмечаете';
-
-        insightText.innerHTML = `
-            ${cautionText}ваше настроение обычно <strong>на ${bestInsight.percent}% ${direction}</strong>, 
-            ${impactTime} триггер <strong>«${escapeHtml(bestInsight.trigger)}»</strong>.
-            <span style="font-size: 0.85em; opacity: 0.7; display: block; margin-top: 5px;">${confidenceText}</span>
+        posText.innerHTML = `
+            ${caution}ваше настроение обычно <strong>на ${bestPositive.percent}% выше</strong>, 
+            ${timeLabel} триггер <strong>«${escapeHtml(bestPositive.trigger)}»</strong>.
+            <span style="font-size: 0.85em; opacity: 0.7; display: block; margin-top: 5px;">${confText}</span>
         `;
-        insightBlock.style.display = 'block';
+        posBlock.style.display = 'block';
     } else {
-        // Если нет ярко выраженных закономерностей
-        insightBlock.style.display = 'none';
+        posBlock.style.display = 'none';
+    }
+
+    // 4. Формируем текст для негативного инсайта
+    if (bestNegative) {
+        let caution = bestNegative.confidence === 'low' ? 'Возможно, ' : '';
+        let confText = bestNegative.confidence === 'low' ? ' (мало данных)' : 
+                       bestNegative.confidence === 'medium' ? ' (средняя уверенность)' : '';
+
+        const timeLabel = bestNegative.type === 'next' ? 'на следующий день после' : 'в день, когда вы отмечаете';
+
+        negText.innerHTML = `
+            ${caution}ваше настроение обычно <strong>на ${bestNegative.percent}% ниже</strong>, 
+            ${timeLabel} триггер <strong>«${escapeHtml(bestNegative.trigger)}»</strong>.
+            <span style="font-size: 0.85em; opacity: 0.7; display: block; margin-top: 5px;">${confText}</span>
+        `;
+        negBlock.style.display = 'block';
+    } else {
+        negBlock.style.display = 'none';
     }
     // --- КОНЕЦ АНАЛИЗА ---
+
+
     // 3. Генерируем HTML для списка (ОДИН цикл, без дублей)
     let html = '<div>';
     sortedTriggers.forEach(t => {
@@ -4767,17 +4821,43 @@ function drawWeekdayChart() {
 
     ctx.clearRect(0, 0, width, height);
 
-    const weekdayData = [0,0,0,0,0,0,0].map(() => ({ total: 0, count: 0 }));
     
+    // Группируем записи по конкретным датам
+    const dateGroups = {};
     diaryEntries.forEach(entry => {
-        const d = new Date(entry.date);
-        const dayOfWeek = d.getDay();
-        const score = getMoodScore(entry.mood);
-        if (score !== null) {
-            weekdayData[dayOfWeek].total += score;
-            weekdayData[dayOfWeek].count++;
+        const dateKey = getDateKey(entry.date);
+        if (!dateGroups[dateKey]) {
+            dateGroups[dateKey] = [];
+        }
+        dateGroups[dateKey].push(entry);
+    });
+
+    // Считаем ПРОСТОЕ среднее для каждой даты и раскладываем по дням недели
+    const weekdayScores = [[], [], [], [], [], [], []]; // Пн, Вт, Ср, Чт, Пт, Сб, Вс
+
+    Object.entries(dateGroups).forEach(([dateKey, entries]) => {
+        let total = 0;
+        let count = 0;
+        entries.forEach(e => {
+            const s = getMoodScore(e.mood);
+            if (s !== null) { total += s; count++; }
+        });
+
+        if (count > 0) {
+            const avgForDay = total / count; // ПРОСТОЕ СРЕДНЕЕ ЗА ДЕНЬ
+            const dateObj = new Date(dateKey + 'T12:00:00');
+            const dayOfWeek = dateObj.getDay(); // 0 = Вс, 1 = Пн ...
+            weekdayScores[dayOfWeek].push(avgForDay);
         }
     });
+
+    // Теперь усредняем баллы по всем дням недели
+    const weekdayData = weekdayScores.map(scores => {
+        if (scores.length === 0) return { avgScore: null };
+        const avg = scores.reduce((sum, val) => sum + val, 0) / scores.length;
+        return { avgScore: avg };
+    });
+
 
     const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
     const left = 30, right = 10, top = 30, bottom = 30;
@@ -4804,20 +4884,34 @@ function drawWeekdayChart() {
     }
 
     weekdayData.forEach((data, index) => {
-        const avgScore = data.count > 0 ? data.total / data.count : 0;
-        const barHeight = (avgScore / maxScore) * chartHeight;
-        const x = left + index * barSpacing + (barSpacing - barWidth) / 2;
-        const y = top + chartHeight - barHeight;
+        // Если за этот день нет данных (avgScore равен null), рисуем пустую полоску
+        if (data.avgScore === null || data.avgScore === undefined) {
+            ctx.fillStyle = gridColor;
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.roundRect(left + index * barSpacing + (barSpacing - barWidth) / 2, top + chartHeight - 2, barWidth, 2, [0, 0, 0, 0]);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        } else {
+            const avgScore = data.avgScore;
+            const barHeight = (avgScore / maxScore) * chartHeight;
+            const x = left + index * barSpacing + (barSpacing - barWidth) / 2;
+            const y = top + chartHeight - barHeight;
 
-        if (data.count > 0) {
+            // Берем эмодзи и цвет напрямую из нашей шкалы MOODS
+            const matchedMood = MOODS.reduce((prev, curr) => {
+                return (Math.abs(curr.score - avgScore) < Math.abs(prev.score - avgScore) ? curr : prev);
+            });
+
+            let emoji = matchedMood.emoji;
             let barColor;
-            let emoji;
-            
-            if (avgScore >= 8) { barColor = '#1B5E20'; emoji = '🥰'; }
-            else if (avgScore >= 6) { barColor = '#8BC34A'; emoji = '😊'; }
-            else if (avgScore >= 4) { barColor = '#0288D1'; emoji = '😐'; }
-            else if (avgScore >= 2) { barColor = '#FF9800'; emoji = '🙁'; }
-            else { barColor = '#F44336'; emoji = '😩'; }
+
+            // Определяем цвет по реальному баллу
+            if (matchedMood.score <= 2) barColor = '#F44336';      // Красный
+            else if (matchedMood.score <= 4) barColor = '#FF9800'; // Оранжевый
+            else if (matchedMood.score <= 6) barColor = '#0288D1'; // Голубой
+            else if (matchedMood.score <= 8) barColor = '#8BC34A'; // Светло-зеленый
+            else barColor = '#1B5E20';                             // Темно-зеленый
 
             ctx.fillStyle = barColor;
             ctx.beginPath();
@@ -4835,20 +4929,16 @@ function drawWeekdayChart() {
                 ctx.fillStyle = textColor;
                 ctx.fillText(emoji, x + barWidth / 2, y - 6);
             }
-        } else {
-            ctx.fillStyle = gridColor;
-            ctx.globalAlpha = 0.3;
-            ctx.beginPath();
-            ctx.roundRect(x, top + chartHeight - 2, barWidth, 2, [0, 0, 0, 0]);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
         }
 
+        // Подпись дня недели (рисуется всегда)
         ctx.fillStyle = textColor;
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillText(weekdays[index], x + barWidth / 2, top + chartHeight + 8);
+        // Вычисляем x для подписи: центр столбца
+        const labelX = left + index * barSpacing + (barSpacing - barWidth) / 2 + barWidth / 2;
+        ctx.fillText(weekdays[index], labelX, top + chartHeight + 8);
     });
 }
 

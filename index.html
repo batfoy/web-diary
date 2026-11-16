@@ -694,18 +694,32 @@
             </div>
 
             <div class="stats-body" style="padding: 15px 20px;">
-                 <!-- Блок с инсайтом -->
-                 <div id="triggers-insight-block" style="display: none; margin-bottom: 20px; padding: 15px; background: var(--surface-variant); border-left: 4px solid var(--accent-color); border-radius: 8px;">
-                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                         <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--accent-color)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                             <path d="M9 18h6"></path>
-                             <path d="M10 22h4"></path>
-                             <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path>
-                         </svg>
-                         <span style="font-weight: 600; font-size: 0.95em; color: var(--text-color);">Анализ</span>
-                     </div>
-                     <p id="triggers-insight-text" style="font-size: 0.9em; color: var(--text-color); margin: 0; line-height: 1.4;"></p>
-                 </div>
+
+                 <!-- Инсайты -->
+                  <!-- Блок с позитивным инсайтом -->
+                  <div id="triggers-insight-pos-block" style="display: none; margin-bottom: 10px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid var(--accent-color); border-radius: 8px;">
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                          <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--accent-color)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                          </svg>
+                          <span style="font-weight: 600; font-size: 0.95em; color: var(--text-color);">Что радует</span>
+                      </div>
+                      <p id="triggers-insight-pos-text" style="font-size: 0.9em; color: var(--text-color); margin: 0; line-height: 1.4;"></p>
+                  </div>
+
+                  <!-- Блок с негативным инсайтом -->
+                  <div id="triggers-insight-neg-block" style="display: none; margin-bottom: 20px; padding: 15px; background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--danger-color); border-radius: 8px;">
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                          <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--danger-color)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                          <span style="font-weight: 600; font-size: 0.95em; color: var(--text-color);">Что тревожит</span>
+                      </div>
+                      <p id="triggers-insight-neg-text" style="font-size: 0.9em; color: var(--text-color); margin: 0; line-height: 1.4;"></p>
+                  </div>
+                 
 
                 <!-- Список триггеров -->
                 <div id="all-triggers-list-container"></div>

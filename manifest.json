@@ -2,7 +2,7 @@
   "name": "Страницы. Дневник и настроение",
   "short_name": "Дневник",
   "id": "./index.html",
-  "description": "Личный дневник с тегами, фильтрами, графиком эмоций и защитой PIN-кодом",
+  "description": "Умный трекер настроения с анализом триггеров, графиками и офлайн-режимом.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f5f5",
