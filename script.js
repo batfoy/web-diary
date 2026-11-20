@@ -203,23 +203,21 @@ const MOODS = [
     { emoji: '🥰', svg: 'emojis/10.svg', score: 10 }
 ];
 
+
 // Предзагрузка SVG-эмодзи для графиков
 const moodImages = {};
 function preloadMoodImages() {
     MOODS.forEach(m => {
-        if (!m.svg) return; // защита, если вдруг нет svg
+        if (!m.svg) return;
         const img = new Image();
         img.src = m.svg;
         img.onload = () => {
             moodImages[m.emoji] = img;
-            // Перерисовываем график, если модалка открыта
-            const chartModal = document.getElementById('chart-modal');
-            if (chartModal && !chartModal.classList.contains('hidden')) {
-                if (currentChartMode === 'line') {
-                    drawMoodChart();
-                } else {
-                    drawBarChart();
-                }
+            // Перерисовываем график, если статистика открыта
+            const statsModal = document.getElementById('stats-modal');
+            if (statsModal && !statsModal.classList.contains('hidden')) {
+                if (currentChartMode === 'line') drawMoodChart();
+                else drawBarChart();
             }
         };
     });
@@ -1239,18 +1237,24 @@ async function handleDeleteClick() {
 
 
 // === 📊 ГРАФИК НАСТРОЕНИЯ (без разрывов + градиентная заливка) ===
-function drawMoodChart(canvasId = 'mood-chart', guardModalId = 'chart-modal') {
-    const canvas = document.getElementById(canvasId);
-    const chartModal = document.getElementById(guardModalId);
-    if (chartModal && chartModal.classList.contains('hidden')) return;
+function drawMoodChart() {
+    const canvas = document.getElementById('mood-chart');
     if (!canvas) return;
+
+    // Guard: рисуем только если статистика открыта
+    const statsModal = document.getElementById('stats-modal');
+    if (statsModal && statsModal.classList.contains('hidden')) return;
+
+    // Не рисуем, если секция графика скрыта (в глубокой статистике)
+    const section = document.getElementById('stats-chart-section');
+    if (section && section.classList.contains('hidden')) return;
 
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
 
     const width = rect.width;
-    const height = rect.height || 220; // ФИКС: берём реальную высоту из CSS
+    const height = rect.height || 220;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
@@ -1992,21 +1996,19 @@ function applyTheme(themeName) {
     });
     localStorage.setItem('my_web_diary_theme_v1', themeName);
     
-    // 1. Перерисовываем модалку графика (если она открыта)
-    if (!document.getElementById('chart-modal').classList.contains('hidden')) {
-        if (currentChartMode === 'line') {
-            drawMoodChart();
-        } else {
-            drawBarChart();
-        }
-    }
-
-    // 2. Перерисовываем статистику (если она открыта)
+    // Перерисовываем статистику, если она открыта
     const statsModal = document.getElementById('stats-modal');
     if (statsModal && !statsModal.classList.contains('hidden')) {
-        // Если мы на вкладке "Глубокая статистика", перерисовываем её
         if (currentStatsMode === 'deep') {
+            // Глубокая статистика
             renderDeepStats();
+        } else {
+            // Обычная статистика — перерисовываем график (если он виден)
+            const chartSection = document.getElementById('stats-chart-section');
+            if (chartSection && !chartSection.classList.contains('hidden')) {
+                if (currentChartMode === 'line') drawMoodChart();
+                else drawBarChart();
+            }
         }
     }
 }
@@ -2020,7 +2022,7 @@ document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.onclick = () => { 
         applyTheme(btn.getAttribute('data-theme'));
         // Перерисовываем график, если он открыт
-        if (!document.getElementById('chart-modal').classList.contains('hidden')) {
+        if (!document.getElementById('stats-modal').classList.contains('hidden')) {
             drawMoodChart();
         }
     };
@@ -2164,47 +2166,27 @@ document.getElementById('import-file').onchange = (e) => {
 let currentChartMode = 'line'; // 'line' | 'bar'
 let currentBarPeriod = 'all';  // 'all' | 'month' | 'week'
 
-function openChartModal() {
-    closeStatsModal();
-    closeCalendarScreen();
-    closeSidebar();
-    
-    const isBar = currentChartMode === 'bar';
-    document.getElementById('chart-mode-toggle').textContent = isBar ? '📉 Линейный график' : '📈 Гистограмма';
-    
-    document.getElementById('prev-month-chart').classList.toggle('hidden', isBar);
-    document.getElementById('next-month-chart').classList.toggle('hidden', isBar);
-    
-    document.getElementById('mood-chart').classList.toggle('hidden', isBar);
-    document.getElementById('bar-chart').classList.toggle('hidden', !isBar);
-    
-    // Стрелочка видна ТОЛЬКО на гистограмме
-    document.getElementById('chart-period-toggle').classList.toggle('hidden', !isBar);
-    
-    document.getElementById('chart-period-selector').classList.add('hidden');
-    
-    if (isBar) {
-        document.getElementById('chart-modal-title').textContent = 'Частота эмоций';
-        document.getElementById('chart-average').textContent = 'Распределение';
-    } else {
-        updateChartModalTitle();
-    }
-    
-    if (!document.querySelector('.period-option.active')) {
-        document.querySelector('.period-option[data-period="all"]').classList.add('active');
-    }
-    
-    document.getElementById('chart-modal').classList.remove('hidden');
-    
-    setTimeout(() => {
-        if (isBar) drawBarChart();
-        else drawMoodChart();
-    }, 50);
-}
+
 
 function closeChartModal() {
-    document.getElementById('chart-modal').classList.add('hidden');
-    document.getElementById('chart-period-selector').classList.add('hidden');
+    const sel = document.getElementById('chart-period-selector');
+    if (sel) sel.classList.add('hidden');
+}
+
+
+function refreshStatsChart() {
+    const section = document.getElementById('stats-chart-section');
+    if (section) section.classList.remove('hidden');
+    // Стрелка периода — только в режиме гистограммы
+    const periodToggle = document.getElementById('chart-period-toggle');
+    if (periodToggle) periodToggle.classList.toggle('hidden', currentChartMode !== 'bar');
+    if (currentChartMode === 'line') updateChartModalTitle();
+    setTimeout(() => {
+        const modal = document.getElementById('stats-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+        if (currentChartMode === 'line') drawMoodChart();
+        else drawBarChart();
+    }, 80);
 }
 
 function updateChartModalTitle() {
@@ -2269,7 +2251,7 @@ document.getElementById('chart-period-toggle').onclick = (e) => {
 document.addEventListener('click', (e) => {
     const selector = document.getElementById('chart-period-selector');
     const toggleBtn = document.getElementById('chart-period-toggle');
-    
+    if (!selector || !toggleBtn) return; // ← защита от null
     if (!selector.classList.contains('hidden') && 
         !selector.contains(e.target) && 
         e.target !== toggleBtn && 
@@ -2294,19 +2276,22 @@ document.querySelectorAll('.period-option').forEach(btn => {
     };
 });
 
-// Привязка кнопок открытия/закрытия модалки
-document.getElementById('sidebar-chart-btn').onclick = openChartModal;
-document.getElementById('close-chart-modal').onclick = closeChartModal;
-document.querySelector('#chart-modal .modal-backdrop').onclick = closeChartModal;
+
 document.getElementById('prev-month-chart').onclick = () => changeChartMonth(-1);
 document.getElementById('next-month-chart').onclick = () => changeChartMonth(1);
 
 // === РИСОВАНИЕ ГИСТОГРАММЫ ===
 function drawBarChart() {
     const canvas = document.getElementById('bar-chart');
-    const chartModal = document.getElementById('chart-modal');
-    
-    if (!canvas || chartModal.classList.contains('hidden')) return;
+    if (!canvas) return;
+
+    // Guard: рисуем только если статистика открыта
+    const statsModal = document.getElementById('stats-modal');
+    if (statsModal && statsModal.classList.contains('hidden')) return;
+
+    // Не рисуем, если секция графика скрыта
+    const section = document.getElementById('stats-chart-section');
+    if (section && section.classList.contains('hidden')) return;
 
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
@@ -2402,7 +2387,6 @@ function drawBarChart() {
             ctx.globalAlpha = 1.0;
         }
 
-        // === ОТРИСОВКА ИКОНКИ (КАРТИНКА ИЛИ ТЕКСТ) ===
         const emojiImg = moodImages[m.emoji];
         if (emojiImg) {
             ctx.drawImage(emojiImg, x + barWidth / 2 - 10, top + plotH + 8, 20, 20);
@@ -2421,7 +2405,6 @@ function drawBarChart() {
     if (currentBarPeriod === 'month') periodLabel = 'За текущий месяц';
     
     document.getElementById('chart-summary').textContent = `${periodLabel} · Всего записей: ${totalEntries}`;
-    
 }
 
 
@@ -2449,6 +2432,16 @@ function updateBodyScrollLock() {
 // === 📈 СТАТИСТИКА ===
 let currentStatsMode = 'normal'; // 'normal' | 'deep'
 
+function redrawStatsChart() {
+    updateChartModalTitle();
+    setTimeout(() => {
+        const modal = document.getElementById('stats-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+        if (currentChartMode === 'line') drawMoodChart();
+        else drawBarChart();
+    }, 80);
+}
+
 function openStatsModal() {
     closeChartModal();
     closeCalendarScreen();
@@ -2464,8 +2457,10 @@ function openStatsModal() {
     document.getElementById('stats-deep-body').classList.add('hidden');
 
     if (diaryEntries.length === 0) {
-        document.getElementById('stats-normal-body').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px 0;">Пока нет записей.<br>Начните вести дневник!</p>';
+        document.getElementById('stats-items-container').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px 0;">Пока нет записей.<br>Начните вести дневник!</p>';
         document.getElementById('stats-modal').classList.remove('hidden');
+        redrawStatsChart();
+        refreshStatsChart();
         return;
     }
 
@@ -2537,7 +2532,7 @@ function openStatsModal() {
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
     // HTML вставка
-    document.getElementById('stats-normal-body').innerHTML = `
+    document.getElementById('stats-items-container').innerHTML = `
 
         <!-- Лучшее за неделю -->
         <div class="stats-item ${weekBest ? getStatsMoodClass(weekBest.score) : ''}">
@@ -2617,6 +2612,7 @@ function openStatsModal() {
     `;
 
     document.getElementById('stats-modal').classList.remove('hidden');
+    redrawStatsChart();
     // Сброс скролла внутри модалки
     refreshStatsScroll();
     updateBodyScrollLock();
@@ -2630,8 +2626,6 @@ document.getElementById('stats-mode-toggle').onclick = () => {
         document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.stats;
         document.getElementById('stats-normal-body').classList.add('hidden');
         document.getElementById('stats-deep-body').classList.remove('hidden');
-        // Рендерим ВНУТРИ requestAnimationFrame: контейнер уже видим,
-        // canvas получит корректную ширину, скролл пересчитается
         requestAnimationFrame(() => {
             renderDeepStats();
             refreshStatsScroll();
@@ -2642,7 +2636,11 @@ document.getElementById('stats-mode-toggle').onclick = () => {
         document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.deepStats;
         document.getElementById('stats-normal-body').classList.remove('hidden');
         document.getElementById('stats-deep-body').classList.add('hidden');
-        refreshStatsScroll();
+        document.getElementById('stats-chart-section').classList.remove('hidden');
+        requestAnimationFrame(() => {
+            refreshStatsChart();
+            refreshStatsScroll();
+        });
     }
 };
 
@@ -3072,22 +3070,31 @@ function renderDeepStats() {
     }
 }
 
-// === 📋 СПИСОК ВСЕХ ТРИГГЕРОВ ===
 
-// Функция для открытия модалки
+
+// === 📋 СПИСОК ВСЕХ ТРИГГЕРОВ ===
+let statsModeBeforeTriggers = 'normal'; // запоминаем, с какой вкладки статистики пришли
+
 function openAllTriggersList() {
-    closeStatsModal(); // Закрываем глубокую статистику
+    statsModeBeforeTriggers = currentStatsMode; // запоминаем текущий режим
+    closeStatsModal();
     document.getElementById('triggers-list-modal').classList.remove('hidden');
     renderAllTriggersList();
-    updateBodyScrollLock();
 }
 
-// Функция для закрытия модалки
-function closeAllTriggersList() {
-    document.getElementById('triggers-list-modal').classList.add('hidden');
+// Открывает статистику и СРАЗУ (синхронно, без мигания) переключает на нужный режим
+function openStatsModalInMode(mode) {
     openStatsModal();
-    // Убираем setTimeout с click() — больше не переключаем на глубокую автоматически
-    updateBodyScrollLock();
+    if (mode === 'deep' && currentStatsMode === 'normal') {
+        document.getElementById('stats-mode-toggle').click();
+    }
+}
+
+function closeAllTriggersList() {
+    const modal = document.getElementById('triggers-list-modal');
+    if (!modal || modal.classList.contains('hidden')) return; // список не открыт — ничего не делаем
+    modal.classList.add('hidden');
+    openStatsModalInMode(statsModeBeforeTriggers); // возвращаем туда, откуда пришли
 }
 
 // Функция отрисовки списка
@@ -3424,12 +3431,24 @@ function closeStatsModal() {
 }
 
 
-document.getElementById('close-stats-modal').onclick = closeStatsModal;
-document.querySelector('#stats-modal .modal-backdrop').onclick = closeStatsModal;
+document.getElementById('close-stats-modal').onclick = () => {
+    closeStatsModal();
+    setActiveNav('nav-entries-btn');
+};
+document.querySelector('#stats-modal .modal-backdrop').onclick = () => {
+    closeStatsModal();
+    setActiveNav('nav-entries-btn');
+};
 
 // === 📅 КНОПКИ КАЛЕНДАРЯ ===
-document.getElementById('close-calendar-btn').onclick = closeCalendarScreen;
-document.querySelector('#calendar-modal .modal-backdrop').onclick = closeCalendarScreen;
+document.getElementById('close-calendar-btn').onclick = () => {
+    closeCalendarScreen();
+    setActiveNav('nav-entries-btn');
+};
+document.querySelector('#calendar-modal .modal-backdrop').onclick = () => {
+    closeCalendarScreen();
+    setActiveNav('nav-entries-btn');
+};
 document.getElementById('prev-month-btn').onclick = () => changeCalendarMonth(-1);
 document.getElementById('next-month-btn').onclick = () => changeCalendarMonth(1);
 document.getElementById('prev-month-desktop').onclick = () => changeCalendarMonth(-1);
@@ -4689,21 +4708,11 @@ document.querySelectorAll('.template-item').forEach(btn => {
 
 // Кнопка возврата к глубокой статистике
 document.getElementById('back-to-stats-btn').onclick = () => {
-    // 1. Сбрасываем фильтр
     activeTriggerFilter = null;
     cameFromDeepStats = false;
     document.getElementById('back-to-stats-btn').classList.add('hidden');
     renderEntries();
-    
-    // 2. Открываем статистику снова и сразу переключаем на глубокий режим
-    openStatsModal();
-    
-    // Небольшая задержка, чтобы модалка успела открыться, затем переключаем режим
-    setTimeout(() => {
-        if (currentStatsMode === 'normal') {
-            document.getElementById('stats-mode-toggle').click();
-        }
-    }, 50);
+    openStatsModalInMode('deep');
 };
 
 // === 😊 МОДАЛКА НАСТРОЕНИЯ (закрытие) ===
@@ -5277,29 +5286,51 @@ if (!searchInputEl) {
 
 
 // === 📜 УМНАЯ ПРОКРУТКА ШАПКИ (АВТОДОКРУТ) ===
+// === 📜 УМНАЯ ПРОКРУТКА ШАПКИ (с автодокрутом) ===
 (function initSmartHeader() {
     const header = document.querySelector('.top-header');
     if (!header) return;
-    let lastScrollTop = 0, scrollTimer = null, isTicking = false;
+
+    let lastScrollTop = 0;
+    let scrollDelta = 0;          // накопленная дельта с последней смены направления
+    const THRESHOLD = 10;         // порог: 10px, чтобы отфильтровать дрожание
+    const DEADZONE = 30;          // у самого верха шапка всегда видна
+    let scrollTimer = null;
 
     window.addEventListener('scroll', () => {
-        clearTimeout(scrollTimer);
-        if (!isTicking) {
-            isTicking = true;
-            requestAnimationFrame(() => {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const diff = scrollTop - lastScrollTop;
-                if (diff > 0 && scrollTop > 30) header.classList.add('header-hidden');
-                else if (diff < 0) header.classList.remove('header-hidden');
-                if (scrollTop <= 30) header.classList.remove('header-hidden');
-                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-                isTicking = false;
-            });
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const delta = scrollTop - lastScrollTop;
+        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+
+        // Сбрасываем дельту при смене направления
+        if ((delta > 0 && scrollDelta < 0) || (delta < 0 && scrollDelta > 0)) {
+            scrollDelta = 0;
         }
+        scrollDelta += delta;
+
+        clearTimeout(scrollTimer);
+
+        if (scrollTop <= DEADZONE) {
+            header.classList.remove('header-hidden');
+            scrollDelta = 0;
+            return;
+        }
+
+        if (scrollDelta > THRESHOLD) {
+            header.classList.add('header-hidden');
+        } else if (scrollDelta < -THRESHOLD) {
+            header.classList.remove('header-hidden');
+        }
+
+        // Автодокрут: если пользователь остановился и шапка в промежуточном состоянии
         scrollTimer = setTimeout(() => {
             const cur = window.pageYOffset || document.documentElement.scrollTop;
-            header.classList.toggle('header-hidden', cur > 30);
-        }, 150);
+            if (cur > DEADZONE && !header.classList.contains('header-hidden')) {
+                header.classList.add('header-hidden');
+            } else if (cur <= DEADZONE) {
+                header.classList.remove('header-hidden');
+            }
+        }, 180);
     }, { passive: true });
 })();
 
@@ -5877,6 +5908,24 @@ function updateProgressCard() {
 
 bindClick('sidebar-favorites-btn', applyFavoriteFilter);
 bindClick('header-clear-filter-btn', clearActiveFilter);
+
+// === 💫 RIPPLE ДЛЯ КНОПОК РЕЖИМА (chart-mode-btn) ===
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chart-mode-btn');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const ripple = document.createElement('span');
+    ripple.className = 'btn-ripple';
+    ripple.style.width = ripple.style.height = size + 'px';
+    // Центр волны — точка касания (для клавиатуры — центр кнопки)
+    const x = (e.clientX || rect.left + rect.width / 2) - rect.left - size / 2;
+    const y = (e.clientY || rect.top + rect.height / 2) - rect.top - size / 2;
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+});
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {
