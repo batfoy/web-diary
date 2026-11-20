@@ -1001,11 +1001,12 @@ function updateEditModeUI() {
     const textInput = document.getElementById('entry-text');
     const headerDeleteBtn = document.getElementById('header-delete-btn');
     const editModeBtn = document.getElementById('edit-mode-btn');
+    const footer = document.getElementById('entry-footer');
 
     if (isEditing) {
         modal.classList.add('is-editing');
         titleInput.removeAttribute('readonly');
-        textInput.setAttribute('contenteditable', 'true'); 
+        textInput.setAttribute('contenteditable', 'true');
         if (editModeBtn) editModeBtn.classList.add('hidden');
         if (headerDeleteBtn) headerDeleteBtn.classList.remove('hidden');
     } else {
@@ -1016,12 +1017,12 @@ function updateEditModeUI() {
         if (headerDeleteBtn) headerDeleteBtn.classList.remove('hidden');
     }
 
+    // Футер виден только в просмотре, тулбар — только в редактировании
+    if (footer) footer.classList.toggle('hidden', isEditing);
+    if (!isEditing) updateEntryNav();
+
     const toolbar = document.getElementById('entry-toolbar');
-    if (isEditing) {
-        toolbar.classList.remove('hidden');
-    } else {
-        toolbar.classList.add('hidden');
-    }
+    if (toolbar) toolbar.classList.toggle('hidden', !isEditing);
 }
 
 function openEntryForm(entry = null, initialMood = null) {
@@ -4558,6 +4559,44 @@ document.getElementById('cancel-entry-btn').onclick = async () => {
     updateProgressCard();
 };
 
+
+// === ⬅️➡️ ПЕРЕЛИСТЫВАНИЕ ЗАПИСЕЙ (хронологически: следующая = новее) ===
+function getVisibleEntriesChrono() {
+    return Array.from(document.querySelectorAll('#entries-list .entry-card'))
+        .map(c => diaryEntries.find(e => e.id === c.dataset.entryId))
+        .filter(Boolean)
+        .sort((a, b) =>
+            (new Date(a.date) - new Date(b.date)) ||
+            ((a.createdAt || 0) - (b.createdAt || 0))
+        );
+}
+
+function updateEntryNav() {
+    const prev = document.getElementById('entry-prev-btn');
+    const next = document.getElementById('entry-next-btn');
+    if (!prev || !next) return;
+    const list = getVisibleEntriesChrono();
+    const i = list.findIndex(e => String(e.id) === String(editingEntryId));
+    prev.disabled = i <= 0;
+    next.disabled = i < 0 || i >= list.length - 1;
+}
+
+function navigateEntry(step) {
+    const list = getVisibleEntriesChrono();
+    const i = list.findIndex(e => String(e.id) === String(editingEntryId));
+    if (i < 0) return;
+    const target = list[i + step];
+    if (!target) return;
+    openEntryForm(target);
+    const editor = document.getElementById('entry-text');
+    if (editor) editor.scrollTop = 0;
+}
+
+const entryPrevBtn = document.getElementById('entry-prev-btn');
+const entryNextBtn = document.getElementById('entry-next-btn');
+if (entryPrevBtn) entryPrevBtn.onclick = () => navigateEntry(-1);
+if (entryNextBtn) entryNextBtn.onclick = () => navigateEntry(1);
+
 // ✏️ — вход в редактирование существующей записи
 document.getElementById('edit-mode-btn').onclick = enterEditMode;
 
@@ -5668,9 +5707,10 @@ function animateMonthCompare() {
 
 // === НОСТАЛЬГИЯ: МОДАЛКА ===
 function openNostalgiaModal() {
+    document.getElementById('bottomNav').classList.add('nav-hidden');
+    document.body.style.overflow = 'hidden';
+
     const list = document.getElementById('nostalgia-list');
-    const modal = document.getElementById('nostalgia-modal');
-    if (!list || !modal) return;
     const mem = getNostalgiaEntries();
     if (!mem.length) {
         list.innerHTML = '<p class="nostalgia-empty">Ностальгии пока нет.<br>Записи, сделанные в этот день в прошлые годы, появятся здесь.</p>';
@@ -5686,11 +5726,13 @@ function openNostalgiaModal() {
             </button>`;
         }).join('');
     }
-    modal.classList.remove('hidden');
+    document.getElementById('nostalgia-modal').classList.remove('hidden');
 }
+
 function closeNostalgiaModal() {
-    const modal = document.getElementById('nostalgia-modal');
-    if (modal) modal.classList.add('hidden');
+    document.getElementById('nostalgia-modal').classList.add('hidden');
+    document.getElementById('bottomNav').classList.remove('nav-hidden');
+    document.body.style.overflow = '';
 }
 
 // === ПРИВЯЗКА (по одному разу на элемент) ===

@@ -216,9 +216,9 @@
     </main>
 
     <!-- МОДАЛКА НОСТАЛЬГИИ -->
-    <div id="nostalgia-modal" class="modal hidden">
+    <div id="nostalgia-modal" class="modal hidden fullscreen-modal">
         <div class="modal-backdrop"></div>
-        <div class="modal-content nostalgia-modal-content">
+        <div class="modal-content fullscreen-content nostalgia-modal-content">
             <div class="entry-modal-header">
                 <button id="close-nostalgia-btn" class="back-btn-icon" title="Назад"><span id="icon-back-nostalgia"></span></button>
                 <h2 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.2em;"><span id="nostalgia-header-icon"></span> Ностальгия</h2>
@@ -297,13 +297,6 @@
                     </svg>
                 </div>
 
-                <!-- Карандаш (Редактировать) -->
-                <button id="edit-mode-btn" class="icon-btn edit-btn" title="Редактировать">
-                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 20h9"></path>
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                    </svg>
-                </button>
 
                 <!-- Избранное (Звездочка) -->
                 <button id="header-favorite-btn" class="icon-btn favorite-btn" title="В избранное">
@@ -328,6 +321,23 @@
             
             <div class="entry-form" id="entry-form">
                 <div id="entry-text" class="entry-text-input" contenteditable="true" autocorrect="off" spellcheck="false" data-placeholder="О чем вы хотите написать?"></div>
+            </div>
+            <!-- ФУТЕР ПРОСМОТРА: предыдущая / редактировать / следующая -->
+            <div id="entry-footer" class="entry-footer hidden">
+                <button id="entry-prev-btn" class="entry-nav-btn" type="button" title="Предыдущая запись">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+
+                <button id="edit-mode-btn" class="icon-btn edit-btn" type="button" title="Редактировать">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                </button>
+
+                <button id="entry-next-btn" class="entry-nav-btn" type="button" title="Следующая запись">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
             </div>
             
             <!-- ПАНЕЛЬ ИНСТРУМЕНТОВ (TOOLBAR) -->
