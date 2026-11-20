@@ -16,7 +16,6 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 
 // === 📦 ПЕРЕМЕННЫЕ ===
 let diaryEntries = [];
-const STORAGE_KEY = 'my_web_diary_entries_v2';
 const PIN_KEY = 'my_web_diary_pin_v1';
 let currentCalendarDate = new Date();
 let searchQuery = '';
@@ -53,7 +52,6 @@ const AVAILABLE_TRIGGERS = [
     '🛡️ Безопасность', '🧘 Спокойствие', '☀️ Радость'
 ];
 
-let currentQuoteIndex = 0;
 
 let multiDeleteMode = false;
 let selectedEntries = [];
@@ -242,40 +240,6 @@ function getStatsMoodClass(score) {
     return 'stats-mood-5'; // Темно-зеленый
 }
 
-
-const QUOTES = [
-    { text: "Счастье — это не пункт назначения, а способ путешествия.", author: "Рой Гудман" },
-    { text: "Не считай дни, извлекай из них пользу.", author: "Мухаммед Али" },
-    { text: "Самый темный час — тот, что перед рассветом.", author: "Томас Фуллер" },
-    { text: "Делай то, что можешь, с тем, что имеешь, там, где ты есть.", author: "Теодор Рузвельт" },
-    { text: "Успех — это способность идти от поражения к поражению, не теряя энтузиазма.", author: "Уинстон Черчилль" },
-    { text: "Ваше время ограничено, не тратьте его, живя чужой жизнью.", author: "Стив Джобс" },
-    { text: "Победа — это еще не все, все — это постоянное желание побеждать.", author: "Винс Ломбарди" },
-    { text: "Сложнее всего начать действовать, все остальное зависит только от упорства.", author: "Амелия Эрхарт" },
-    { text: "Логика приведет вас из пункта А в пункт Б. Воображение приведет вас куда угодно.", author: "Альберт Эйнштейн" },
-    { text: "Через 20 лет вы будете больше жалеть о том, чего не сделали, чем о том, что сделали.", author: "Марк Твен" },
-    { text: "Не позволяйте шуму чужих мнений перебить ваш внутренний голос.", author: "Стив Джобс" },
-    { text: "Единственный способ делать великие дела — любить то, что вы делаете.", author: "Стив Джобс" },
-    { text: "Жизнь — это то, что с вами случается, пока вы строите другие планы.", author: "Джон Леннон" },
-    { text: "Стремитесь не к успеху, а к ценностям, которые он дает.", author: "Альберт Эйнштейн" },
-    { text: "Я не терпел поражений. Я просто нашел 10 000 способов, которые не работают.", author: "Томас Эдисон" },
-    { text: "Тот, кто не может изменить свои мысли, не может изменить ничего.", author: "Джордж Бернард Шоу" },
-    { text: "Лучший способ предсказать будущее — изобрести его.", author: "Алан Кей" },
-    { text: "Если вы думаете, что способны на что-то, вы правы; если думаете, что у вас ничего не получится — вы тоже правы.", author: "Генри Форд" },
-    { text: "Два самых важных дня в твоей жизни: день, когда ты родился, и день, когда понял зачем.", author: "Марк Твен" },
-    { text: "Начинать всегда стоит с того, что сеет сомнения.", author: "Борис Стругацкий" },
-    { text: "Настоящая ответственность бывает только личной.", author: "Фазиль Искандер" },
-    { text: "Неисполненное намерение подобно облаку без дождя.", author: "Уильям Блейк" },
-    { text: "Целый мир уступает место человеку, который знает, куда идет.", author: "Ральф Эмерсон" },
-    { text: "Счастье зависит от нас самих.", author: "Аристотель" },
-    { text: "Жизнь слишком коротка, чтобы быть маленьким.", author: "Бенджамин Дизраэли" },
-    { text: "Все, что вы можете представить — реально.", author: "Пабло Пикассо" },
-    { text: "Когда закрывается одна дверь счастья, открывается другая.", author: "Хелен Келлер" },
-    { text: "Секрет успеха — начать.", author: "Марк Твен" },
-    { text: "Не бойтесь совершенства. Вам его не достичь.", author: "Сальвадор Дали" },
-    { text: "Каждый ребенок — художник. Трудность в том, чтобы остаться художником, выйдя из детского возраста.", author: "Пабло Пикассо" },
-    { text: "Вы никогда не пересечете океан, если не наберетесь мужества потерять берег из виду.", author: "Христофор Колумб" }
-];
 
 // === 🎨 ФОНЫ ЗАПИСЕЙ ===
 const BACKGROUNDS = [
@@ -691,24 +655,6 @@ function updatePinMenuVisibility() {
 }
 
 
-function displayQuote() {
-    document.getElementById('daily-quote-text').textContent = `«${QUOTES[currentQuoteIndex].text}»`;
-    document.getElementById('daily-quote-author').textContent = `— ${QUOTES[currentQuoteIndex].author}`;
-}
-
-function nextQuote() {
-    const textEl = document.getElementById('daily-quote-text');
-    const authorEl = document.getElementById('daily-quote-author');
-    textEl.style.opacity = '0';
-    authorEl.style.opacity = '0';
-    setTimeout(() => {
-        currentQuoteIndex = (currentQuoteIndex + 1) % QUOTES.length;
-        localStorage.setItem('quote_index', currentQuoteIndex);
-        displayQuote();
-        textEl.style.opacity = '1';
-        authorEl.style.opacity = '1';
-    }, 250);
-}
 
 // === 😊 ВЫБОР НАСТРОЕНИЯ ===
 function openMoodModal(isNewEntry = false, isQuick = false) {
@@ -1859,12 +1805,6 @@ function changeCalendarMonth(delta) {
 
 
 
-function closeReminder() { document.getElementById('reminder-modal').classList.add('hidden'); }
-function openNewEntryFromReminder() {
-    closeReminder();
-    document.getElementById('fab-add').click();
-}
-
 // === 🔍 ПОИСК (адаптирован под новый интерфейс) ===
 
 // === 🔍 ПОИСК ===
@@ -1874,15 +1814,6 @@ const searchInput = document.getElementById('search-input');
 const headerTitle = document.getElementById('header-title');
 const closeSearchBtn = document.getElementById('close-search-btn');
 
-if (searchBtn) {
-    searchBtn.onclick = () => {
-        if (multiDeleteMode) { deleteSelectedEntries(); return; }
-        if (headerTitle) headerTitle.classList.add('hidden');
-        searchBtn.classList.add('hidden');
-        if (searchBar) searchBar.classList.remove('hidden');
-        if (searchInput) setTimeout(() => searchInput.focus(), 50);
-    };
-}
 
 if (closeSearchBtn) {
     closeSearchBtn.onclick = () => {
@@ -2207,40 +2138,33 @@ function changeChartMonth(delta) {
 
 // === ОБРАБОТЧИКИ СОБЫТИЙ ГРАФИКА ===
 
-document.getElementById('chart-mode-toggle').onclick = (e) => {
-    e.stopPropagation();
-    
-    if (currentChartMode === 'line') {
-        currentChartMode = 'bar';
-        e.target.textContent = '📉 Линейный график';
-        
-        document.getElementById('prev-month-chart').classList.add('hidden');
-        document.getElementById('next-month-chart').classList.add('hidden');
+// === 🔀 ПЕРЕКЛЮЧАТЕЛЬ ТИПА ГРАФИКА (сегменты) ===
+function setChartMode(mode) {
+    currentChartMode = mode;
+    const isBar = mode === 'bar';
+    const control = document.getElementById('chart-mode-toggle');
+    if (control) control.classList.toggle('seg-right', isBar);
+    const btnLine = document.getElementById('chart-mode-line');
+    const btnBar = document.getElementById('chart-mode-bar');
+    if (btnLine) { btnLine.classList.toggle('active', !isBar); btnLine.setAttribute('aria-selected', String(!isBar)); }
+    if (btnBar) { btnBar.classList.toggle('active', isBar); btnBar.setAttribute('aria-selected', String(isBar)); }
+    document.getElementById('prev-month-chart').classList.toggle('hidden', isBar);
+    document.getElementById('next-month-chart').classList.toggle('hidden', isBar);
+    document.getElementById('mood-chart').classList.toggle('hidden', isBar);
+    document.getElementById('bar-chart').classList.toggle('hidden', !isBar);
+    document.getElementById('chart-period-toggle').classList.toggle('hidden', !isBar);
+    document.getElementById('chart-period-selector').classList.add('hidden');
+    if (isBar) {
         document.getElementById('chart-modal-title').textContent = 'Частота эмоций';
         document.getElementById('chart-average').textContent = 'Распределение';
-        
-        document.getElementById('mood-chart').classList.add('hidden');
-        document.getElementById('bar-chart').classList.remove('hidden');
-        document.getElementById('chart-period-toggle').classList.remove('hidden');
-        
         drawBarChart();
     } else {
-        currentChartMode = 'line';
-        e.target.textContent = '📈 Гистограмма';
-        
-        document.getElementById('prev-month-chart').classList.remove('hidden');
-        document.getElementById('next-month-chart').classList.remove('hidden');
         updateChartModalTitle();
-        
-        document.getElementById('mood-chart').classList.remove('hidden');
-        document.getElementById('bar-chart').classList.add('hidden');
-        document.getElementById('chart-period-toggle').classList.add('hidden');
-        
         drawMoodChart();
     }
-    
-    document.getElementById('chart-period-selector').classList.add('hidden');
-};
+}
+document.getElementById('chart-mode-line').onclick = () => { if (currentChartMode !== 'line') setChartMode('line'); };
+document.getElementById('chart-mode-bar').onclick = () => { if (currentChartMode !== 'bar') setChartMode('bar'); };
 
 document.getElementById('chart-period-toggle').onclick = (e) => {
     e.stopPropagation();
@@ -2446,15 +2370,8 @@ function openStatsModal() {
     closeChartModal();
     closeCalendarScreen();
     closeSidebar();
-    currentStatsMode = 'normal';
-    
-    // Сброс UI на обычный режим
-    const toggleText = document.getElementById('stats-toggle-text');
-    const toggleIcon = document.getElementById('stats-toggle-icon');
-    if (toggleText) toggleText.textContent = 'Глубокая статистика';
-    if (toggleIcon) toggleIcon.innerHTML = NAV_ICONS.deepStats;
-    document.getElementById('stats-normal-body').classList.remove('hidden');
-    document.getElementById('stats-deep-body').classList.add('hidden');
+    setStatsMode('normal', false);
+    setChartMode(currentChartMode); // синхронизируем сегменты графика с текущим режимом
 
     if (diaryEntries.length === 0) {
         document.getElementById('stats-items-container').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px 0;">Пока нет записей.<br>Начните вести дневник!</p>';
@@ -2465,8 +2382,6 @@ function openStatsModal() {
     }
 
     const totalEntries = diaryEntries.length;
-    const totalWords = diaryEntries.reduce((sum, entry) => sum + (entry.wordCount || 0), 0);
-    const avgWords = Math.round(totalWords / totalEntries);
 
     const uniqueDays = new Set(diaryEntries.map(e => getDateKey(e.date)));
     const daysWithEntries = uniqueDays.size;
@@ -2527,8 +2442,6 @@ function openStatsModal() {
     });
 
     // --- ФОРМИРУЕМ HTML ---
-    const longestEntry = [...diaryEntries].sort((a, b) => (b.wordCount || 0) - (a.wordCount || 0))[0];
-    const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
     // HTML вставка
@@ -2619,30 +2532,28 @@ function openStatsModal() {
 }
 
 // Переключатель режимов статистики
-document.getElementById('stats-mode-toggle').onclick = () => {
-    if (currentStatsMode === 'normal') {
-        currentStatsMode = 'deep';
-        document.getElementById('stats-toggle-text').textContent = 'Обычная статистика';
-        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.stats;
-        document.getElementById('stats-normal-body').classList.add('hidden');
-        document.getElementById('stats-deep-body').classList.remove('hidden');
-        requestAnimationFrame(() => {
-            renderDeepStats();
-            refreshStatsScroll();
-        });
+// === 🔀 ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМА СТАТИСТИКИ (сегменты) ===
+function setStatsMode(mode, render = true) {
+    currentStatsMode = mode;
+    const isDeep = mode === 'deep';
+    const control = document.getElementById('stats-mode-toggle');
+    if (control) control.classList.toggle('seg-right', isDeep);
+    const btnNormal = document.getElementById('stats-mode-normal');
+    const btnDeep = document.getElementById('stats-mode-deep');
+    if (btnNormal) { btnNormal.classList.toggle('active', !isDeep); btnNormal.setAttribute('aria-selected', String(!isDeep)); }
+    if (btnDeep) { btnDeep.classList.toggle('active', isDeep); btnDeep.setAttribute('aria-selected', String(isDeep)); }
+    document.getElementById('stats-normal-body').classList.toggle('hidden', isDeep);
+    document.getElementById('stats-deep-body').classList.toggle('hidden', !isDeep);
+    if (!render) return;
+    if (isDeep) {
+        requestAnimationFrame(() => { renderDeepStats(); refreshStatsScroll(); });
     } else {
-        currentStatsMode = 'normal';
-        document.getElementById('stats-toggle-text').textContent = 'Глубокая статистика';
-        document.getElementById('stats-toggle-icon').innerHTML = NAV_ICONS.deepStats;
-        document.getElementById('stats-normal-body').classList.remove('hidden');
-        document.getElementById('stats-deep-body').classList.add('hidden');
         document.getElementById('stats-chart-section').classList.remove('hidden');
-        requestAnimationFrame(() => {
-            refreshStatsChart();
-            refreshStatsScroll();
-        });
+        requestAnimationFrame(() => { refreshStatsChart(); refreshStatsScroll(); });
     }
-};
+}
+document.getElementById('stats-mode-normal').onclick = () => { if (currentStatsMode !== 'normal') setStatsMode('normal'); };
+document.getElementById('stats-mode-deep').onclick = () => { if (currentStatsMode !== 'deep') setStatsMode('deep'); };
 
 
 // === 🏆 САМАЯ ДЛИННАЯ ПОЛОСА ХОРОШЕГО НАСТРОЕНИЯ ===
@@ -3085,9 +2996,7 @@ function openAllTriggersList() {
 // Открывает статистику и СРАЗУ (синхронно, без мигания) переключает на нужный режим
 function openStatsModalInMode(mode) {
     openStatsModal();
-    if (mode === 'deep' && currentStatsMode === 'normal') {
-        document.getElementById('stats-mode-toggle').click();
-    }
+    if (mode === 'deep') setStatsMode('deep');
 }
 
 function closeAllTriggersList() {
@@ -4915,9 +4824,6 @@ document.querySelectorAll('.table-size-btn[data-rows]').forEach(btn => {
 // Привязываем обработчик к кнопке удаления
 document.getElementById('table-remove-btn')?.addEventListener('click', removeTable);
 
-document.getElementById('trigger-filter-select').addEventListener('change', () => {
-    renderDeepStats();
-});
 
 // Обработчик кнопки сортировки
 document.getElementById('sort-toggle-btn').onclick = () => {
@@ -5909,9 +5815,9 @@ function updateProgressCard() {
 bindClick('sidebar-favorites-btn', applyFavoriteFilter);
 bindClick('header-clear-filter-btn', clearActiveFilter);
 
-// === 💫 RIPPLE ДЛЯ КНОПОК РЕЖИМА (chart-mode-btn) ===
+// === 💫 RIPPLE ДЛЯ КНОПОК РЕЖИМА  ===
 document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.chart-mode-btn');
+    const btn = e.target.closest('.segmented-btn');
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
     const size = Math.max(rect.width, rect.height);
@@ -5959,7 +5865,6 @@ async function initApp() {
         'icon-back-nostalgia': NAV_ICONS.back,
         'calendar-header-icon': NAV_ICONS.calendar,
         'stats-header-icon': NAV_ICONS.stats,
-        'stats-toggle-icon': NAV_ICONS.deepStats,
         'nostalgia-header-icon': WIDGET_ICONS.nostalgia,
         'icon-progress-flame': NAV_ICONS.flame,
         'icon-search': NAV_ICONS.search,
