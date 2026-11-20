@@ -151,14 +151,28 @@
             ← Назад к статистике
         </button>
 
-        <!-- ПЛАШКА БЫСТРОЙ ЗАПИСИ -->
-        <section class="quick-mood-card" id="quick-mood-card">
-            <div class="quick-mood-content">
-                <span class="quick-mood-title">Лень писать?</span>
-                <span class="quick-mood-subtitle">Просто отметь настроение</span>
-            </div>
-            <div class="quick-mood-icon" id="icon-quick-mood"></div>
-        </section>
+        <!-- ВИДЖЕТЫ: КАРТОЧКИ-КНОПКИ, КОНТЕНТ — В ОТДЕЛЬНЫХ МОДАЛКАХ -->
+        <div class="home-widgets-row" id="home-widgets-row">
+            <button class="home-widget widget-stats is-active" id="widget-stats-btn" type="button" aria-expanded="true">
+                <span class="widget-head">
+                    <span class="widget-icon" id="icon-widget-stats"></span>
+                    <span class="widget-title">Статистика</span>
+                    <span class="widget-note" id="widget-stats-note">3 сторис о настроении</span>
+                </span>
+            </button>
+            <button class="home-widget widget-nostalgia" id="widget-nostalgia-btn" type="button" aria-expanded="false">
+                <span class="widget-head">
+                    <span class="widget-icon" id="icon-widget-nostalgia"></span>
+                    <span class="widget-title">Ностальгия</span>
+                    <span class="widget-note" id="widget-nostalgia-note">ностальгии пока нет</span>
+                </span>
+            </button>
+        </div>
+        <div class="home-widgets-dots">
+            <span class="home-widgets-dot active"></span>
+            <span class="home-widgets-dot"></span>
+        </div>
+
 
         <!-- ПЛАШКА ПРОГРЕССА -->
         <section class="progress-card">
@@ -200,6 +214,19 @@
         <!-- Список записей -->
         <section id="entries-list" class="entries-list"></section>
     </main>
+
+    <!-- МОДАЛКА НОСТАЛЬГИИ -->
+    <div id="nostalgia-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content nostalgia-modal-content">
+            <div class="entry-modal-header">
+                <button id="close-nostalgia-btn" class="back-btn-icon" title="Назад"><span id="icon-back-nostalgia"></span></button>
+                <h2 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.2em;"><span id="nostalgia-header-icon"></span> Ностальгия</h2>
+                <span style="width:34px;"></span>
+            </div>
+            <div id="nostalgia-list" class="nostalgia-list"></div>
+        </div>
+    </div>
 
     <!-- МОДАЛКА ВЫБОРА НАСТРОЕНИЯ -->
     <div id="mood-modal" class="modal hidden">
@@ -560,18 +587,6 @@
         </div>
     </div>
 
-    <!-- НАПОМИНАНИЕ -->
-    <div id="reminder-modal" class="modal hidden">
-        <div class="modal-backdrop"></div>
-        <div class="modal-content reminder-modal-content">
-            <h2>👋 Давно не виделись!</h2>
-            <p id="reminder-text">Последняя запись была...</p>
-            <div class="reminder-actions">
-                <button id="reminder-later-btn" class="btn-secondary">Позже</button>
-                <button id="reminder-write-btn" class="btn-primary">Написать</button>
-            </div>
-        </div>
-    </div>
 
     <!-- МОДАЛКА ГРАФИКА НАСТРОЕНИЙ -->
     <div id="chart-modal" class="modal hidden">
@@ -609,6 +624,71 @@
                     <button class="period-option" data-period="month">За месяц</button>
                     <button class="period-option" data-period="week">За неделю</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СТОРИС (3 СЛАДА) -->
+    <div id="stories-modal" class="modal hidden stories-modal">
+        <div class="modal-backdrop stories-backdrop"></div>
+        <div class="modal-content stories-content">
+            <div class="stories-top">
+                <button id="close-stories-btn" class="stories-close" type="button" title="Закрыть">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div class="stories-progress" id="stories-progress">
+                    <span class="stories-seg"><span class="stories-seg-fill"></span></span>
+                    <span class="stories-seg"><span class="stories-seg-fill"></span></span>
+                    <span class="stories-seg"><span class="stories-seg-fill"></span></span>
+                </div>
+                <span class="stories-counter" id="stories-counter">1/3</span>
+            </div>
+
+            <div class="stories-stage" id="stories-stage">
+                <section class="story-slide is-active" id="story-slide-1">
+                    <h3 class="story-title">График настроений</h3>
+                    <p class="story-sub" id="story-chart-sub">—</p>
+                    <canvas id="story-mood-chart"></canvas>
+                    <p class="story-caption" id="story-chart-caption">—</p>
+                </section>
+
+                <section class="story-slide" id="story-slide-2">
+                    <div id="story-last-week" class="story-week"></div>
+                </section>
+
+                <section class="story-slide" id="story-slide-3">
+                    <h3 class="story-title">Сравнение месяцев</h3>
+                    <p class="story-sub">среднее настроение по дням</p>
+                    <div class="month-compare">
+                        <div class="mc-col">
+                            <div class="mc-track">
+                                <span class="mc-emoji" id="mc-emoji-prev"></span>
+                                <span class="mc-score" id="mc-score-prev">—</span>
+                                <div class="mc-bar" id="mc-bar-prev"></div>
+                            </div>
+                            <span class="mc-label" id="mc-label-prev">—</span>
+                        </div>
+                        <div class="mc-col">
+                            <div class="mc-track">
+                                <span class="mc-emoji" id="mc-emoji-cur"></span>
+                                <span class="mc-score" id="mc-score-cur">—</span>
+                                <div class="mc-bar" id="mc-bar-cur"></div>
+                            </div>
+                            <span class="mc-label" id="mc-label-cur">—</span>
+                        </div>
+                    </div>
+                    <p class="story-caption" id="mc-caption">—</p>
+                </section>
+            </div>
+
+            <div class="stories-nav">
+                <button id="story-prev-btn" class="stories-nav-btn" type="button" title="Назад">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <span class="stories-hint">свайп · удержание = пауза</span>
+                <button id="story-next-btn" class="stories-nav-btn" type="button" title="Далее">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
             </div>
         </div>
     </div>

@@ -185,7 +185,8 @@ const NAV_ICONS = {
     // Иконка "PIN-код" (замок)
     pin: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`,
     // Корзина
-    trash: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`
+    trash: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`,
+    nostalgia: `<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline><path d="M3.5 9 L3.5 4.5 L8 4.5"></path></svg>`,
 };
 
 
@@ -395,6 +396,29 @@ function calculateSmartDayScore(entriesOfDay) {
     if (totalWeight === 0) return null;
     return totalWeightedScore / totalWeight;
 }
+
+// === 📊 ДВУХСТУПЕНЧАТОЕ СРЕДНЕЕ ЗА ПЕРИОД (сначала день, потом период) ===
+function getPeriodStats(startMs, endMs) {
+    const dayMap = {};
+    let entriesCount = 0;
+    diaryEntries.forEach(e => {
+        const t = new Date(e.date).getTime();
+        if (t < startMs || t > endMs) return;
+        const key = getDateKey(e.date);
+        (dayMap[key] = dayMap[key] || []).push(e);
+        entriesCount++;
+    });
+    const dayScores = Object.values(dayMap)
+        .map(entries => calculateSmartDayScore(entries))
+        .filter(v => v !== null);
+    if (dayScores.length === 0) return { avg: null, days: 0, entries: 0 };
+    return {
+        avg: dayScores.reduce((s, v) => s + v, 0) / dayScores.length,
+        days: dayScores.length,
+        entries: entriesCount
+    };
+}
+//---//
 
 function getDateKey(date) {
     const d = new Date(date);
@@ -836,6 +860,7 @@ document.querySelector('#quick-entry-modal .modal-backdrop').onclick = closeQuic
 
 // === 💾 АВТОСОХРАНЕНИЕ ЗАПИСИ ===
 let autoSaveTimer = null;
+let cancelDeleteId = null; // id записи, созданной автосейвом в этом сеансе
 
 /**
  * Собирает объект записи из текущего состояния формы.
@@ -921,6 +946,7 @@ async function saveCurrentEntry() {
     } else {
         diaryEntries.unshift(entry);
         editingEntryId = entry.id;
+        cancelDeleteId = entry.id;
     }
 
     try {
@@ -999,6 +1025,7 @@ function updateEditModeUI() {
 }
 
 function openEntryForm(entry = null, initialMood = null) {
+    cancelDeleteId = null;
     const dateDisplay = document.getElementById('entry-date-display');
     const dateText = document.getElementById('entry-date-text');
     const moodDisplay = document.getElementById('selected-mood-display');
@@ -1006,34 +1033,29 @@ function openEntryForm(entry = null, initialMood = null) {
     const saveCloseBtn = document.getElementById('save-close-btn');
     const editor = document.getElementById('entry-text');
 
+    // === Сессия редактирования: снапшот для отмены крестиком ===
+    entrySessionOriginal = entry ? JSON.parse(JSON.stringify(entry)) : null;
+    entrySessionIsNew = !entry;
+    entrySessionTouched = false;
+
     if (entry) {
-        // === Открытие существующей записи (режим просмотра) ===
         editingEntryId = entry.id;
         tempMood = entry.mood || '😐';
         tempTriggers = Array.isArray(entry.triggers) ? [...entry.triggers] : [];
-
         titleInput.value = entry.title || '';
         editor.innerHTML = entry.content || '';
-
-        // Восстановление стилей контейнера
         editor.style.fontSize   = entry.fontSize   || '';
         editor.style.lineHeight = entry.lineHeight || '';
         editor.style.fontFamily = entry.fontFamily || '';
         editor.style.fontWeight = entry.fontWeight || '';
         editor.style.fontStyle  = entry.fontStyle  || '';
-
-        // Фон — без автосейва
         setEntryBackground(entry.background || 'default');
-
-        // Дата
         const entryDateKey = getDateKey(entry.date);
         dateDisplay.dataset.date = entryDateKey;
         dateText.textContent = formatPrettyDate(entryDateKey);
-
         isEditing = false;
         saveCloseBtn.title = 'Закрыть';
     } else {
-        // === Новая запись ===
         editingEntryId = null;
         titleInput.value = '';
         editor.innerHTML = '';
@@ -1042,66 +1064,61 @@ function openEntryForm(entry = null, initialMood = null) {
         editor.style.fontFamily = '';
         editor.style.fontWeight = '';
         editor.style.fontStyle = '';
-
         setEntryBackground('default');
-
         tempMood = initialMood || '😐';
         tempTriggers = [];
-
         const todayKey = getDateKey(new Date());
         dateDisplay.dataset.date = todayKey;
         dateText.textContent = 'Сегодня';
-
         isEditing = true;
         saveCloseBtn.title = 'Отмена (назад)';
     }
 
-    // Если нужно чтобы и тут была картинка
-    moodDisplay.innerHTML = getMoodSvg(tempMood, 32); 
-
+    moodDisplay.innerHTML = getMoodSvg(tempMood, 32);
     updateModalState();
     updateEditModeUI();
 
     const modal = document.getElementById('entry-modal');
-    // Обновляем иконку избранного
     const starSlot = document.getElementById('icon-star-slot');
     const favBtn = document.getElementById('header-favorite-btn');
     if (starSlot && favBtn) {
         const isFav = entry ? (entry.favorite || false) : false;
         starSlot.innerHTML = isFav ? NAV_ICONS.starFilled : NAV_ICONS.star;
-        favBtn.style.opacity = isFav ? '1' : '0.6'; // Немного тускнеем, если не избранное
+        favBtn.style.opacity = isFav ? '1' : '0.6';
     }
+
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-
-    // Скрываем нижний таб-бар
     document.getElementById('bottomNav').classList.add('nav-hidden');
 
     if (isEditing && !entry) {
         setTimeout(() => titleInput.focus(), 100);
     }
- }
+}
 
 
 // Вход в редактирование существующей записи (по клику на ✏️)
 function enterEditMode() {
     if (!editingEntryId) return;
+
+    // Новый снапшот отсчёта: отмена вернёт к последнему сохранённому состоянию
+    const sessionCurrent = diaryEntries.find(e => e.id === editingEntryId);
+    entrySessionOriginal = sessionCurrent ? JSON.parse(JSON.stringify(sessionCurrent)) : null;
+    entrySessionIsNew = false;
+    entrySessionTouched = false;
+
     isEditing = true;
     updateModalState();
     updateEditModeUI();
 
-    // Ставим курсор в КОНЕЦ текста (как в My Diary / Journey)
     const editor = document.getElementById('entry-text');
     editor.focus();
-
     const range = document.createRange();
     range.selectNodeContents(editor);
-    range.collapse(false); // false = свернуть в конец
+    range.collapse(false);
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
-
-    // Прокручиваем вниз, чтобы курсор был виден
     editor.scrollTop = editor.scrollHeight;
 }
 
@@ -1149,6 +1166,7 @@ async function handleSaveEntry() {
 
     try {
         await dbPut(entry);
+        cancelDeleteId = null;
     } catch (err) {
         console.error('Ошибка сохранения:', err);
         showToast('Не удалось сохранить запись', 'error');
@@ -1172,6 +1190,7 @@ function closeEntryForm() {
 
     // Показываем нижний таб-бар обратно
     document.getElementById('bottomNav').classList.remove('nav-hidden');
+    cancelDeleteId = null;
 }
 
 
@@ -1218,10 +1237,10 @@ async function handleDeleteClick() {
 
 
 
-// === 📊 ГРАФИК ===
-function drawMoodChart() {
-    const canvas = document.getElementById('mood-chart');
-    const chartModal = document.getElementById('chart-modal');
+// === 📊 ГРАФИК НАСТРОЕНИЯ (без разрывов + градиентная заливка) ===
+function drawMoodChart(canvasId = 'mood-chart', guardModalId = 'chart-modal') {
+    const canvas = document.getElementById(canvasId);
+    const chartModal = document.getElementById(guardModalId);
     if (chartModal && chartModal.classList.contains('hidden')) return;
     if (!canvas) return;
 
@@ -1229,7 +1248,8 @@ function drawMoodChart() {
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
 
-    const width = rect.width, height = 180;
+    const width = rect.width;
+    const height = rect.height || 220; // ФИКС: берём реальную высоту из CSS
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
@@ -1238,55 +1258,50 @@ function drawMoodChart() {
     const styles = getComputedStyle(document.body);
     const muted = styles.getPropertyValue('--text-muted').trim() || '#888';
     const grid = styles.getPropertyValue('--border-color').trim() || '#ddd';
-    const accent = styles.getPropertyValue('--accent-color').trim() || '#4CAF50';
+    const surface = styles.getPropertyValue('--surface').trim() || '#ffffff';
 
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const left = 30, right = 12, top = 16, bottom = 26;
+    const left = 34, right = 12, top = 16, bottom = 30;
     const plotW = width - left - right;
     const plotH = height - top - bottom;
 
-    const maxScore = MOODS.length;
-    const xForDay = day => left + ((day - 1) / (daysInMonth - 1)) * plotW;
-    const yForScore = score => top + ((maxScore - 1 - score) / (maxScore - 1)) * plotH;
-    const scoreIndices = [0, 3, 6, 9];
+    const MIN_SCORE = 1, MAX_SCORE = 10;
+    const xForDay = day => left + ((day - 1) / Math.max(1, daysInMonth - 1)) * plotW;
+    const yForScore = score => top + ((MAX_SCORE - score) / (MAX_SCORE - MIN_SCORE)) * plotH;
+    const baseline = top + plotH;
 
-    ctx.font = '14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    for (const score of scoreIndices) {
+    // Сетка + эмодзи на оси Y
+    [1, 4, 7, 10].forEach(score => {
         const y = yForScore(score);
         ctx.strokeStyle = grid; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width - right, y); ctx.stroke();
+        const img = moodImages[getEmojiByScore(score)];
+        if (img) ctx.drawImage(img, 4, y - 8, 16, 16);
+        else { ctx.fillStyle = muted; ctx.font = '11px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(String(score), 6, y); }
+    });
 
-        const emojiImg = moodImages[MOODS[score].emoji];
-        if (emojiImg) {
-            ctx.drawImage(emojiImg, 2, y - 7, 14, 14);
-        } else {
-            ctx.fillStyle = muted;
-            ctx.fillText(MOODS[score].emoji, 2, y);
-        }
-    }
-
+    // Подписи дней
     ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = muted;
     const step = plotW < 260 ? 7 : 5;
     for (let day = 1; day <= daysInMonth; day += step) {
         ctx.fillText(String(day), xForDay(day), height - bottom + 8);
     }
 
+    // Данные по дням (умный балл за день)
     const days = {};
     diaryEntries.forEach(entry => {
         const d = new Date(entry.date);
         if (isNaN(d.getTime()) || d.getFullYear() !== year || d.getMonth() !== month) return;
-        const score = getMoodScore(entry.mood);
-        if (score === null) return;
         const day = d.getDate();
-        if (!days[day]) days[day] = { day, total: 0, count: 0 };
-        days[day].total += score;
-        days[day].count += 1;
+        (days[day] = days[day] || []).push(entry);
     });
-
-    const data = Object.values(days).map(item => ({ day: item.day, score: item.total / item.count, count: item.count })).sort((a, b) => a.day - b.day);
-    const totalEntries = data.reduce((sum, item) => sum + item.count, 0);
+    const data = Object.entries(days)
+        .map(([day, entries]) => ({ day: +day, score: calculateSmartDayScore(entries) }))
+        .filter(p => p.score !== null)
+        .sort((a, b) => a.day - b.day);
+    const totalEntries = Object.values(days).reduce((s, arr) => s + arr.length, 0);
 
     if (data.length === 0) {
         ctx.fillStyle = muted; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1296,28 +1311,65 @@ function drawMoodChart() {
         return;
     }
 
-    ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    for (let i = 1; i < data.length; i++) {
-        const prev = data[i - 1];
-        const cur = data[i];
-        if (cur.day - prev.day <= 2) {
+    // === 1. ГРАДИЕНТНАЯ ЗАЛИВКА ПОД ЛИНИЕЙ (трапеции) ===
+    if (data.length >= 2) {
+        ctx.save();
+        ctx.globalAlpha = 0.16;
+        for (let i = 1; i < data.length; i++) {
+            const p = data[i - 1], c = data[i];
+            const x1 = xForDay(p.day), y1 = yForScore(p.score);
+            const x2 = xForDay(c.day), y2 = yForScore(c.score);
+            const grad = ctx.createLinearGradient(x1, 0, x2, 0);
+            grad.addColorStop(0, getMoodColorHex(p.score));
+            grad.addColorStop(1, getMoodColorHex(c.score));
+            ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.moveTo(xForDay(prev.day), yForScore(prev.score));
-            ctx.lineTo(xForDay(cur.day), yForScore(cur.score));
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x2, baseline);
+            ctx.lineTo(x1, baseline);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // === 2. ЛИНИЯ БЕЗ РАЗРЫВОВ (градиент на каждом сегменте) ===
+    if (data.length >= 2) {
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (let i = 1; i < data.length; i++) {
+            const p = data[i - 1], c = data[i];
+            const x1 = xForDay(p.day), y1 = yForScore(p.score);
+            const x2 = xForDay(c.day), y2 = yForScore(c.score);
+            const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+            grad.addColorStop(0, getMoodColorHex(p.score));
+            grad.addColorStop(1, getMoodColorHex(c.score));
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
             ctx.stroke();
         }
     }
 
-    ctx.fillStyle = accent;
+    // === 3. ТОЧКИ, ОКРАШЕННЫЕ ПО НАСТРОЕНИЮ ДНЯ ===
     data.forEach(item => {
+        const x = xForDay(item.day), y = yForScore(item.score);
         ctx.beginPath();
-        ctx.arc(xForDay(item.day), yForScore(item.score), 4, 0, Math.PI * 2);
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = getMoodColorHex(item.score);
         ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = surface;
+        ctx.stroke();
     });
 
-    const average = data.reduce((sum, item) => sum + item.score, 0) / data.length;
-    const averageEmoji = MOODS[Math.round(average)]?.emoji || '😐';
-    document.getElementById('chart-average').textContent = `Среднее: ${average.toFixed(1)} ${averageEmoji}`;
+    // === 4. ПОДПИСИ ===
+    const average = data.reduce((s, p) => s + p.score, 0) / data.length;
+    document.getElementById('chart-average').innerHTML =
+        `Среднее: ${average.toFixed(1)} ${getMoodSvg(getEmojiByScore(average), 18)}`;
     document.getElementById('chart-summary').textContent = `Записей: ${totalEntries} · Дней: ${data.length}`;
 }
 
@@ -1442,7 +1494,7 @@ function renderEntries() {
             }
 
             // В карточке показываем ТОЛЬКО ВРЕМЯ (без даты)
-            const timeStr = new Date(entry.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            const timeStr = new Date(entry.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
             const editedHtml = getEditedLabelHtml(entry);
 
             const tagsHtml = (entry.tags && entry.tags.length > 0) 
@@ -1800,20 +1852,7 @@ function changeCalendarMonth(delta) {
     drawMoodChart();
 }
 
-// === 🔔 НАПОМИНАНИЕ ===
-function checkReminder() {
-    if (diaryEntries.length === 0) return;
-    const lastEntry = diaryEntries.reduce((latest, entry) => new Date(entry.date) > new Date(latest.date) ? entry : latest);
-    const lastDate = new Date(lastEntry.date);
-    const now = new Date();
-    const daysDiff = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
 
-    if (daysDiff >= 2) {
-        const prettyDate = lastDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-        document.getElementById('reminder-text').textContent = `Последняя запись была ${prettyDate}. Есть что добавить?`;
-        setTimeout(() => { document.getElementById('reminder-modal').classList.remove('hidden'); }, 500);
-    }
-}
 
 function closeReminder() { document.getElementById('reminder-modal').classList.add('hidden'); }
 function openNewEntryFromReminder() {
@@ -2118,10 +2157,6 @@ document.getElementById('import-file').onchange = (e) => {
     e.target.value = '';
 };
 
-// === 🔔 НАПОМИНАНИЕ (кнопки) ===
-document.getElementById('reminder-later-btn').onclick = closeReminder;
-document.getElementById('reminder-write-btn').onclick = openNewEntryFromReminder;
-document.querySelector('#reminder-modal .modal-backdrop').onclick = closeReminder;
 
 
 // === 📊 ГРАФИК (модалка) ===
@@ -2451,44 +2486,30 @@ function openStatsModal() {
     });
     const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
 
-    // Считаем среднее настроение за всё время
-    let totalMoodScore = 0;
-    let moodEntriesCount = 0;
-    diaryEntries.forEach(entry => {
-        const score = getMoodScore(entry.mood);
-        if (score !== null) {
-            totalMoodScore += score;
-            moodEntriesCount++;
-        }
-    });
-    const avgMood = moodEntriesCount > 0 ? (totalMoodScore / moodEntriesCount) : 0;
+    // === ДВУХСТУПЕНЧАТОЕ СРЕДНЕЕ (по дням, а не по записям) ===
+    const DAY_MS = 86400000;
+    const nowMs = Date.now();
+
+    const stats7   = getPeriodStats(nowMs - 7 * DAY_MS, nowMs);
+    const stats30  = getPeriodStats(nowMs - 30 * DAY_MS, nowMs);
+    const statsAll = getPeriodStats(0, nowMs);
+
+    const avgLast7 = stats7.avg ?? 0;
+    const last7Count = stats7.days;
+
+    const avgMonth = stats30.avg ?? 0;
+    const monthCount = stats30.days;
+
+    const avgMood = statsAll.avg ?? 0;
+    const moodEntriesCount = statsAll.days;
+
     const avgMoodEmoji = getEmojiByScore(avgMood);
-
-    // --- РАСЧЕТЫ ДЛЯ НОВЫХ ПОКАЗАТЕЛЕЙ ---
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    // --- СРЕДНЕЕ ЗА ПОСЛЕДНИЕ 30 ДНЕЙ (СКОЛЬЗЯЩЕЕ ОКНО) ---
-    const monthAgoDate = new Date();
-    monthAgoDate.setDate(monthAgoDate.getDate() - 30);
-    monthAgoDate.setHours(0, 0, 0, 0);
-
-    let monthTotalScore = 0;
-    let monthCount = 0;
-    diaryEntries.forEach(entry => {
-        const d = new Date(entry.date);
-        if (d >= monthAgoDate) {
-            const score = getMoodScore(entry.mood);
-            if (score !== null) { monthTotalScore += score; monthCount++; }
-        }
-    });
-    const avgMonth = monthCount > 0 ? (monthTotalScore / monthCount) : 0;
     const avgMonthEmoji = getEmojiByScore(avgMonth);
+    const avgLast7Emoji = getEmojiByScore(avgLast7);
 
-    // 2. Лучшее и худшее за последние 7 дней
+    // 2. Лучшее и худшее за последние 7 дней (по записям — это правильно)
     const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 7);
+    sevenDaysAgo.setDate(new Date().getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
     
     let weekBest = null;
@@ -2514,28 +2535,7 @@ function openStatsModal() {
     const shortestEntry = [...diaryEntries].sort((a, b) => (a.wordCount || 0) - (b.wordCount || 0))[0];
     const firstDateStr = firstEntryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    
-    // --- РАСЧЕТ ЗА ПОСЛЕДНИЕ 7 ДНЕЙ ---
-    const last7DaysDate = new Date();
-    last7DaysDate.setDate(last7DaysDate.getDate() - 7);
-    last7DaysDate.setHours(0, 0, 0, 0);
-
-    let last7Total = 0;
-    let last7Count = 0;
-    diaryEntries.forEach(entry => {
-        const d = new Date(entry.date);
-        if (d >= last7DaysDate) {
-            const score = getMoodScore(entry.mood);
-            if (score !== null) {
-                last7Total += score;
-                last7Count++;
-            }
-        }
-    });
-    const avgLast7 = last7Count > 0 ? (last7Total / last7Count) : 0;
-    const avgLast7Emoji = getEmojiByScore(avgLast7);
-
-    //HTML вставка
+    // HTML вставка
     document.getElementById('stats-normal-body').innerHTML = `
 
         <!-- Лучшее за неделю -->
@@ -2578,7 +2578,7 @@ function openStatsModal() {
             </span>
         </div>
 
-        <!-- Среднее настроение (месяц) -->
+        <!-- Среднее настроение (30 дней) -->
         <div class="stats-item ${monthCount > 0 ? getStatsMoodClass(avgMonth) : ''}">
             <span class="stats-label">Среднее за 30 дней</span>
             <span class="stats-value" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
@@ -2774,8 +2774,8 @@ function renderBestStreak() {
 
 
 // === 📅 НАСТРОЕНИЕ ЗА ПРОШЛУЮ НЕДЕЛЮ ===
-function renderLastWeekMood() {
-    const container = document.getElementById('last-week-mood-container');
+function renderLastWeekMood(containerId = 'last-week-mood-container') {
+    const container = document.getElementById(containerId);
     if (!container) return;
 
     // 1. Определяем прошлую неделю (Пн-Вс)
@@ -2927,13 +2927,33 @@ function renderLastWeekMood() {
     `;
 }
 
-// Вспомогательная функция для получения HEX-цвета по среднему баллу
+// === 🎨 ПЛАВНЫЙ ЦВЕТ НАСТРОЕНИЯ (интерполяция между твоими 5 уровнями) ===
+const MOOD_COLOR_STOPS = [
+    { s: 1.5, c: [244, 67, 54] },   // #f44336 — уровень 1
+    { s: 3.5, c: [255, 152, 0] },   // #ff9800 — уровень 2
+    { s: 5.5, c: [2, 136, 209] },   // #0288d1 — уровень 3
+    { s: 7.5, c: [139, 195, 74] },  // #8bc34a — уровень 4
+    { s: 9.5, c: [27, 94, 32] }     // #1b5e20 — уровень 5
+];
+
+function rgbToHex(rgb) {
+    return '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
 function getMoodColorHex(score) {
-    if (score <= 2) return '#f44336'; // Красный
-    if (score <= 4) return '#ff9800'; // Оранжевый
-    if (score <= 6) return '#0288d1'; // Голубой
-    if (score <= 8) return '#8bc34a'; // Светло-зеленый
-    return '#1b5e20'; // Темно-зеленый
+    const s = Math.max(1, Math.min(10, score));
+    const first = MOOD_COLOR_STOPS[0];
+    const last = MOOD_COLOR_STOPS[MOOD_COLOR_STOPS.length - 1];
+    if (s <= first.s) return rgbToHex(first.c);
+    if (s >= last.s) return rgbToHex(last.c);
+    for (let i = 0; i < MOOD_COLOR_STOPS.length - 1; i++) {
+        const a = MOOD_COLOR_STOPS[i], b = MOOD_COLOR_STOPS[i + 1];
+        if (s >= a.s && s <= b.s) {
+            const t = (s - a.s) / (b.s - a.s);
+            return rgbToHex(a.c.map((ch, k) => Math.round(ch + (b.c[k] - ch) * t)));
+        }
+    }
+    return rgbToHex(last.c);
 }
 
 // --- ГЛУБОКАЯ СТАТИСТИКА (ТРИГГЕРЫ) ---
@@ -4524,12 +4544,18 @@ document.getElementById('save-close-btn').onclick = async () => {
     }
 };
 
-// Кнопка ОТМЕНА (крестик)
+// Кнопка ОТМЕНА (крестик): не сохраняет, а удаляет созданное автосейвом
 document.getElementById('cancel-entry-btn').onclick = async () => {
-    // Если запись существующая и мы её изменили — спросим, не сохранить ли?
-    // Но для простоты просто закрываем без сохранения.
-    // Если хочешь, чтобы изменения сохранялись — используй handleSaveEntry.
+    clearTimeout(autoSaveTimer);
+    const id = cancelDeleteId;
     closeEntryForm();
+    if (!id) return;
+    await dbDelete(id);
+    diaryEntries = diaryEntries.filter(e => e.id !== id);
+    renderEntries();
+    renderCalendar();
+    drawMoodChart();
+    updateProgressCard();
 };
 
 // ✏️ — вход в редактирование существующей записи
@@ -5213,80 +5239,547 @@ if (!searchInputEl) {
 
 // === 📜 УМНАЯ ПРОКРУТКА ШАПКИ (АВТОДОКРУТ) ===
 (function initSmartHeader() {
-    let lastScrollTop = 0;
     const header = document.querySelector('.top-header');
     if (!header) return;
-
-    let scrollTimer = null;
-    let isTicking = false;
+    let lastScrollTop = 0, scrollTimer = null, isTicking = false;
 
     window.addEventListener('scroll', () => {
-        // 1. Если пользователь только начал крутить — убираем таймер (шапка замирает в процессе)
         clearTimeout(scrollTimer);
-
         if (!isTicking) {
-            window.requestAnimationFrame(() => {
+            isTicking = true;
+            requestAnimationFrame(() => {
                 const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
                 const diff = scrollTop - lastScrollTop;
-
-                // Если скроллим вниз и мы ниже 30px
-                if (diff > 0 && scrollTop > 30) {
-                    header.classList.add('header-hidden');
-                } 
-                // Если скроллим вверх
-                else if (diff < 0) {
-                    header.classList.remove('header-hidden');
-                }
-
-                // Если мы у самого верха — шапка всегда видима
-                if (scrollTop <= 30) {
-                    header.classList.remove('header-hidden');
-                }
-
+                if (diff > 0 && scrollTop > 30) header.classList.add('header-hidden');
+                else if (diff < 0) header.classList.remove('header-hidden');
+                if (scrollTop <= 30) header.classList.remove('header-hidden');
                 lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
                 isTicking = false;
             });
-            isTicking = true;
         }
-
-        // 2. КЛЮЧЕВОЙ МОМЕНТ: "Автодокрут"
-        // Если пользователь остановился (не скроллит 150мс), мы принудительно завершаем анимацию
         scrollTimer = setTimeout(() => {
-            const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-            // Если мы не в самом верху, шапку прячем до конца
-            if (currentScroll > 30) {
-                header.classList.add('header-hidden');
-            } else {
-                header.classList.remove('header-hidden');
-            }
-        }, 150); 
+            const cur = window.pageYOffset || document.documentElement.scrollTop;
+            header.classList.toggle('header-hidden', cur > 30);
+        }, 150);
     }, { passive: true });
 })();
 
-// === ⭐ ДОБАВЛЕНИЕ В ИЗБРАННОЕ ===
-document.getElementById('header-favorite-btn').onclick = async () => {
-    if (!editingEntryId) return; // Если запись ещё не сохранена, не можем добавить
-    
+// === 🎠 ВИДЖЕТЫ + СТОРИС + НОСТАЛЬГИЯ ===
+const WIDGET_ICONS = {
+    nostalgia: `<svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline><path d="M3.5 9 L3.5 4.5 L8 4.5"></path></svg>`
+};
+let activeWidgetIndex = 0;
+
+// Безопасная привязка клика (не роняет скрипт, если элемента нет)
+function bindClick(id, handler) {
+    const el = document.getElementById(id);
+    if (el) el.onclick = handler;
+}
+function bindBackdrop(selector, handler) {
+    const el = document.querySelector(selector);
+    if (el) el.onclick = handler;
+}
+
+function setActiveWidget(index) {
+    activeWidgetIndex = index;
+    ['widget-stats-btn', 'widget-nostalgia-btn'].forEach((id, i) => {
+        const c = document.getElementById(id);
+        if (!c) return;
+        c.classList.toggle('is-active', i === index);
+        c.setAttribute('aria-expanded', i === index ? 'true' : 'false');
+    });
+    document.querySelectorAll('.home-widgets-dot').forEach((d, i) => d.classList.toggle('active', i === index));
+}
+
+function getNostalgiaEntries() {
+    const now = new Date();
+    const m = now.getMonth(), d = now.getDate(), y = now.getFullYear();
+    return diaryEntries
+        .filter(e => {
+            const t = new Date(e.date);
+            return t.getMonth() === m && t.getDate() === d && t.getFullYear() < y;
+        })
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function renderWidgetPreviews() {
+    const cutoff = Date.now() - 30 * 86400000;
+    const scores = diaryEntries
+        .filter(e => new Date(e.date).getTime() >= cutoff)
+        .map(e => getMoodScore(e.mood))
+        .filter(v => v !== null);
+    const sNote = document.getElementById('widget-stats-note');
+    if (sNote) sNote.textContent = scores.length
+        ? `за 30 дней: ${(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)} · 3 сторис`
+        : '3 сторис о настроении';
+    const mem = getNostalgiaEntries();
+    const nNote = document.getElementById('widget-nostalgia-note');
+    if (nNote) nNote.textContent = mem.length
+        ? `${mem.length} ${mem.length === 1 ? 'воспоминание' : mem.length < 5 ? 'воспоминания' : 'воспоминаний'}`
+        : 'ностальгии пока нет';
+}
+
+// --- Плавный цвет настроения (интерполяция 5 уровней) ---
+function storyMoodColor(score) {
+    const stops = [
+        { s: 1.5, c: [244, 67, 54] },
+        { s: 3.5, c: [255, 152, 0] },
+        { s: 5.5, c: [2, 136, 209] },
+        { s: 7.5, c: [139, 195, 74] },
+        { s: 9.5, c: [27, 94, 32] }
+    ];
+    const s = Math.max(1, Math.min(10, score));
+    let a = stops[0], b = stops[stops.length - 1];
+    if (s <= a.s) b = a;
+    else if (s >= b.s) a = b;
+    else {
+        for (let i = 0; i < stops.length - 1; i++) {
+            if (s >= stops[i].s && s <= stops[i + 1].s) { a = stops[i]; b = stops[i + 1]; break; }
+        }
+    }
+    const t = b.s === a.s ? 0 : (s - a.s) / (b.s - a.s);
+    const rgb = a.c.map((ch, k) => Math.round(ch + (b.c[k] - ch) * t));
+    return '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// === СТОРИС: ДВИЖОК (единственная версия) ===
+const STORIES_DURATION = 6500;
+let storiesOpen = false, storiesIndex = 0, storiesProgress = 0, storiesPaused = false;
+let storiesRaf = null, storiesLastTs = 0;
+
+function openStoriesModal() {
+    closeStatsModal();
+    closeCalendarScreen();
+    closeChartModal();
+    closeSidebar();
+    storiesOpen = true;
+    storiesIndex = 0;
+    storiesProgress = 0;
+    storiesPaused = false;
+    document.getElementById('bottomNav').classList.add('nav-hidden');
+    document.body.style.overflow = 'hidden';
+    document.getElementById('stories-modal').classList.remove('hidden');
+    showStorySlide(0);
+    storiesLastTs = performance.now();
+    cancelAnimationFrame(storiesRaf);
+    storiesRaf = requestAnimationFrame(storiesTick);
+}
+
+function closeStoriesModal() {
+    storiesOpen = false;
+    cancelAnimationFrame(storiesRaf);
+    storiesRaf = null;
+    const modal = document.getElementById('stories-modal');
+    if (modal) modal.classList.add('hidden');
+    document.getElementById('bottomNav').classList.remove('nav-hidden');
+    document.body.style.overflow = '';
+}
+
+function storiesTick(ts) {
+    if (!storiesOpen) return;
+    const dt = Math.min(100, ts - storiesLastTs);
+    storiesLastTs = ts;
+    if (!storiesPaused) {
+        storiesProgress += dt;
+        if (storiesProgress >= STORIES_DURATION) {
+            nextStory();
+            if (!storiesOpen) return; // модалка закрылась на последнем слайде
+        }
+    }
+    updateStoriesProgressUI();
+    storiesRaf = requestAnimationFrame(storiesTick);
+}
+
+function updateStoriesProgressUI() {
+    document.querySelectorAll('#stories-progress .stories-seg').forEach((seg, i) => {
+        const fill = seg.querySelector('.stories-seg-fill');
+        if (!fill) return;
+        fill.style.width = i < storiesIndex ? '100%'
+            : i === storiesIndex ? Math.min(100, (storiesProgress / STORIES_DURATION) * 100) + '%'
+            : '0%';
+    });
+    const counter = document.getElementById('stories-counter');
+    if (counter) counter.textContent = (storiesIndex + 1) + '/3';
+}
+
+function showStorySlide(i) {
+    storiesIndex = i;
+    storiesProgress = 0;
+    document.querySelectorAll('#stories-modal .story-slide').forEach((s, k) => s.classList.toggle('is-active', k === i));
+    if (i === 0) requestAnimationFrame(drawStoryMoodChart);
+    if (i === 1) renderStoryWeek();
+    if (i === 2) requestAnimationFrame(animateMonthCompare);
+    updateStoriesProgressUI();
+}
+
+function nextStory() {
+    if (storiesIndex < 2) showStorySlide(storiesIndex + 1);
+    else closeStoriesModal();
+}
+function prevStory() {
+    if (storiesIndex > 0) showStorySlide(storiesIndex - 1);
+    else storiesProgress = 0;
+}
+
+// === СТОРИС 1: ГРАДИЕНТНЫЙ ГРАФИК НАСТРОЕНИЙ ===
+function drawStoryMoodChart() {
+    const canvas = document.getElementById('story-mood-chart');
+    if (!canvas || !storiesOpen) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 10) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = rect.width, h = 250;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const now = new Date();
+    const year = now.getFullYear(), month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const left = 30, right = 10, top = 14, bottom = 26;
+    const plotW = w - left - right, plotH = h - top - bottom;
+    const xForDay = d => left + ((d - 1) / Math.max(1, daysInMonth - 1)) * plotW;
+    const yForScore = s => top + ((10 - s) / 9) * plotH;
+    const baseline = top + plotH;
+
+    ctx.font = '10px sans-serif';
+    [1, 4, 7, 10].forEach(s => {
+        const y = yForScore(s);
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(w - right, y); ctx.stroke();
+        const img = moodImages[getEmojiByScore(s)];
+        if (img) ctx.drawImage(img, 4, y - 8, 16, 16);
+        else {
+            ctx.fillStyle = '#93a1ad'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            ctx.fillText(String(s), 6, y);
+        }
+    });
+    ctx.fillStyle = '#93a1ad'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const step = plotW < 260 ? 7 : 5;
+    for (let d = 1; d <= daysInMonth; d += step) ctx.fillText(String(d), xForDay(d), baseline + 8);
+
+    const byDay = {};
+    diaryEntries.forEach(e => {
+        const t = new Date(e.date);
+        if (t.getFullYear() !== year || t.getMonth() !== month) return;
+        const k = t.getDate();
+        (byDay[k] = byDay[k] || []).push(e);
+    });
+    const pts = Object.entries(byDay)
+        .map(([d, es]) => ({ day: +d, s: calculateSmartDayScore(es) }))
+        .filter(p => p.s !== null)
+        .sort((a, b) => a.day - b.day)
+        .map(p => ({ x: xForDay(p.day), y: yForScore(p.s), s: p.s, day: p.day }));
+
+    const sub = document.getElementById('story-chart-sub');
+    const cap = document.getElementById('story-chart-caption');
+    if (sub) sub.textContent = now.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+
+    if (pts.length === 0) {
+        ctx.fillStyle = '#93a1ad'; ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('В этом месяце пока нет записей', w / 2, top + plotH / 2);
+        if (cap) cap.textContent = 'Добавь запись — и график оживёт';
+        return;
+    }
+    if (pts.length > 1) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1], b = pts[i];
+            const g = ctx.createLinearGradient(a.x, 0, b.x, 0);
+            g.addColorStop(0, storyMoodColor(a.s));
+            g.addColorStop(1, storyMoodColor(b.s));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+            ctx.lineTo(b.x, baseline); ctx.lineTo(a.x, baseline);
+            ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+        ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1], b = pts[i];
+            const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+            g.addColorStop(0, storyMoodColor(a.s));
+            g.addColorStop(1, storyMoodColor(b.s));
+            ctx.strokeStyle = g;
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+    }
+    pts.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = storyMoodColor(p.s); ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#0c1116'; ctx.stroke();
+    });
+    const avg = pts.reduce((s, p) => s + p.s, 0) / pts.length;
+    const total = Object.values(byDay).reduce((s, es) => s + es.length, 0);
+    if (cap) cap.innerHTML = `Среднее: <strong>${avg.toFixed(1)}</strong> ${getMoodSvg(getEmojiByScore(avg), 18)} · записей: ${total} · дней: ${pts.length}`;
+}
+
+// === СТОРИС 2: ПРОШЛАЯ НЕДЕЛЯ ===
+function renderStoryWeek() {
+    const box = document.getElementById('story-last-week');
+    if (!box) return;
+    const today = new Date();
+    const dow = today.getDay() === 0 ? 7 : today.getDay();
+    const start = new Date(today);
+    start.setDate(today.getDate() - dow - 6);
+    start.setHours(0, 0, 0, 0);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const es = diaryEntries.filter(e => getDateKey(e.date) === getDateKey(d));
+        days.push({ d, avg: calculateSmartDayScore(es), count: es.length });
+    }
+    if (days.filter(x => x.avg !== null).length < 3) {
+        box.innerHTML = `
+            <h3 class="story-title">Настроение на прошлой неделе</h3>
+            <p class="story-caption" style="margin-top:10px;">Веди дневник хотя бы 3 дня в неделю,<br>чтобы увидеть картину недели.</p>`;
+        return;
+    }
+    const valid = days.map((x, i) => x.avg !== null ? i : -1).filter(i => i !== -1);
+    const first = valid[0], last = valid[valid.length - 1];
+    const stops = [];
+    if (first === last) {
+        const c = storyMoodColor(days[first].avg);
+        stops.push(`${c} 0%`, `${c} 100%`);
+    } else {
+        for (let i = first; i < last; i++) {
+            const p0 = ((i - first) / (last - first)) * 100;
+            const p1 = ((i + 1 - first) / (last - first)) * 100;
+            const c0 = days[i].avg !== null ? storyMoodColor(days[i].avg) : '#3a4652';
+            const c1 = days[i + 1].avg !== null ? storyMoodColor(days[i + 1].avg) : '#3a4652';
+            if (i === first) stops.push(`${c0} ${p0}%`);
+            stops.push(`${c1} ${p1}%`);
+        }
+    }
+    const gradient = `linear-gradient(90deg, ${stops.join(', ')})`;
+    const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const cells = days.map((x, i) => {
+        if (i !== 0 && i !== 3 && i !== 6) return '';
+        return `
+            <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#1b232c;border:2px solid ${x.avg !== null ? storyMoodColor(x.avg) : '#2d3945'};display:flex;align-items:center;justify-content:center;">
+                    ${x.avg !== null ? getMoodSvg(getEmojiByScore(x.avg), 26) : '<span style="color:#6d7a86;font-size:.8em;">—</span>'}
+                </div>
+                <span style="font-size:.7em;color:#93a1ad;">${names[i]}</span>
+                <span style="font-size:.62em;color:#6d7a86;">${x.d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+            </div>`;
+    }).join('');
+    const scored = days.filter(x => x.avg !== null);
+    const weekAvg = scored.reduce((s, x) => s + x.avg, 0) / scored.length;
+    const trig = {};
+    const weekEnd = new Date(start.getTime() + 7 * 86400000);
+    diaryEntries.forEach(e => {
+        const t = new Date(e.date);
+        if (t >= start && t < weekEnd && e.triggers) {
+            e.triggers.forEach(x => trig[x] = (trig[x] || 0) + 1);
+        }
+    });
+    const top = Object.entries(trig).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+    box.innerHTML = `
+        <h3 class="story-title">Настроение на прошлой неделе</h3>
+        <div style="position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 6px;margin:22px 0 10px;">
+            <div style="position:absolute;top:22px;left:26px;right:26px;height:4px;border-radius:2px;background:${gradient};z-index:1;"></div>
+            ${cells}
+        </div>
+        <p class="story-caption">Среднее за неделю: <strong>${weekAvg.toFixed(1)}</strong> ${getMoodSvg(getEmojiByScore(weekAvg), 18)}</p>
+        ${top.length ? `<p class="story-sub" style="margin-top:6px;">чаще всего влияли: ${top.map(escapeHtml).join(', ')}</p>` : ''}`;
+}
+
+// === СТОРИС 3: СРАВНЕНИЕ МЕСЯЦЕВ ===
+function monthDayAverage(year, month) {
+    const byDay = {};
+    diaryEntries.forEach(e => {
+        const t = new Date(e.date);
+        if (t.getFullYear() !== year || t.getMonth() !== month) return;
+        const k = getDateKey(e.date);
+        (byDay[k] = byDay[k] || []).push(e);
+    });
+    const scores = Object.values(byDay).map(es => calculateSmartDayScore(es)).filter(v => v !== null);
+    if (!scores.length) return null;
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
+function animateMonthCompare() {
+    const now = new Date();
+    const curY = now.getFullYear(), curM = now.getMonth();
+    const prevDate = new Date(curY, curM - 1, 1);
+    const prevAvg = monthDayAverage(prevDate.getFullYear(), prevDate.getMonth());
+    const curAvg = monthDayAverage(curY, curM);
+    const trackH = 210;
+    const setup = (suffix, avg, dateObj) => {
+        const bar = document.getElementById('mc-bar-' + suffix);
+        const emoji = document.getElementById('mc-emoji-' + suffix);
+        const score = document.getElementById('mc-score-' + suffix);
+        const label = document.getElementById('mc-label-' + suffix);
+        if (!bar || !emoji || !score || !label) return;
+        label.textContent = dateObj.toLocaleDateString('ru-RU', { month: 'long' });
+        bar.style.transition = 'none';
+        emoji.style.transition = 'none';
+        score.style.transition = 'none';
+        bar.style.height = '0%';
+        emoji.style.bottom = '8px';
+        score.style.bottom = '46px';
+        if (avg === null) {
+            bar.style.background = '#2d3945';
+            emoji.innerHTML = '<span style="color:#6d7a86;font-size:1.2em;line-height:34px;display:inline-block;">—</span>';
+            score.textContent = 'нет данных';
+            score.style.fontSize = '.62em';
+        } else {
+            const c = storyMoodColor(avg);
+            bar.style.background = `linear-gradient(180deg, ${c} 0%, ${c}cc 100%)`;
+            emoji.innerHTML = getMoodSvg(getEmojiByScore(avg), 34);
+            score.textContent = avg.toFixed(1);
+            score.style.fontSize = '.8em';
+        }
+        void bar.offsetHeight;
+        bar.style.transition = '';
+        emoji.style.transition = '';
+        score.style.transition = '';
+        const hPct = avg === null ? 2 : Math.max(4, (avg / 10) * 100);
+        requestAnimationFrame(() => {
+            bar.style.height = hPct + '%';
+            const px = (hPct / 100) * trackH;
+            emoji.style.bottom = (px + 10) + 'px';
+            score.style.bottom = (px + 48) + 'px';
+        });
+    };
+    setup('prev', prevAvg, prevDate);
+    setup('cur', curAvg, now);
+    const cap = document.getElementById('mc-caption');
+    if (!cap) return;
+    if (prevAvg === null || curAvg === null) {
+        cap.textContent = 'Пока мало данных для сравнения — веди дневник оба месяца.';
+    } else {
+        const diff = curAvg - prevAvg;
+        const curName = now.toLocaleDateString('ru-RU', { month: 'long' });
+        const prevName = prevDate.toLocaleDateString('ru-RU', { month: 'long' });
+        if (Math.abs(diff) < 0.15) cap.textContent = `${curName} и ${prevName} — примерно одинаковое настроение.`;
+        else if (diff > 0) cap.innerHTML = `${curName} лучше, чем ${prevName}, на <strong>${diff.toFixed(1)}</strong> балла ${getMoodSvg(getEmojiByScore(curAvg), 18)}`;
+        else cap.innerHTML = `${curName} пока ниже, чем ${prevName}, на <strong>${Math.abs(diff).toFixed(1)}</strong> балла`;
+    }
+}
+
+// === НОСТАЛЬГИЯ: МОДАЛКА ===
+function openNostalgiaModal() {
+    const list = document.getElementById('nostalgia-list');
+    const modal = document.getElementById('nostalgia-modal');
+    if (!list || !modal) return;
+    const mem = getNostalgiaEntries();
+    if (!mem.length) {
+        list.innerHTML = '<p class="nostalgia-empty">Ностальгии пока нет.<br>Записи, сделанные в этот день в прошлые годы, появятся здесь.</p>';
+    } else {
+        list.innerHTML = mem.map(e => {
+            const t = getPlainTextFromHTML(e.content || '');
+            const years = new Date().getFullYear() - new Date(e.date).getFullYear();
+            const label = years === 1 ? 'год' : years < 5 ? 'года' : 'лет';
+            return `<button class="nostalgia-row" type="button" data-entry-id="${e.id}">
+                <span class="nostalgia-years">${years} ${label} назад</span>
+                <span class="nostalgia-mood">${getMoodSvg(e.mood, 22)}</span>
+                <span class="nostalgia-text">${escapeHtml(t ? t.slice(0, 110) : (e.title || '(без текста)'))}</span>
+            </button>`;
+        }).join('');
+    }
+    modal.classList.remove('hidden');
+}
+function closeNostalgiaModal() {
+    const modal = document.getElementById('nostalgia-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// === ПРИВЯЗКА (по одному разу на элемент) ===
+bindClick('widget-stats-btn', openStoriesModal);
+bindClick('widget-nostalgia-btn', openNostalgiaModal);
+bindClick('close-stories-btn', closeStoriesModal);
+bindBackdrop('#stories-modal .modal-backdrop', closeStoriesModal);
+bindClick('story-next-btn', nextStory);
+bindClick('story-prev-btn', prevStory);
+bindClick('close-nostalgia-btn', closeNostalgiaModal);
+bindBackdrop('#nostalgia-modal .modal-backdrop', closeNostalgiaModal);
+
+const nostalgiaList = document.getElementById('nostalgia-list');
+if (nostalgiaList) {
+    nostalgiaList.addEventListener('click', (e) => {
+        const row = e.target.closest('.nostalgia-row');
+        if (!row) return;
+        const entry = diaryEntries.find(x => x.id === row.dataset.entryId);
+        closeNostalgiaModal();
+        if (entry) openEntryForm(entry);
+    });
+}
+
+document.addEventListener('keydown', (e) => {
+    if (!storiesOpen) return;
+    if (e.key === 'Escape') closeStoriesModal();
+    if (e.key === 'ArrowRight') nextStory();
+    if (e.key === 'ArrowLeft') prevStory();
+});
+
+(function initWidgetsAndStories() {
+    const row = document.getElementById('home-widgets-row');
+    if (row) {
+        let downX = 0, downY = 0, dragging = false, suppress = false;
+        row.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; dragging = true; });
+        row.addEventListener('pointerup', (e) => {
+            if (!dragging) return;
+            dragging = false;
+            const dx = e.clientX - downX, dy = e.clientY - downY;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+                suppress = true;
+                setTimeout(() => { suppress = false; }, 120);
+                setActiveWidget(dx < 0 ? 1 : 0);
+            }
+        });
+        row.addEventListener('pointercancel', () => { dragging = false; });
+        row.addEventListener('click', (e) => {
+            if (suppress) { e.stopPropagation(); e.preventDefault(); }
+        }, true);
+    }
+    const stage = document.getElementById('stories-stage');
+    if (stage) {
+        let sx = 0, sy = 0, holding = false;
+        stage.addEventListener('pointerdown', (e) => {
+            holding = true; storiesPaused = true;
+            sx = e.clientX; sy = e.clientY;
+        });
+        stage.addEventListener('pointerup', (e) => {
+            if (!holding) return;
+            holding = false; storiesPaused = false;
+            const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) {
+                if (dx < 0) nextStory(); else prevStory();
+            }
+        });
+        stage.addEventListener('pointercancel', () => { holding = false; storiesPaused = false; });
+        stage.addEventListener('pointerleave', () => { if (holding) { holding = false; storiesPaused = false; } });
+    }
+    window.addEventListener('resize', () => {
+        if (storiesOpen && storiesIndex === 0) {
+            clearTimeout(initWidgetsAndStories._t);
+            initWidgetsAndStories._t = setTimeout(drawStoryMoodChart, 200);
+        }
+    });
+})();
+
+// === ⭐ ИЗБРАННОЕ ===
+bindClick('header-favorite-btn', async () => {
+    if (!editingEntryId) return;
     const entry = diaryEntries.find(e => e.id === editingEntryId);
     if (!entry) return;
-
-    // Переключаем статус
     entry.favorite = !entry.favorite;
-    
-    // Обновляем иконку
     const starSlot = document.getElementById('icon-star-slot');
     const favBtn = document.getElementById('header-favorite-btn');
-    starSlot.innerHTML = entry.favorite ? NAV_ICONS.starFilled : NAV_ICONS.star;
-    favBtn.style.opacity = entry.favorite ? '1' : '0.6';
-
-    // Сохраняем в базу
+    if (starSlot) starSlot.innerHTML = entry.favorite ? NAV_ICONS.starFilled : NAV_ICONS.star;
+    if (favBtn) favBtn.style.opacity = entry.favorite ? '1' : '0.6';
     await dbPut(entry);
-    
-    // Обновляем список на главной
     renderEntries();
-    
-  
-};
+});
 
 function applyFavoriteFilter() {
     activeFavoriteFilter = true;
@@ -5295,15 +5788,11 @@ function applyFavoriteFilter() {
     activeMoodFilter = null;
     activeTriggerFilter = null;
     searchQuery = '';
-    
     if (multiDeleteMode) exitMultiDeleteMode();
     closeSidebar();
-    
-    // Меняем шапку
     document.getElementById('header-title').textContent = 'Избранные';
     document.getElementById('search-btn').classList.add('hidden');
     document.getElementById('header-clear-filter-btn').classList.remove('hidden');
-
     appMain.classList.add('search-active');
     renderEntries();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5316,62 +5805,36 @@ function clearActiveFilter() {
     activeMoodFilter = null;
     activeTriggerFilter = null;
     searchQuery = '';
-    
-    // Возвращаем шапку
     document.getElementById('header-title').textContent = 'Мой дневник';
     document.getElementById('header-clear-filter-btn').classList.add('hidden');
     document.getElementById('search-btn').classList.remove('hidden');
-    
     appMain.classList.remove('search-active');
     renderEntries();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Обновление плашки прогресса
+// === 🔥 ПРОГРЕСС ===
 function updateProgressCard() {
     const progressText = document.getElementById('progress-days-text');
     const progressFill = document.getElementById('progress-bar-fill');
     if (!progressText || !progressFill) return;
-
-    // Считаем количество дней подряд
     const daysWithEntries = new Set(diaryEntries.map(e => getDateKey(e.date)));
     let streak = 0;
     let currentDate = new Date();
-    
-    // Проверяем, есть ли запись за сегодня
-    const todayKey = getDateKey(currentDate);
-    if (!daysWithEntries.has(todayKey)) {
-        // Если за сегодня нет, начинаем проверку со вчера
+    if (!daysWithEntries.has(getDateKey(currentDate))) {
         currentDate.setDate(currentDate.getDate() - 1);
     }
-
-    // Считаем дни подряд
-    while (true) {
-        const key = getDateKey(currentDate);
-        if (daysWithEntries.has(key)) {
-            streak++;
-            currentDate.setDate(currentDate.getDate() - 1);
-        } else {
-            break;
-        }
+    while (daysWithEntries.has(getDateKey(currentDate))) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
     }
-
-    // Обновляем текст и полосу
     progressText.textContent = `Вы пишете ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'} подряд`;
-    
-    // Заполняем полосу (например, цель - 7 дней)
-    const target = 7;
-    const percent = Math.min((streak / target) * 100, 100);
-    progressFill.style.width = `${percent}%`;
+    progressFill.style.width = `${Math.min((streak / 7) * 100, 100)}%`;
+    renderWidgetPreviews();
 }
 
-document.getElementById('sidebar-favorites-btn').onclick = applyFavoriteFilter;
-document.getElementById('header-clear-filter-btn').onclick = clearActiveFilter;
-
-// Обработчик клика по плашке быстрой записи
-document.getElementById('quick-mood-card').onclick = () => {
-    openMoodModal(true, true); // true = новая запись, true = быстрый режим
-};
+bindClick('sidebar-favorites-btn', applyFavoriteFilter);
+bindClick('header-clear-filter-btn', clearActiveFilter);
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {
@@ -5391,54 +5854,27 @@ async function initApp() {
     renderCalendar();
     initMoodFilterGrid();
     initPinProtection();
-    checkReminder();
-    // Вставляем SVG-иконки в таб-бар
-    document.getElementById('icon-menu').innerHTML = NAV_ICONS.menu;
-    document.getElementById('icon-entries').innerHTML = NAV_ICONS.entries;
-    document.getElementById('icon-stats').innerHTML = NAV_ICONS.stats;
-    document.getElementById('icon-calendar').innerHTML = NAV_ICONS.calendar;
-    document.getElementById('icon-plus').innerHTML = NAV_ICONS.plus;
-    document.getElementById('icon-menu').innerHTML = NAV_ICONS.menu;
 
-    // Иконки "Назад"
-    const backCalendar = document.getElementById('icon-back-calendar');
-    if (backCalendar) backCalendar.innerHTML = NAV_ICONS.back;
-
-    const backTriggers = document.getElementById('icon-back-triggers');
-    if (backTriggers) backTriggers.innerHTML = NAV_ICONS.back;
-
-    const backStats = document.getElementById('icon-back-stats');
-    if (backStats) backStats.innerHTML = NAV_ICONS.back;
-
-    // Иконка для заголовка календаря
-    const calendarHeaderIcon = document.getElementById('calendar-header-icon');
-    if (calendarHeaderIcon) calendarHeaderIcon.innerHTML = NAV_ICONS.calendar;
-
-    // Иконки для статистики
-    const statsHeaderIcon = document.getElementById('stats-header-icon');
-    if (statsHeaderIcon) statsHeaderIcon.innerHTML = NAV_ICONS.stats;
-
-    const statsToggleIcon = document.getElementById('stats-toggle-icon');
-    if (statsToggleIcon) statsToggleIcon.innerHTML = NAV_ICONS.deepStats;
-
-    // Вставляем иконки для плашек
-    if (document.getElementById('icon-quick-mood')) {
-        document.getElementById('icon-quick-mood').innerHTML = NAV_ICONS.quickMood;
-    }
-    if (document.getElementById('icon-progress-flame')) {
-        document.getElementById('icon-progress-flame').innerHTML = NAV_ICONS.flame;
-    }
-
-    // Иконка для поиска
-    if (document.getElementById('icon-search')) document.getElementById('icon-search').innerHTML = NAV_ICONS.search;
-
-    // Иконка избранного в сайдбаре
-    if (document.getElementById('icon-favorites')) document.getElementById('icon-favorites').innerHTML = NAV_ICONS.star;
-    // Иконка для поиска в шапке
-    const searchIconEl = document.getElementById('icon-search');
-    if (searchIconEl) searchIconEl.innerHTML = NAV_ICONS.search;
-    // Иконки для сайдбара
-    const sidebarIcons = {
+    // Все иконки — одной таблицей, без повторов
+    const iconMap = {
+        'icon-menu': NAV_ICONS.menu,
+        'icon-entries': NAV_ICONS.entries,
+        'icon-stats': NAV_ICONS.stats,
+        'icon-calendar': NAV_ICONS.calendar,
+        'icon-plus': NAV_ICONS.plus,
+        'icon-back-calendar': NAV_ICONS.back,
+        'icon-back-triggers': NAV_ICONS.back,
+        'icon-back-stats': NAV_ICONS.back,
+        'icon-back-nostalgia': NAV_ICONS.back,
+        'calendar-header-icon': NAV_ICONS.calendar,
+        'stats-header-icon': NAV_ICONS.stats,
+        'stats-toggle-icon': NAV_ICONS.deepStats,
+        'nostalgia-header-icon': WIDGET_ICONS.nostalgia,
+        'icon-progress-flame': NAV_ICONS.flame,
+        'icon-search': NAV_ICONS.search,
+        'icon-favorites': NAV_ICONS.star,
+        'icon-widget-stats': NAV_ICONS.stats,
+        'icon-widget-nostalgia': WIDGET_ICONS.nostalgia,
         'icon-sort': NAV_ICONS.sort,
         'icon-theme': NAV_ICONS.theme,
         'icon-mood': NAV_ICONS.mood,
@@ -5447,15 +5883,15 @@ async function initApp() {
         'icon-export': NAV_ICONS.exportImport,
         'icon-pin': NAV_ICONS.pin
     };
-
-    for (const [id, svg] of Object.entries(sidebarIcons)) {
+    Object.entries(iconMap).forEach(([id, svg]) => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = svg;
-    }
+        if (el && svg) el.innerHTML = svg;
+    });
+
     setActiveNav('nav-entries-btn');
-
+    setActiveWidget(0);
+    renderWidgetPreviews();
 }
-
 
 // === ЗАСТАВКА ===
 window.addEventListener('load', () => {
@@ -5463,10 +5899,9 @@ window.addEventListener('load', () => {
         const splash = document.getElementById('splash-screen');
         if (splash) {
             splash.classList.add('hidden');
-            setTimeout(() => splash.remove(), 1000); // удаляем после исчезновения
+            setTimeout(() => splash.remove(), 1000);
         }
-    }, 2000); // 1.5 секунды — показываем заставку
+    }, 2000);
 });
-
 
 initApp();
