@@ -37,20 +37,40 @@ let quickEntryMood = '😐';
 let quickEntryTriggers = [];
 
 let tempTriggers = [];
-const AVAILABLE_TRIGGERS = [
-    // Эмоции и состояния
-    '😴 Усталость', '😠 Ссора', '😢 Обида', '😐 Скука', '😨 Страх', '😰 Тревога',
-    // Здоровье и тело
-    '🛌 Отдых', '💤 Сон', '💪 Спорт', '🚶 Прогулка', '🍔 Еда',
-    // Активности и увлечения
-    '🎨 Хобби', '📚 Учёба', '💻 Работа', '☕ Кофе',
-    // Социальное
-    '❤️ Отношения', '🎉 Праздник', '🤒 Болезнь',
-    // Внешнее и атмосфера
-    '🌧️ Погода', '📰 Новости', '🔮 Непредсказуемость', 
-    // Позитивные состояния
-    '🛡️ Безопасность', '🧘 Спокойствие', '☀️ Радость'
+
+// === 🎯 ГРУППЫ ТРИГГЕРОВ (Daylio-style) ===
+const TRIGGER_GROUPS = [
+    { id: 'emotions', name: 'Эмоции', icon: '😊', triggers: [
+        { name: 'счастье', icon: '😊' }, { name: 'спокойствие', icon: '😌' },
+        { name: 'благодарность', icon: '🙏' }, { name: 'уверенность', icon: '💪' },
+        { name: 'усталость', icon: '😴' }, { name: 'скука', icon: '🥱' },
+        { name: 'волнение', icon: '😬' }, { name: 'грусть', icon: '😢' },
+        { name: 'неуверенность', icon: '😕' }, { name: 'тревога', icon: '😰' },
+        { name: 'стресс', icon: '😫' }, { name: 'злость', icon: '😠' },
+        { name: 'отчаяние', icon: '😞' }
+    ]},
+    { id: 'sleep', name: 'Сон', icon: '🌙', triggers: [
+        { name: 'хороший', icon: '😴' }, { name: 'средний', icon: '💤' }, { name: 'плохой', icon: '😵' }
+    ]},
+    { id: 'health', name: 'Здоровье', icon: '💪', triggers: [
+        { name: 'спорт', icon: '🏃' }, { name: 'ходьба', icon: '🚶' },
+        { name: 'здоровое питание', icon: '🥗' }, { name: 'медитация', icon: '🧘' }
+    ]},
+    { id: 'hobby', name: 'Хобби', icon: '🎨', triggers: [
+        { name: 'кино', icon: '🎬' }, { name: 'чтение', icon: '📚' }, { name: 'игры', icon: '🎮' },
+        { name: 'отдых', icon: '🏖️' }, { name: 'искусство', icon: '🎨' }
+    ]},
+    { id: 'food', name: 'Еда', icon: '🍽️', triggers: [
+        { name: 'здоровая', icon: '🥗' }, { name: 'фастфуд', icon: '🍔' },
+        { name: 'домашняя', icon: '🍲' }, { name: 'сладости', icon: '🍩' }, { name: 'вода', icon: '💧' }
+    ]},
+    { id: 'productivity', name: 'Производительность', icon: '⚡', triggers: [
+        { name: 'начинать рано', icon: '⏰' }, { name: 'составить список', icon: '📝' },
+        { name: 'сконцентрироваться', icon: '🎯' }, { name: 'рассеянность', icon: '🌀' }
+    ]}
 ];
+// Плоский список — для совместимости со старой быстрой модалкой
+const AVAILABLE_TRIGGERS = TRIGGER_GROUPS.flatMap(g => g.triggers.map(t => `${t.icon} ${t.name}`));
 
 
 let multiDeleteMode = false;
@@ -688,8 +708,8 @@ function openMoodModal(isNewEntry = false, isQuick = false) {
                     quickEntryTriggers = [];
                     openQuickEntryModal();
                 } else {
-                    // Обычная запись
-                    openEntryForm(null, m.emoji);
+                    // Обычная запись: сначала выбор триггеров
+                    startTriggersFlow(m.emoji);
                 }
             } else {
                 selectMoodForEntry(m.emoji);
@@ -969,7 +989,7 @@ function updateEditModeUI() {
     if (toolbar) toolbar.classList.toggle('hidden', !isEditing);
 }
 
-function openEntryForm(entry = null, initialMood = null) {
+function openEntryForm(entry = null, initialMood = null, initialTriggers = null) {
     cancelDeleteId = null;
     const dateDisplay = document.getElementById('entry-date-display');
     const dateText = document.getElementById('entry-date-text');
@@ -1011,7 +1031,7 @@ function openEntryForm(entry = null, initialMood = null) {
         editor.style.fontStyle = '';
         setEntryBackground('default');
         tempMood = initialMood || '😐';
-        tempTriggers = [];
+        tempTriggers = initialTriggers ? [...initialTriggers] : [];
         const todayKey = getDateKey(new Date());
         dateDisplay.dataset.date = todayKey;
         dateText.textContent = 'Сегодня';
@@ -1805,8 +1825,6 @@ function changeCalendarMonth(delta) {
 
 
 
-// === 🔍 ПОИСК (адаптирован под новый интерфейс) ===
-
 // === 🔍 ПОИСК ===
 const searchBtn = document.getElementById('search-btn');
 const searchBar = document.getElementById('search-bar');
@@ -1815,8 +1833,22 @@ const headerTitle = document.getElementById('header-title');
 const closeSearchBtn = document.getElementById('close-search-btn');
 
 
+if (searchBtn) {
+    searchBtn.onclick = () => {
+        if (multiDeleteMode) { deleteSelectedEntries(); return; }
+        const header = document.querySelector('.top-header');
+        if (header) { header.classList.add('search-open'); header.classList.remove('header-hidden'); }
+        if (headerTitle) headerTitle.classList.add('hidden');
+        searchBtn.classList.add('hidden');
+        if (searchBar) searchBar.classList.remove('hidden');
+        if (searchInput) setTimeout(() => searchInput.focus(), 50);
+    };
+}
+
 if (closeSearchBtn) {
     closeSearchBtn.onclick = () => {
+        const header = document.querySelector('.top-header');
+        if (header) header.classList.remove('search-open');
         if (searchBar) searchBar.classList.add('hidden');
         if (headerTitle) headerTitle.classList.remove('hidden');
         if (searchBtn) searchBtn.classList.remove('hidden');
@@ -1845,16 +1877,7 @@ if (searchInput) {
     });
 }
 
-// Если элементы поиска есть в DOM (например, мы вернем их позже) — привязываем
-if (searchBtn) {
-    searchBtn.onclick = () => {
-        if (multiDeleteMode) { deleteSelectedEntries(); return; }
-        if (headerTitle) headerTitle.classList.add('hidden');
-        searchBtn.classList.add('hidden');
-        if (searchBar) searchBar.classList.remove('hidden');
-        if (searchInput) setTimeout(() => searchInput.focus(), 50);
-    };
-}
+
 
 // Обработчик отмены выделения (новая плавающая панель)
 const cancelMultiDeleteBtn = document.getElementById('cancel-multi-delete-btn');
@@ -3000,6 +3023,8 @@ function openStatsModalInMode(mode) {
 }
 
 function closeAllTriggersList() {
+    closeTriggersModal();
+    closeAddTriggerModal();
     const modal = document.getElementById('triggers-list-modal');
     if (!modal || modal.classList.contains('hidden')) return; // список не открыт — ничего не делаем
     modal.classList.add('hidden');
@@ -4698,11 +4723,7 @@ document.addEventListener('selectionchange', () => {
 });
 
 document.getElementById('toolbar-triggers-btn').onclick = () => {
-    if (activeToolbarPanel === 'triggers-panel') {
-        closeToolbarPanel();
-    } else {
-        openToolbarPanel('triggers-panel');
-    }
+    openTriggersModal('edit');
 };
 
 
@@ -5191,12 +5212,11 @@ if (!searchInputEl) {
 }
 
 
-// === 📜 УМНАЯ ПРОКРУТКА ШАПКИ (АВТОДОКРУТ) ===
-// === 📜 УМНАЯ ПРОКРУТКА ШАПКИ (с автодокрутом) ===
+
+// === 📜 УМНАЯ ПРОКРУТКА ШАПКИ (АВТОДОКРУТ В ОБЕ СТОРОНЫ) ===
 (function initSmartHeader() {
     const header = document.querySelector('.top-header');
     if (!header) return;
-
     let lastScrollTop = 0;
     let scrollDelta = 0;          // накопленная дельта с последней смены направления
     const THRESHOLD = 10;         // порог: 10px, чтобы отфильтровать дрожание
@@ -5204,6 +5224,11 @@ if (!searchInputEl) {
     let scrollTimer = null;
 
     window.addEventListener('scroll', () => {
+        // Пока открыт поиск — шапка всегда видна, иначе поле уедет при скролле результатов
+        if (header.classList.contains('search-open')) {
+            header.classList.remove('header-hidden');
+            return;
+        }
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const delta = scrollTop - lastScrollTop;
         lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
@@ -5228,14 +5253,21 @@ if (!searchInputEl) {
             header.classList.remove('header-hidden');
         }
 
-        // Автодокрут: если пользователь остановился и шапка в промежуточном состоянии
+        // Автодокрут при остановке: доводим до конца ПО НАПРАВЛЕНИЮ последнего движения
         scrollTimer = setTimeout(() => {
             const cur = window.pageYOffset || document.documentElement.scrollTop;
-            if (cur > DEADZONE && !header.classList.contains('header-hidden')) {
-                header.classList.add('header-hidden');
-            } else if (cur <= DEADZONE) {
+            if (cur <= DEADZONE) {
+                // У самого верха шапка всегда открыта
                 header.classList.remove('header-hidden');
+            } else if (scrollDelta < -THRESHOLD) {
+                // АВТОДОКРУТ ВВЕРХ: пользователь скроллил вверх — шапка остаётся открытой
+                header.classList.remove('header-hidden');
+            } else if (scrollDelta > 0) {
+                // Автодокрут вниз: скроллил вниз (или микро-дрожание) — шапка остаётся скрытой
+                header.classList.add('header-hidden');
             }
+            // |delta| < порога и отрицательная (отскок инерции) — состояние не трогаем
+            scrollDelta = 0;
         }, 180);
     }, { passive: true });
 })();
@@ -5833,6 +5865,533 @@ document.addEventListener('click', (e) => {
     setTimeout(() => ripple.remove(), 500);
 });
 
+
+// === 🎯 ТРИГГЕРЫ: КАТАЛОГ, ВЫБОР, СОЗДАНИЕ, РЕДАКТИРОВАНИЕ, УДАЛЕНИЕ ===
+const TRIGGER_CATALOG_KEY = 'my_web_diary_trigger_catalog_v1';
+const CUSTOM_TRIGGERS_KEY = 'my_web_diary_custom_triggers_v1'; // legacy: миграция
+
+function loadTriggerCatalog() {
+    try {
+        const raw = JSON.parse(localStorage.getItem(TRIGGER_CATALOG_KEY));
+        if (Array.isArray(raw) && raw.length) return raw;
+    } catch (e) { /* повреждённые данные — пересоздаём */ }
+    // Первый запуск: сид из встроенных групп
+    const groups = TRIGGER_GROUPS.map(g => ({
+        id: g.id, name: g.name, icon: g.icon,
+        triggers: g.triggers.map((t, i) => ({ id: 'b_' + g.id + '_' + i, name: t.name, icon: t.icon }))
+    }));
+    // Миграция ранее созданных кастомных триггеров
+    try {
+        const old = JSON.parse(localStorage.getItem(CUSTOM_TRIGGERS_KEY)) || [];
+        if (Array.isArray(old)) {
+            old.forEach((c, i) => {
+                const g = groups.find(x => x.id === c.group);
+                if (g && c.name && c.icon) g.triggers.push({ id: 'c_' + Date.now().toString(36) + '_' + i, name: c.name, icon: c.icon });
+            });
+        }
+    } catch (e) { /* нет legacy-данных — ок */ }
+    localStorage.setItem(TRIGGER_CATALOG_KEY, JSON.stringify(groups));
+    return groups;
+}
+let triggerCatalog = loadTriggerCatalog();
+function saveTriggerCatalog() {
+    localStorage.setItem(TRIGGER_CATALOG_KEY, JSON.stringify(triggerCatalog));
+}
+function findTriggerById(id) {
+    for (const g of triggerCatalog) {
+        const t = g.triggers.find(x => x.id === id);
+        if (t) return { group: g, trigger: t };
+    }
+    return null;
+}
+
+let triggersModalMode = 'new';   // 'new' | 'edit'
+let pendingNewMood = null;
+let triggersSelection = [];
+let newTriggerDraft = { name: '', icon: null, group: null };
+let editingTriggerId = null;     // null = создание, id = редактирование
+let triggerActionsTarget = null;
+
+// Пул иконок: только НЕ занятые триггерами (12 новых + запас)
+const TRIGGER_ICON_POOL = [
+    '🔞','💦','🏆','🌈','🥂','💑','🖕','💻','💊','🔍','🍂','👄',
+    '❤️','🐶','🐱','☀️','🌧️','💼','🎵','✈️','🛒','💰','🧹','📱',
+    '☕','🍷','⚽','🎁','🌙','🔥','🎓','🏠','🚗','🌊','🍕','🍺',
+    '🎤','📷','🧠','💡','🛌','🤝','🧩','❓','💬','👎','👍','🟢',
+];
+function getAvailableIcons(exceptId = null) {
+    const used = new Set();
+    triggerCatalog.forEach(g => g.triggers.forEach(t => {
+        if (t.id !== exceptId) used.add(t.icon);
+    }));
+    return TRIGGER_ICON_POOL.filter(ic => !used.has(ic));
+}
+
+function triggerKey(t) { return `${t.icon} ${t.name}`; }
+
+function startTriggersFlow(mood) {
+    pendingNewMood = mood;
+    openTriggersModal('new');
+}
+function openTriggersModal(mode) {
+    triggersModalMode = mode;
+    triggersSelection = mode === 'edit' ? [...tempTriggers] : [];
+    renderTriggersGroups();
+    document.getElementById('triggers-modal').classList.remove('hidden');
+    document.body.classList.add('modal-lock');
+    document.getElementById('bottomNav').classList.add('nav-hidden');
+}
+function closeTriggersModal() {
+    const modal = document.getElementById('triggers-modal');
+    if (modal) modal.classList.add('hidden');
+    document.body.classList.remove('modal-lock');
+    syncTriggersNav();
+}
+function syncTriggersNav() {
+    const nav = document.getElementById('bottomNav');
+    if (!nav) return;
+    const ids = ['entry-modal', 'triggers-modal', 'add-trigger-modal', 'trigger-actions-modal', 'stories-modal', 'nostalgia-modal'];
+    const anyOpen = ids.some(id => {
+        const el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+    });
+    nav.classList.toggle('nav-hidden', anyOpen);
+}
+
+function renderTriggersGroups() {
+    const box = document.getElementById('triggers-groups-container');
+    if (!box) return;
+    box.innerHTML = '<p class="triggers-hint">Удерживай триггер, чтобы изменить или удалить</p>' +
+        triggerCatalog.map((g, gi) => `
+        <section class="trigger-group">
+            <h3 class="trigger-group-title"><span class="trigger-group-dot"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5.2" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4"/><circle cx="6" cy="6" r="2.8" fill="currentColor"/></svg></span>${g.name}</h3>
+            <div class="triggers-grid">
+                ${g.triggers.map(t => {
+                    const key = triggerKey(t);
+                    const active = triggersSelection.includes(key) ? ' active' : '';
+                    return `<button type="button" class="trigger-chip${active}" data-id="${t.id}" data-trigger="${escapeHtml(key)}">${t.icon} ${escapeHtml(t.name)}</button>`;
+                }).join('')}
+                ${gi === triggerCatalog.length - 1 ? `<button type="button" class="trigger-add-btn" title="Добавить триггер">${NAV_ICONS.plus}</button>` : ''}
+            </div>
+        </section>
+    `).join('');
+}
+
+// === 👆 ДОЛГОЕ НАЖАТИЕ → КОНТЕКСТНОЕ МЕНЮ ===
+const tgContainer = document.getElementById('triggers-groups-container');
+let lpTimer = null, lpFired = false, lpX = 0, lpY = 0;
+
+tgContainer.addEventListener('pointerdown', (e) => {
+    const chip = e.target.closest('.trigger-chip');
+    if (!chip) return;
+    lpFired = false;
+    lpX = e.clientX; lpY = e.clientY;
+    clearTimeout(lpTimer);
+    lpTimer = setTimeout(() => {
+        lpFired = true;
+        if (navigator.vibrate) navigator.vibrate(30);
+        const found = findTriggerById(chip.dataset.id);
+        if (found) openTriggerActions(found.trigger);
+    }, 500);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+    tgContainer.addEventListener(ev, () => clearTimeout(lpTimer))
+);
+tgContainer.addEventListener('pointermove', (e) => {
+    if (Math.abs(e.clientX - lpX) > 10 || Math.abs(e.clientY - lpY) > 10) clearTimeout(lpTimer);
+});
+tgContainer.addEventListener('contextmenu', (e) => {
+    const chip = e.target.closest('.trigger-chip');
+    if (!chip) return;
+    e.preventDefault();
+    clearTimeout(lpTimer);
+    const found = findTriggerById(chip.dataset.id);
+    if (found) openTriggerActions(found.trigger);
+});
+
+tgContainer.addEventListener('click', (e) => {
+    if (lpFired) { lpFired = false; return; }
+    if (e.target.closest('.trigger-add-btn')) { openAddTriggerModal(); return; }
+    const chip = e.target.closest('.trigger-chip');
+    if (!chip) return;
+    const key = chip.dataset.trigger;
+    if (triggersSelection.includes(key)) {
+        triggersSelection = triggersSelection.filter(k => k !== key);
+        chip.classList.remove('active');
+    } else {
+        triggersSelection.push(key);
+        chip.classList.add('active');
+    }
+});
+
+// Галочка: работает даже без выбранных триггеров
+document.getElementById('triggers-save-btn').onclick = () => {
+    if (triggersModalMode === 'new') {
+        const mood = pendingNewMood || '😐';
+        const sel = [...triggersSelection];
+        closeTriggersModal();
+        openEntryForm(null, mood, sel);
+    } else {
+        tempTriggers = [...triggersSelection];
+        closeTriggersModal();
+        onEntryFieldInput();
+    }
+};
+document.querySelector('#triggers-modal .modal-backdrop').onclick = closeTriggersModal;
+
+// === 🗂️ КОНТЕКСТНОЕ МЕНЮ: ИЗМЕНИТЬ / УДАЛИТЬ ===
+function openTriggerActions(trigger) {
+    triggerActionsTarget = trigger;
+    document.getElementById('trigger-actions-name').innerHTML = `${trigger.icon} ${escapeHtml(trigger.name)}`;
+    document.getElementById('trigger-actions-modal').classList.remove('hidden');
+}
+function closeTriggerActions() {
+    document.getElementById('trigger-actions-modal').classList.add('hidden');
+    triggerActionsTarget = null;
+}
+document.getElementById('trigger-edit-btn').onclick = () => {
+    const t = triggerActionsTarget;
+    closeTriggerActions();
+    if (t) openAddTriggerModal(t.id);
+};
+document.getElementById('trigger-delete-btn').onclick = async () => {
+    const t = triggerActionsTarget;
+    closeTriggerActions();
+    if (t) await deleteTriggerById(t.id);
+};
+document.querySelector('#trigger-actions-modal .modal-backdrop').onclick = closeTriggerActions;
+
+async function deleteTriggerById(id) {
+    const found = findTriggerById(id);
+    if (!found) return;
+    const key = triggerKey(found.trigger);
+    found.group.triggers = found.group.triggers.filter(t => t.id !== id);
+    saveTriggerCatalog();
+    triggersSelection = triggersSelection.filter(k => k !== key);
+    // Полное удаление: вычищаем триггер из всех записей
+    let touched = false;
+    diaryEntries.forEach(en => {
+        if (Array.isArray(en.triggers) && en.triggers.includes(key)) {
+            en.triggers = en.triggers.filter(k => k !== key);
+            en.updatedAt = Date.now();
+            touched = true;
+        }
+    });
+    renderTriggersGroups();
+    if (touched) {
+        try { await saveAllToIndexedDB(); }
+        catch (err) { console.error(err); showToast('Не удалось сохранить изменения', 'error'); }
+        renderEntries();
+        renderCalendar();
+        updateProgressCard();
+    }
+    showToast('Триггер удалён', 'success');
+}
+
+// === ➕ СОЗДАНИЕ / ✏️ РЕДАКТИРОВАНИЕ ТРИГГЕРА ===
+function openAddTriggerModal(triggerId = null) {
+    editingTriggerId = triggerId;
+    const title = document.getElementById('add-trigger-title');
+    if (triggerId) {
+        const found = findTriggerById(triggerId);
+        if (!found) return;
+        newTriggerDraft = { name: found.trigger.name, icon: found.trigger.icon, group: found.group.id };
+        if (title) title.textContent = 'Изменить триггер';
+    } else {
+        newTriggerDraft = { name: '', icon: null, group: null };
+        if (title) title.textContent = 'Добавить триггер';
+    }
+    document.getElementById('new-trigger-name').value = newTriggerDraft.name;
+    updatePickerRows();
+    validateNewTrigger();
+    document.getElementById('add-trigger-modal').classList.remove('hidden');
+    if (!triggerId) setTimeout(() => document.getElementById('new-trigger-name').focus(), 100);
+}
+function closeAddTriggerModal() {
+    const modal = document.getElementById('add-trigger-modal');
+    if (modal) modal.classList.add('hidden');
+    const gp = document.getElementById('group-pick-modal');
+    const ip = document.getElementById('icon-pick-modal');
+    const ta = document.getElementById('trigger-actions-modal');
+    if (gp) gp.classList.add('hidden');
+    if (ip) ip.classList.add('hidden');
+    if (ta) ta.classList.add('hidden');
+    editingTriggerId = null;
+}
+function updatePickerRows() {
+    const gVal = document.getElementById('picked-group-value');
+    const iVal = document.getElementById('picked-icon-value');
+    const g = triggerCatalog.find(x => x.id === newTriggerDraft.group);
+    gVal.textContent = g ? `${g.icon} ${g.name}` : 'Выбрать группу';
+    gVal.classList.toggle('placeholder', !g);
+    iVal.textContent = newTriggerDraft.icon || 'Выбрать иконку';
+    iVal.classList.toggle('placeholder', !newTriggerDraft.icon);
+}
+function validateNewTrigger() {
+    const ok = newTriggerDraft.name.trim().length > 0 && !!newTriggerDraft.icon && !!newTriggerDraft.group;
+    document.getElementById('save-new-trigger-btn').disabled = !ok;
+}
+
+document.getElementById('new-trigger-name').addEventListener('input', (e) => {
+    newTriggerDraft.name = e.target.value;
+    validateNewTrigger();
+});
+document.getElementById('close-add-trigger-btn').onclick = closeAddTriggerModal;
+document.querySelector('#add-trigger-modal .modal-backdrop').onclick = closeAddTriggerModal;
+
+// Подмодалка: выбор группы
+document.getElementById('pick-group-btn').onclick = () => {
+    document.getElementById('group-pick-list').innerHTML = triggerCatalog.map(g => `
+        <button type="button" class="group-pick-row" data-group="${g.id}">
+            <span class="group-pick-icon">${g.icon}</span>${g.name}
+        </button>
+    `).join('');
+    document.getElementById('group-pick-modal').classList.remove('hidden');
+};
+document.getElementById('group-pick-list').addEventListener('click', (e) => {
+    const row = e.target.closest('.group-pick-row');
+    if (!row) return;
+    newTriggerDraft.group = row.dataset.group;
+    updatePickerRows();
+    validateNewTrigger();
+    document.getElementById('group-pick-modal').classList.add('hidden');
+});
+document.getElementById('close-group-pick-btn').onclick = () => document.getElementById('group-pick-modal').classList.add('hidden');
+document.querySelector('#group-pick-modal .modal-backdrop').onclick = () => document.getElementById('group-pick-modal').classList.add('hidden');
+
+// Подмодалка: выбор иконки (только свободные + своя при редактировании)
+document.getElementById('pick-icon-btn').onclick = () => {
+    const icons = getAvailableIcons(editingTriggerId);
+    document.getElementById('icon-pick-grid').innerHTML = icons.length
+        ? icons.map(ic => `<button type="button" class="icon-pick-item" data-icon="${ic}">${ic}</button>`).join('')
+        : '<p class="icon-pick-empty">Все свободные иконки уже заняты.<br>Удали какой-нибудь триггер, чтобы освободить иконку.</p>';
+    document.getElementById('icon-pick-modal').classList.remove('hidden');
+};
+document.getElementById('icon-pick-grid').addEventListener('click', (e) => {
+    const item = e.target.closest('.icon-pick-item');
+    if (!item) return;
+    newTriggerDraft.icon = item.dataset.icon;
+    updatePickerRows();
+    validateNewTrigger();
+    document.getElementById('icon-pick-modal').classList.add('hidden');
+});
+document.getElementById('close-icon-pick-btn').onclick = () => document.getElementById('icon-pick-modal').classList.add('hidden');
+document.querySelector('#icon-pick-modal .modal-backdrop').onclick = () => document.getElementById('icon-pick-modal').classList.add('hidden');
+
+// Сохранение: создание или редактирование
+document.getElementById('save-new-trigger-btn').onclick = async () => {
+    const name = newTriggerDraft.name.trim();
+    if (!name || !newTriggerDraft.icon || !newTriggerDraft.group) return;
+    const newKey = `${newTriggerDraft.icon} ${name}`;
+    const dup = triggerCatalog.some(g => g.triggers.some(t => t.id !== editingTriggerId && triggerKey(t) === newKey));
+    if (dup) { showToast('Такой триггер уже есть', 'error'); return; }
+
+    if (editingTriggerId) {
+        const found = findTriggerById(editingTriggerId);
+        if (!found) return;
+        const oldKey = triggerKey(found.trigger);
+        // Перенос в другую группу, если сменили
+        if (found.group.id !== newTriggerDraft.group) {
+            const target = triggerCatalog.find(g => g.id === newTriggerDraft.group);
+            if (target) {
+                found.group.triggers = found.group.triggers.filter(t => t.id !== editingTriggerId);
+                target.triggers.push(found.trigger);
+            }
+        }
+        found.trigger.name = name;
+        found.trigger.icon = newTriggerDraft.icon;
+        saveTriggerCatalog();
+        triggersSelection = triggersSelection.map(k => k === oldKey ? newKey : k);
+        // Переименовываем триггер во всех записях
+        let touched = false;
+        diaryEntries.forEach(en => {
+            if (Array.isArray(en.triggers) && en.triggers.includes(oldKey)) {
+                en.triggers = en.triggers.map(k => k === oldKey ? newKey : k);
+                en.updatedAt = Date.now();
+                touched = true;
+            }
+        });
+        closeAddTriggerModal();
+        renderTriggersGroups();
+        if (touched) {
+            try { await saveAllToIndexedDB(); }
+            catch (err) { console.error(err); showToast('Не удалось сохранить изменения', 'error'); }
+            renderEntries();
+            renderCalendar();
+            updateProgressCard();
+        }
+        showToast('Триггер изменён', 'success');
+    } else {
+        const g = triggerCatalog.find(x => x.id === newTriggerDraft.group);
+        if (!g) return;
+        g.triggers.push({ id: 't_' + Date.now().toString(36), name, icon: newTriggerDraft.icon });
+        saveTriggerCatalog();
+        triggersSelection.push(newKey);
+        closeAddTriggerModal();
+        renderTriggersGroups();
+        showToast('Триггер добавлен', 'success');
+    }
+};
+
+// === 🟩 ПИКСЕЛЬНАЯ СЕТКА ГОДА (YEAR IN PIXELS) ===
+let pixelYear = new Date().getFullYear();
+let pixelSelectedKey = null;
+let pixelDayMap = {};
+let statsModeBeforePixel = 'deep';
+const PIXEL_MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+
+function pixelLevel(score) {
+    if (score <= 2) return 1;
+    if (score <= 4) return 2;
+    if (score <= 6) return 3;
+    if (score <= 8) return 4;
+    return 5;
+}
+function pixelPlural(n, forms) {
+    const n10 = n % 10, n100 = n % 100;
+    if (n10 === 1 && n100 !== 11) return forms[0];
+    if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return forms[1];
+    return forms[2];
+}
+
+function openPixelGrid() {
+    statsModeBeforePixel = currentStatsMode;
+    closeStatsModal();
+    pixelYear = new Date().getFullYear();
+    pixelSelectedKey = null;
+    renderPixelGrid();
+    document.getElementById('pixel-grid-modal').classList.remove('hidden');
+    document.body.classList.add('modal-lock');
+    document.getElementById('bottomNav').classList.add('nav-hidden');
+}
+function closePixelGrid() {
+    document.getElementById('pixel-grid-modal').classList.add('hidden');
+    document.body.classList.remove('modal-lock');
+    document.getElementById('bottomNav').classList.remove('nav-hidden');
+    openStatsModalInMode(statsModeBeforePixel || 'deep');
+}
+
+function renderPixelGrid() {
+    const body = document.getElementById('pixel-grid-body');
+    const monthsRow = document.getElementById('pixel-months-row');
+    if (!body || !monthsRow) return;
+    const year = pixelYear;
+    const todayKey = getDateKey(new Date());
+    document.getElementById('pixel-year-label').textContent = year;
+    document.getElementById('pixel-next-year').disabled = year >= new Date().getFullYear();
+
+    pixelDayMap = {};
+    diaryEntries.forEach(e => {
+        const d = new Date(e.date);
+        if (isNaN(d.getTime()) || d.getFullYear() !== year) return;
+        const k = getDateKey(e.date);
+        (pixelDayMap[k] = pixelDayMap[k] || []).push(e);
+    });
+
+    let pos = 0, neu = 0, neg = 0;
+    Object.values(pixelDayMap).forEach(es => {
+        const s = calculateSmartDayScore(es);
+        if (s === null) return;
+        const lv = pixelLevel(s);
+        if (lv >= 4) pos++; else if (lv === 3) neu++; else neg++;
+    });
+    const filled = pos + neu + neg;
+    const daysInYear = new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
+
+    monthsRow.innerHTML = '<span class="pixel-corner"></span>' +
+        PIXEL_MONTHS.map(m => `<span class="pixel-month-label">${m}</span>`).join('');
+
+    let html = '';
+    for (let day = 1; day <= 31; day++) {
+        html += `<span class="pixel-day-num">${day}</span>`;
+        for (let m = 0; m < 12; m++) {
+            const dim = new Date(year, m + 1, 0).getDate();
+            if (day > dim) { html += '<span class="pixel-cell pixel-void" aria-hidden="true"></span>'; continue; }
+            const key = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const es = pixelDayMap[key];
+            const score = es ? calculateSmartDayScore(es) : null;
+            const todayCls = key === todayKey ? ' today' : '';
+            const selCls = key === pixelSelectedKey ? ' selected' : '';
+            const delay = (day - 1) * 12;
+            const pretty = formatPrettyDate(key);
+            if (score !== null) {
+                const label = `${pretty}, настроение ${score.toFixed(1)}`;
+                html += `<button type="button" class="pixel-cell pixel-level-${pixelLevel(score)}${todayCls}${selCls}" data-key="${key}" style="--d:${delay}ms" title="${label}" aria-label="${label}"></button>`;
+            } else {
+                html += `<button type="button" class="pixel-cell pixel-empty${todayCls}${selCls}" data-key="${key}" style="--d:${delay}ms" title="${pretty}: нет записей" aria-label="${pretty}, нет записей"></button>`;
+            }
+        }
+    }
+    body.innerHTML = html;
+
+    const pct = n => filled ? Math.round(n / filled * 100) : 0;
+    document.getElementById('pixel-count-pos').textContent = pos;
+    document.getElementById('pixel-count-neu').textContent = neu;
+    document.getElementById('pixel-count-neg').textContent = neg;
+    document.getElementById('pixel-pct-pos').textContent = pct(pos) + '%';
+    document.getElementById('pixel-pct-neu').textContent = pct(neu) + '%';
+    document.getElementById('pixel-pct-neg').textContent = pct(neg) + '%';
+    document.getElementById('pixel-bar-pos').style.width = pct(pos) + '%';
+    document.getElementById('pixel-bar-neu').style.width = pct(neu) + '%';
+    document.getElementById('pixel-bar-neg').style.width = pct(neg) + '%';
+    document.getElementById('pixel-summary-total').innerHTML = filled
+        ? `Заполнено <strong>${filled}</strong> из ${daysInYear} дней · ${Math.round(filled / daysInYear * 100)}% года`
+        : 'В этом году пока нет записей — сетка оживёт с первой записью';
+    updatePixelInspector();
+}
+
+function updatePixelInspector() {
+    const box = document.getElementById('pixel-day-inspector');
+    const openBtn = document.getElementById('pixel-open-day-btn');
+    if (!box) return;
+    if (!pixelSelectedKey) { box.classList.add('hidden'); return; }
+    const es = pixelDayMap[pixelSelectedKey];
+    document.getElementById('pixel-inspector-date').textContent = formatPrettyDate(pixelSelectedKey);
+    const moodEl = document.getElementById('pixel-inspector-mood');
+    const metaEl = document.getElementById('pixel-inspector-meta');
+    if (es && es.length) {
+        const s = calculateSmartDayScore(es);
+        moodEl.innerHTML = getMoodSvg(getEmojiByScore(s), 22);
+        metaEl.textContent = `${s.toFixed(1)} · ${es.length} ${pixelPlural(es.length, ['запись', 'записи', 'записей'])}`;
+        openBtn.classList.remove('hidden');
+    } else {
+        moodEl.innerHTML = '';
+        metaEl.textContent = 'нет записей';
+        openBtn.classList.add('hidden');
+    }
+    box.classList.remove('hidden');
+}
+
+document.getElementById('pixel-grid-body').addEventListener('click', (e) => {
+    const cell = e.target.closest('.pixel-cell');
+    if (!cell || cell.classList.contains('pixel-void') || !cell.dataset.key) return;
+    document.querySelectorAll('#pixel-grid-body .pixel-cell.selected').forEach(c => c.classList.remove('selected'));
+    cell.classList.add('selected');
+    pixelSelectedKey = cell.dataset.key;
+    updatePixelInspector();
+});
+
+document.getElementById('pixel-open-day-btn').onclick = () => {
+    if (!pixelSelectedKey) return;
+    const key = pixelSelectedKey;
+    document.getElementById('pixel-grid-modal').classList.add('hidden');
+    document.body.classList.remove('modal-lock');
+    document.getElementById('bottomNav').classList.remove('nav-hidden');
+    applyDateFilter(key);
+};
+
+document.getElementById('pixel-prev-year').onclick = () => { pixelYear--; pixelSelectedKey = null; renderPixelGrid(); };
+document.getElementById('pixel-next-year').onclick = () => {
+    if (pixelYear >= new Date().getFullYear()) return;
+    pixelYear++; pixelSelectedKey = null; renderPixelGrid();
+};
+document.getElementById('close-pixel-grid-btn').onclick = closePixelGrid;
+document.querySelector('#pixel-grid-modal .modal-backdrop').onclick = closePixelGrid;
+document.getElementById('open-pixel-grid-btn').onclick = openPixelGrid;
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.getElementById('pixel-grid-modal').classList.contains('hidden')) closePixelGrid();
+});
+
 // === 🚀 ЗАПУСК ===
 async function initApp() {
     try {
@@ -5854,6 +6413,7 @@ async function initApp() {
 
     // Все иконки — одной таблицей, без повторов
     const iconMap = {
+        'icon-back-add-trigger': NAV_ICONS.back,
         'icon-menu': NAV_ICONS.menu,
         'icon-entries': NAV_ICONS.entries,
         'icon-stats': NAV_ICONS.stats,
@@ -5861,6 +6421,7 @@ async function initApp() {
         'icon-plus': NAV_ICONS.plus,
         'icon-back-calendar': NAV_ICONS.back,
         'icon-back-triggers': NAV_ICONS.back,
+        'icon-back-pixel': NAV_ICONS.back,
         'icon-back-stats': NAV_ICONS.back,
         'icon-back-nostalgia': NAV_ICONS.back,
         'calendar-header-icon': NAV_ICONS.calendar,
