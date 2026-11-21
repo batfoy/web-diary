@@ -884,10 +884,11 @@ function buildEntryFromForm(existingEntry = null) {
     };
 
     if (existingEntry) {
-        // Обновление: date НЕ меняется
+        // Обновление: date НЕ меняется, createdAt — не перезаписываем (но гарантируем, что он есть)
         return {
             ...existingEntry,
             ...base,
+            createdAt: existingEntry.createdAt || now,
             updatedAt: now,
             editedAt: now,
         };
@@ -6400,6 +6401,22 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !document.getElementById('pixel-grid-modal').classList.contains('hidden')) closePixelGrid();
 });
 
+async function normalizeEntryTimestamps() {
+    const fixed = [];
+    diaryEntries.forEach(e => {
+        const base = Number(e.createdAt) || Number(e.updatedAt)
+                  || new Date(e.date).getTime() || Number(e.id) || Date.now();
+        let dirty = false;
+        if (!Number(e.createdAt)) { e.createdAt = base; dirty = true; }
+        if (!Number(e.updatedAt)) { e.updatedAt = base; dirty = true; }
+        if (dirty) fixed.push(e);
+    });
+    for (const e of fixed) {
+        try { await dbPut(e); } catch (err) { console.warn(e.id, err); }
+    }
+    if (fixed.length) console.log('Восстановлены метки времени у записей:', fixed.length);
+}
+
 // === 🚀 ЗАПУСК ===
 async function initApp() {
     try {
@@ -6414,6 +6431,7 @@ async function initApp() {
     loadTheme();
     updateSortButtons();
     await loadEntries();
+    await normalizeEntryTimestamps();
     updateProgressCard();
     renderCalendar();
     initMoodFilterGrid();

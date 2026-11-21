@@ -8,5 +8,5 @@
   </defs>
 
   <!-- Текст по центру -->
-  <text x="256" y="85" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="800" fill="url(#textGrad)" letter-spacing="4">Libris</text>
+  <text x="256" y="85" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="800" fill="url(#textGrad)" letter-spacing="4">Dayton</text>
 </svg>

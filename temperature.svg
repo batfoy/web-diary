@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Тень белой карточки (градиент снизу) -->
+    <linearGradient id="sm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b5e20" stop-opacity="0"/>
+      <stop offset="1" stop-color="#1b5e20" stop-opacity=".13"/>
+    </linearGradient>
+    <!-- Шкала градусника -->
+    <linearGradient id="thScale" gradientUnits="userSpaceOnUse" x1="104" y1="480" x2="104" y2="68">
+      <stop offset="0" stop-color="#F44336"/>
+      <stop offset=".25" stop-color="#FF9800"/>
+      <stop offset=".5" stop-color="#0288D1"/>
+      <stop offset=".75" stop-color="#8BC34A"/>
+      <stop offset="1" stop-color="#1B5E20"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Масштабирование стопки -->
+  <g transform="translate(256 256) scale(1.15) translate(-256 -260)">
+    
+    <!-- Задние слои стопки (полупрозрачные, под градусником) -->
+    <rect x="168" y="72" width="248" height="248" rx="56" fill="#ffffff" opacity=".2"/>
+    <rect x="132" y="112" width="272" height="272" rx="62" fill="#ffffff" opacity=".42"/>
+
+    <!-- Передняя белая карточка -->
+    <rect x="96" y="152" width="296" height="296" rx="68" fill="#FFFFFF"/>
+    <!-- Тень передней карточки -->
+    <rect x="96" y="152" width="296" height="296" rx="68" fill="url(#sm)"/>
+
+    <!-- ===== ГРАДУСНИК ВНУТРИ КАРТОЧКИ ===== -->
+    <!-- Рисуется последним, поэтому перекрывает все карточки/тени -->
+    <g transform="translate(244, 295) scale(0.78) translate(-140, -256)">
+      <g transform="translate(0 -16)">
+        <!-- корпус -->
+        <g fill="#DCE7DC"><rect x="66" y="50" width="76" height="372" rx="38"/><circle cx="104" cy="436" r="62"/></g>
+        <g fill="#FFFFFF"><rect x="72" y="56" width="64" height="360" rx="32"/><circle cx="104" cy="436" r="56"/></g>
+        <!-- шкала -->
+        <g fill="url(#thScale)"><rect x="84" y="68" width="40" height="348" rx="20"/><circle cx="104" cy="436" r="44"/></g>
+        <!-- блики -->
+        <rect x="89" y="84" width="8" height="270" rx="4" fill="#FFFFFF" opacity=".35"/>
+        <circle cx="86" cy="414" r="7" fill="#FFFFFF" opacity=".3"/>
+        <!-- деления -->
+        <g stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity=".5">
+          <path d="M106 160h14"/><path d="M106 250h14"/><path d="M106 340h14"/>
+        </g>
+        <!-- лицо на колбе -->
+        <g fill="#FFFFFF"><circle cx="92" cy="424" r="5"/><circle cx="116" cy="424" r="5"/></g>
+        <path d="M90 458Q104 442 118 458" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+        <!-- выноски -->
+        <g stroke-width="3" stroke-linecap="round" opacity=".45">
+          <path d="M148 340h32" stroke="#FF9800"/><path d="M148 250h32" stroke="#0288D1"/>
+          <path d="M148 160h32" stroke="#8BC34A"/><path d="M148 75h32" stroke="#1B5E20"/>
+        </g>
+        <!-- лица -->
+        <circle cx="210" cy="340" r="27" fill="#FF9800"/>
+        <g fill="#FFFFFF"><circle cx="198" cy="332" r="4.5"/><circle cx="222" cy="332" r="4.5"/></g>
+        <path d="M196 354Q210 344 224 354" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
+
+        <circle cx="210" cy="250" r="27" fill="#0288D1"/>
+        <g fill="#FFFFFF"><circle cx="198" cy="242" r="4.5"/><circle cx="222" cy="242" r="4.5"/></g>
+        <path d="M197 262h26" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
+
+        <circle cx="210" cy="160" r="27" fill="#8BC34A"/>
+        <g fill="#FFFFFF"><circle cx="198" cy="152" r="4.5"/><circle cx="222" cy="152" r="4.5"/></g>
+        <path d="M196 168Q210 180 224 168" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
+
+        <circle cx="210" cy="75" r="27" fill="#1B5E20"/>
+        <g fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round">
+          <path d="M193 68Q198 62 203 68"/><path d="M217 68Q222 62 227 68"/>
+        </g>
+        <path d="M194 80Q210 96 226 80" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+      </g>
+    </g>
+  </g>
+</svg>

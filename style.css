@@ -4278,3 +4278,25 @@ body.theme-blue .toast-action {
 body.theme-blue .toast-action { border-color: var(--accent-ink); }
 body.theme-blue .calendar-day.today { border-color: var(--accent-ink); }
 body.theme-blue .pin-dot { border-color: var(--accent-ink); }
+
+/* ============================================
+   ЗАПРЕТ ВЫДЕЛЕНИЯ ТЕКСТА
+   Выделение разрешено только в полях ввода
+   и в редакторе в режиме редактирования
+   ============================================ */
+* {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* iOS: убирает лупу при долгом нажатии */
+}
+
+/* Разрешаем там, где текст нужно вводить/выделять */
+input,
+textarea,
+select,
+option,
+[contenteditable="true"],
+[contenteditable="true"] * {
+    -webkit-user-select: text;
+    user-select: text;
+}
