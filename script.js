@@ -1769,6 +1769,7 @@ function handleDayClick(dateStr) {
         callback(dateStr);
     } else {
         applyDateFilter(dateStr);
+        setActiveNav('nav-entries-btn');
     }
 }
 
@@ -1958,6 +1959,7 @@ function applyTheme(themeName) {
         btn.classList.toggle('selected', btn.getAttribute('data-theme') === themeName);
     });
     localStorage.setItem('my_web_diary_theme_v1', themeName);
+    syncThemeColor();
     
     // Перерисовываем статистику, если она открыта
     const statsModal = document.getElementById('stats-modal');
@@ -1974,6 +1976,7 @@ function applyTheme(themeName) {
             }
         }
     }
+    syncThemeColor();
 }
 
 function loadTheme() {
@@ -6417,6 +6420,17 @@ async function normalizeEntryTimestamps() {
     if (fixed.length) console.log('Восстановлены метки времени у записей:', fixed.length);
 }
 
+//полосы сверху и снизу
+function syncThemeColor() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const nav = document.getElementById('bottomNav');
+    if (!meta || !nav) return;
+    const bg = getComputedStyle(nav).backgroundColor;
+    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        meta.content = bg;
+    }
+}
+
 // === 🚀 ЗАПУСК ===
 async function initApp() {
     try {
@@ -6474,6 +6488,7 @@ async function initApp() {
     setActiveNav('nav-entries-btn');
     setActiveWidget(0);
     renderWidgetPreviews();
+    syncThemeColor();
 }
 
 // === ЗАСТАВКА ===
