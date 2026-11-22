@@ -4300,3 +4300,10 @@ option,
     -webkit-user-select: text;
     user-select: text;
 }
+
+/* Браузер не рисует и не считает layout карточек вне экрана */
+.entry-card,
+.entries-date-group {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 140px;
+}

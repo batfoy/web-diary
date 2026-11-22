@@ -141,6 +141,64 @@ async function hashPin(pin) {
 
 const appMain = document.getElementById('app-main');
 
+// === ⚡ PERF: индекс дней, планировщик рендеров, пагинация списка ===
+let _dayIndex = null;            // Map<dateKey, Entry[]> — кэш группировки по дням
+let _listDirty = false;          // список изменился, пока открыта модалка записи
+const PAGE_SIZE = 40;            // карточек за одну догрузку
+let _pageState = null;
+let _entriesObserver = null;
+const _pendingRenders = new Set();
+let _renderRaf = 0;
+
+function touchEntries() { _dayIndex = null; }
+
+function getDayIndex() {
+    if (_dayIndex) return _dayIndex;
+    const map = new Map();
+    for (let i = 0; i < diaryEntries.length; i++) {
+        const e = diaryEntries[i];
+        const k = getDateKey(e.date);
+        let arr = map.get(k);
+        if (!arr) { arr = []; map.set(k, arr); }
+        arr.push(e);
+    }
+    map.forEach(arr => arr.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
+    _dayIndex = map;
+    return map;
+}
+
+// Все перерисовки коалесцируются в один кадр: 5 вызовов подряд = 1 рендер каждого типа
+function scheduleRender(...names) {
+    touchEntries();
+    for (let i = 0; i < names.length; i++) _pendingRenders.add(names[i]);
+    if (_renderRaf) return;
+    _renderRaf = requestAnimationFrame(() => {
+        _renderRaf = 0;
+        const set = new Set(_pendingRenders);
+        _pendingRenders.clear();
+        if (set.has('list')) renderEntries();
+        if (set.has('calendar')) renderCalendar();
+        if (set.has('chart')) { if (currentChartMode === 'line') drawMoodChart(); else drawBarChart(); }
+        if (set.has('deep')) renderDeepStats();
+        if (set.has('progress')) updateProgressCard();
+    });
+}
+
+function ensureEntriesObserver() {
+    if (_entriesObserver) return;
+    if ('IntersectionObserver' in window) {
+        _entriesObserver = new IntersectionObserver(list => {
+            if (list.some(x => x.isIntersecting)) renderNextPage();
+        }, { rootMargin: '400px 0px' });
+    } else {
+        _entriesObserver = 'scroll';
+        window.addEventListener('scroll', () => {
+            const s = document.getElementById('entries-sentinel');
+            if (s && s.getBoundingClientRect().top < window.innerHeight + 400) renderNextPage();
+        }, { passive: true });
+    }
+}
+
 
 // === 🎨 КОНФИГ ИКОНОК (SVG) ===
 const NAV_ICONS = {
@@ -381,21 +439,18 @@ function calculateSmartDayScore(entriesOfDay) {
 
 // === 📊 ДВУХСТУПЕНЧАТОЕ СРЕДНЕЕ ЗА ПЕРИОД (сначала день, потом период) ===
 function getPeriodStats(startMs, endMs) {
-    const dayMap = {};
     let entriesCount = 0;
-    diaryEntries.forEach(e => {
-        const t = new Date(e.date).getTime();
+    const dayScores = [];
+    getDayIndex().forEach((arr, key) => {
+        const t = new Date(key + 'T12:00:00').getTime();
         if (t < startMs || t > endMs) return;
-        const key = getDateKey(e.date);
-        (dayMap[key] = dayMap[key] || []).push(e);
-        entriesCount++;
+        entriesCount += arr.length;
+        const s = calculateSmartDayScore(arr);
+        if (s !== null) dayScores.push(s);
     });
-    const dayScores = Object.values(dayMap)
-        .map(entries => calculateSmartDayScore(entries))
-        .filter(v => v !== null);
-    if (dayScores.length === 0) return { avg: null, days: 0, entries: 0 };
+    if (!dayScores.length) return { avg: null, days: 0, entries: 0 };
     return {
-        avg: dayScores.reduce((s, v) => s + v, 0) / dayScores.length,
+        avg: dayScores.reduce((a, b) => a + b, 0) / dayScores.length,
         days: dayScores.length,
         entries: entriesCount
     };
@@ -792,10 +847,7 @@ async function saveQuickEntry() {
     }
 
     closeQuickEntryModal();
-    renderEntries();
-    renderCalendar();
-    drawMoodChart();
-    updateProgressCard();
+    scheduleRender('list', 'calendar', 'chart', 'progress');
     showToast(I18N.t('toast.moodSaved'), 'success');
 }
 
@@ -903,10 +955,7 @@ async function saveCurrentEntry() {
         return;
     }
 
-    renderEntries();
-    renderCalendar();
-    drawMoodChart();
-    updateProgressCard();
+    scheduleRender('list', 'calendar', 'chart', 'progress');
 }
 
 function scheduleAutoSave() {
@@ -1087,9 +1136,7 @@ async function handleSaveEntry() {
             closeEntryForm();
             await dbDelete(entryId);
             diaryEntries = diaryEntries.filter(e => e.id !== entryId);
-            renderEntries();
-            renderCalendar();
-            drawMoodChart();
+            scheduleRender('list', 'calendar', 'chart');
             showToast(I18N.t('toast.emptyDeleted'), 'info');
         } else {
             closeEntryForm();
@@ -1121,10 +1168,7 @@ async function handleSaveEntry() {
         return false;
     }
 
-    renderEntries();
-    renderCalendar();
-    drawMoodChart();
-    updateProgressCard();
+    scheduleRender('list', 'calendar', 'chart', 'progress');
     return true;
 }
 
@@ -1139,6 +1183,7 @@ function closeEntryForm() {
     // Показываем нижний таб-бар обратно
     document.getElementById('bottomNav').classList.remove('nav-hidden');
     cancelDeleteId = null;
+    if (_listDirty) renderEntries(true); // дорисовываем то, что пропустили во время редактирования
 }
 
 
@@ -1173,10 +1218,7 @@ async function handleDeleteClick() {
         diaryEntries = diaryEntries.filter(e => e.id !== entryId);
         
         // 3. Обновление интерфейса
-        renderEntries();
-        renderCalendar();
-        drawMoodChart();
-        updateProgressCard();
+        scheduleRender('list', 'calendar', 'chart', 'progress');
         showToast(I18N.t('toast.entryDeleted'), 'success');
     } else {
         closeEntryForm();
@@ -1244,12 +1286,10 @@ function drawMoodChart() {
     }
 
     // Данные по дням (умный балл за день)
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
     const days = {};
-    diaryEntries.forEach(entry => {
-        const d = new Date(entry.date);
-        if (isNaN(d.getTime()) || d.getFullYear() !== year || d.getMonth() !== month) return;
-        const day = d.getDate();
-        (days[day] = days[day] || []).push(entry);
+    getDayIndex().forEach((arr, key) => {
+        if (key.startsWith(prefix)) days[+key.slice(8)] = arr;
     });
     const data = Object.entries(days)
         .map(([day, entries]) => ({ day: +day, score: calculateSmartDayScore(entries) }))
@@ -1327,13 +1367,7 @@ function drawMoodChart() {
 }
 
 // === 📋 СПИСОК ЗАПИСЕЙ ===
-function renderEntries() {
-    const list = document.getElementById('entries-list');
-    list.innerHTML = '';
-
-    const hasAnyFilter = !!(activeTagFilter || activeDateFilter || activeMoodFilter || activeTriggerFilter || searchQuery);
-    appMain.classList.toggle('search-active', hasAnyFilter);
-
+function getFilteredSorted() {
     let filtered = diaryEntries;
     if (activeFavoriteFilter) filtered = filtered.filter(e => e.favorite === true);
     if (activeDateFilter) filtered = filtered.filter(e => getDateKey(e.date) === activeDateFilter);
@@ -1347,11 +1381,24 @@ function renderEntries() {
             (e.title && e.title.toLowerCase().includes(q))
         );
     }
+    return sortEntriesForList(filtered);
+}
 
-    const sorted = sortEntriesForList(filtered);
+function renderEntries(force = false) {
+    touchEntries();
+    // список под модалкой не виден — не тратим время, дорисуем при закрытии
+    const modal = document.getElementById('entry-modal');
+    if (!force && modal && !modal.classList.contains('hidden')) { _listDirty = true; return; }
+    _listDirty = false;
+
+    const list = document.getElementById('entries-list');
+    list.innerHTML = '';
+    _pageState = null;
+
+    const hasAnyFilter = !!(activeTagFilter || activeDateFilter || activeMoodFilter || activeTriggerFilter || searchQuery);
+    appMain.classList.toggle('search-active', hasAnyFilter);
+
     const clearTitle = escapeHtml(I18N.t('common.showAll'));
-
-    // --- баннер активного фильтра ---
     let bannerHtml = '';
     if (activeDateFilter) {
         const pretty = I18N.fmtDate(new Date(activeDateFilter + 'T12:00:00'), { day: 'numeric', month: 'long', year: 'numeric' });
@@ -1370,8 +1417,8 @@ function renderEntries() {
         list.appendChild(banner);
     }
 
-    // --- пустое состояние ---
-    if (sorted.length === 0) {
+    const sorted = getFilteredSorted();
+    if (!sorted.length) {
         const empty = document.createElement('p');
         empty.style.cssText = 'text-align:center; color:var(--text-muted); margin-top:40px;';
         let msg = I18N.t('entries.empty');
@@ -1385,102 +1432,107 @@ function renderEntries() {
         return;
     }
 
-    // --- группировка по дате ---
-    const groups = {};
-    sorted.forEach(entry => {
-        const key = getDateKey(entry.date);
-        (groups[key] = groups[key] || []).push(entry);
+    const groups = new Map();
+    sorted.forEach(e => {
+        const k = getDateKey(e.date);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(e);
     });
-    const sortedKeys = Object.keys(groups).sort((a, b) =>
-        sortOrder === 'asc' ? new Date(a) - new Date(b) : new Date(b) - new Date(a)
-    );
+    const keys = [...groups.keys()].sort((a, b) =>
+        sortOrder === 'asc' ? new Date(a) - new Date(b) : new Date(b) - new Date(a));
 
+    _pageState = { groups, keys, keyIdx: 0, list };
+    renderNextPage();
+}
+
+function buildEntryCard(entry) {
+    const card = document.createElement('div');
+    card.className = 'entry-card';
+    card.dataset.entryId = entry.id;
+
+    const score = getMoodScore(entry.mood);
+    let level = 0;
+    if (score !== null) {
+        level = score <= 2 ? 1 : score <= 4 ? 2 : score <= 6 ? 3 : score <= 8 ? 4 : 5;
+        card.classList.add('entry-mood-level-' + level);
+    }
+    if (multiDeleteMode && selectedEntries.includes(entry.id)) card.classList.add('selected');
+
+    const timeStr = I18N.fmtTime(new Date(entry.createdAt), { hour: '2-digit', minute: '2-digit' });
+    const editedHtml = getEditedLabelHtml(entry);
+    const tagsHtml = (entry.tags && entry.tags.length)
+        ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-ink, var(--accent-color));">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+    const triggersHtml = (entry.triggers && entry.triggers.length)
+        ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.triggers.map(t => `<span class="entry-trigger-chip ${level ? 'trigger-level-' + level : ''}">${escapeHtml(I18N.triggerLabel(t))}</span>`).join('')}</div>`
+        : '';
+    const plain = getPlainTextFromHTML(entry.content).replace(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g, '').trim();
+    const preview = plain.length > 120 ? plain.substring(0, 120) + '...' : plain;
+
+    card.innerHTML = `
+        <div class="entry-header">
+            <span class="entry-date-line">
+                <span>${timeStr}</span>
+                ${editedHtml}
+            </span>
+            <span style="display:flex; align-items:center; gap:8px;">
+                ${entry.favorite ? NAV_ICONS.starFilled.replace('width="22" height="22"', 'width="16" height="16"') : ''}
+                ${getMoodSvg(entry.mood, 20)}
+            </span>
+        </div>
+        ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
+        <div class="entry-text">${preview ? escapeHtml(preview) : `<span style="color:var(--text-muted); font-style:italic;">${I18N.t('entries.noText')}</span>`}</div>
+        ${triggersHtml}
+        ${tagsHtml}
+    `;
+    return card;
+}
+
+function buildDayGroup(dateKey, entries) {
+    const wrap = document.createElement('div');
+    wrap.className = 'entries-date-group';
+    const header = document.createElement('div');
+    header.className = 'entries-date-header';
     const todayKey = getDateKey(new Date());
     const y = new Date(); y.setDate(y.getDate() - 1);
-    const yesterdayKey = getDateKey(y);
+    header.textContent = dateKey === todayKey ? I18N.t('common.today')
+        : dateKey === getDateKey(y) ? I18N.t('common.yesterday')
+        : I18N.fmtDate(new Date(dateKey + 'T12:00:00'), { day: 'numeric', month: 'long', year: 'numeric' });
+    wrap.appendChild(header);
+    for (let i = 0; i < entries.length; i++) wrap.appendChild(buildEntryCard(entries[i]));
+    return wrap;
+}
 
-    sortedKeys.forEach(dateKey => {
-        const groupContainer = document.createElement('div');
-        groupContainer.className = 'entries-date-group';
-
-        const dateHeader = document.createElement('div');
-        dateHeader.className = 'entries-date-header';
-        dateHeader.textContent = dateKey === todayKey ? I18N.t('common.today')
-            : dateKey === yesterdayKey ? I18N.t('common.yesterday')
-            : I18N.fmtDate(new Date(dateKey + 'T12:00:00'), { day: 'numeric', month: 'long', year: 'numeric' });
-        groupContainer.appendChild(dateHeader);
-
-        groups[dateKey].forEach(entry => {
-            const card = document.createElement('div');
-            card.className = 'entry-card';
-            card.dataset.entryId = entry.id;
-
-            const score = getMoodScore(entry.mood);
-            let level = 0;
-            if (score !== null) {
-                level = score <= 2 ? 1 : score <= 4 ? 2 : score <= 6 ? 3 : score <= 8 ? 4 : 5;
-                card.classList.add('entry-mood-level-' + level);
-            }
-
-            const timeStr = I18N.fmtTime(new Date(entry.createdAt), { hour: '2-digit', minute: '2-digit' });
-            const editedHtml = getEditedLabelHtml(entry);
-
-            const tagsHtml = (entry.tags && entry.tags.length)
-                ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.tags.map(t => `<span style="font-size:0.75em; background:var(--mood-btn-bg); padding:2px 8px; border-radius:10px; color:var(--accent-ink, var(--accent-color));">${escapeHtml(t)}</span>`).join('')}</div>`
-                : '';
-
-            const triggersHtml = (entry.triggers && entry.triggers.length)
-                ? `<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">${entry.triggers.map(t => `<span class="entry-trigger-chip ${level ? 'trigger-level-' + level : ''}">${escapeHtml(I18N.triggerLabel(t))}</span>`).join('')}</div>`
-                : '';
-
-            const plain = getPlainTextFromHTML(entry.content).replace(/#[a-zA-Zа-яА-ЯёЁ0-9_]+/g, '').trim();
-            const preview = plain.length > 120 ? plain.substring(0, 120) + '...' : plain;
-
-            card.innerHTML = `
-                <div class="entry-header">
-                    <span class="entry-date-line">
-                        <span>${timeStr}</span>
-                        ${editedHtml}
-                    </span>
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        ${entry.favorite ? NAV_ICONS.starFilled.replace('width="22" height="22"', 'width="16" height="16"') : ''}
-                        ${getMoodSvg(entry.mood, 20)}
-                    </span>
-                </div>
-                ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
-                <div class="entry-text">${preview ? escapeHtml(preview) : `<span style="color:var(--text-muted); font-style:italic;">${I18N.t('entries.noText')}</span>`}</div>
-                ${triggersHtml}
-                ${tagsHtml}
-            `;
-
-            let pressTimer = null, isLongPress = false;
-            const startPress = () => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => { isLongPress = true; enterMultiDeleteMode(entry.id); }, 500);
-            };
-            const stopPress = () => clearTimeout(pressTimer);
-
-            card.addEventListener('touchstart', startPress, { passive: true });
-            card.addEventListener('touchend', stopPress);
-            card.addEventListener('touchmove', stopPress);
-            card.addEventListener('touchcancel', stopPress);
-            card.addEventListener('mousedown', startPress);
-            card.addEventListener('mouseup', stopPress);
-            card.addEventListener('mouseleave', stopPress);
-            card.addEventListener('click', () => {
-                if (isLongPress) { isLongPress = false; return; }
-                if (multiDeleteMode) { toggleEntrySelection(entry.id); return; }
-                openEntryForm(entry);
-            });
-
-            groupContainer.appendChild(card);
-        });
-
-        list.appendChild(groupContainer);
-    });
+function renderNextPage() {
+    if (!_pageState) return;
+    const { groups, keys, list } = _pageState;
+    const oldSent = list.querySelector('#entries-sentinel');
+    if (oldSent) {
+        if (_entriesObserver && _entriesObserver !== 'scroll') _entriesObserver.unobserve(oldSent);
+        oldSent.remove();
+    }
+    const frag = document.createDocumentFragment();
+    let added = 0;
+    while (_pageState.keyIdx < keys.length && added < PAGE_SIZE) {
+        const key = keys[_pageState.keyIdx];
+        const arr = groups.get(key);
+        frag.appendChild(buildDayGroup(key, arr));
+        added += arr.length;
+        _pageState.keyIdx++;
+    }
+    list.appendChild(frag);
+    if (_pageState.keyIdx < keys.length) {
+        const sent = document.createElement('div');
+        sent.id = 'entries-sentinel';
+        sent.style.height = '1px';
+        list.appendChild(sent);
+        ensureEntriesObserver();
+        if (_entriesObserver && _entriesObserver !== 'scroll') _entriesObserver.observe(sent);
+    }
 }
 
 async function saveAndRender() {
+    touchEntries();
     try {
         await saveAllToIndexedDB();
     } catch (error) {
@@ -1607,10 +1659,7 @@ async function deleteSelectedEntries() {
     }
 
     diaryEntries = diaryEntries.filter(e => !selectedEntries.includes(e.id));
-    renderEntries();
-    renderCalendar();
-    drawMoodChart();
-    updateProgressCard();
+    scheduleRender('list', 'calendar', 'chart', 'progress');
     exitMultiDeleteMode();
     showToast(I18N.t('toast.deleted', { n: count }), 'success');
 }
@@ -1626,35 +1675,34 @@ function renderCalendar() {
     if (labelModal) labelModal.textContent = monthText;
     if (labelDesktop) labelDesktop.textContent = monthText;
 
-    // одна группировка вместо filter на каждый день
-    const byDay = {};
-    diaryEntries.forEach(e => {
-        const k = getDateKey(e.date);
-        (byDay[k] = byDay[k] || []).push(e);
-    });
-
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay();
     const offset = firstDay === 0 ? 6 : firstDay - 1;
     const todayKey = getDateKey(new Date());
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const index = getDayIndex();
 
-    function fillGrid(gridId) {
+    // десктопную сетку не строим на мобильном и наоборот
+    const isDesktop = window.matchMedia('(min-width: 769px)').matches;
+    const targets = isDesktop ? ['calendar-grid', 'calendar-grid-desktop'] : ['calendar-grid'];
+
+    targets.forEach(gridId => {
         const grid = document.getElementById(gridId);
         if (!grid) return;
-        grid.innerHTML = '';
+        const frag = document.createDocumentFragment();
         for (let i = 0; i < offset; i++) {
             const cell = document.createElement('div');
             cell.className = 'calendar-day empty';
-            grid.appendChild(cell);
+            frag.appendChild(cell);
         }
         for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dateStr = `${prefix}-${String(day).padStart(2, '0')}`;
+            const dayEntries = index.get(dateStr);
             const cell = document.createElement('button');
             cell.type = 'button';
             cell.className = 'calendar-day';
-            const dayEntries = byDay[dateStr] || [];
-
-            if (dayEntries.length > 0) {
+            cell.dataset.date = dateStr;
+            if (dayEntries && dayEntries.length) {
                 const smartAvg = calculateSmartDayScore(dayEntries);
                 const avgScore = smartAvg !== null ? smartAvg : 5;
                 cell.innerHTML = getMoodSvg(getEmojiByScore(avgScore), 24);
@@ -1666,14 +1714,32 @@ function renderCalendar() {
                 cell.classList.add('no-entry');
             }
             if (dateStr === todayKey) cell.classList.add('today');
-            cell.onclick = () => handleDayClick(dateStr);
-            grid.appendChild(cell);
+            frag.appendChild(cell);
         }
-    }
-    fillGrid('calendar-grid');
-    fillGrid('calendar-grid-desktop');
+        grid.innerHTML = '';
+        grid.appendChild(frag);
+    });
+
     renderMonthInsights();
 }
+
+// один делегированный клик на обе сетки календаря
+['calendar-grid', 'calendar-grid-desktop'].forEach(id => {
+    const g = document.getElementById(id);
+    if (!g) return;
+    g.addEventListener('click', (e) => {
+        const cell = e.target.closest('.calendar-day[data-date]');
+        if (cell) handleDayClick(cell.dataset.date);
+    });
+});
+
+// перерисовка при переходе через брейкпоинт (мобайл ↔ десктоп)
+(function () {
+    const mq = window.matchMedia('(min-width: 769px)');
+    const onChange = () => renderCalendar();
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+})();
 
 function handleDayClick(dateStr) {
     if (datePickerCallback) {
@@ -1787,6 +1853,7 @@ if (closeSearchBtn) {
     };
 }
 
+let _searchTimer = 0;
 if (searchInput) {
     searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value;
@@ -1798,7 +1865,8 @@ if (searchInput) {
         cameFromDeepStats = false;
         const backBtn = document.getElementById('back-to-stats-btn');
         if (backBtn) backBtn.classList.add('hidden');
-        renderEntries();
+        clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(() => renderEntries(), 180);
     });
 }
 
@@ -3141,12 +3209,44 @@ function clearTriggerFilter() {
     renderEntries();
 }
 
-document.getElementById('entries-list').addEventListener('click', (e) => {
-    if (e.target.closest('#clear-tag-filter')) clearTagFilter();
-    else if (e.target.closest('#clear-date-filter')) clearDateFilter();
-    else if (e.target.closest('#clear-mood-filter')) clearMoodFilter();
-    else if (e.target.closest('#clear-trigger-filter')) clearTriggerFilter();
-});
+// === 🖱️ ДЕЛЕГИРОВАННЫЕ СОБЫТИЯ СПИСКА (один набор на весь список) ===
+(function bindEntriesListEvents() {
+    const list = document.getElementById('entries-list');
+    if (!list) return;
+    let lpTimer = 0, lpFired = false, lpId = null, lpX = 0, lpY = 0;
+
+    list.addEventListener('pointerdown', (e) => {
+        const card = e.target.closest('.entry-card');
+        if (!card) return;
+        lpFired = false; lpId = card.dataset.entryId; lpX = e.clientX; lpY = e.clientY;
+        clearTimeout(lpTimer);
+        lpTimer = setTimeout(() => {
+            lpFired = true;
+            if (navigator.vibrate) navigator.vibrate(20);
+            enterMultiDeleteMode(lpId);
+        }, 500);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+        list.addEventListener(ev, () => clearTimeout(lpTimer))
+    );
+    list.addEventListener('pointermove', (e) => {
+        if (lpTimer && (Math.abs(e.clientX - lpX) > 10 || Math.abs(e.clientY - lpY) > 10)) clearTimeout(lpTimer);
+    });
+
+    list.addEventListener('click', (e) => {
+        if (e.target.closest('#clear-tag-filter')) { clearTagFilter(); return; }
+        if (e.target.closest('#clear-date-filter')) { clearDateFilter(); return; }
+        if (e.target.closest('#clear-mood-filter')) { clearMoodFilter(); return; }
+        if (e.target.closest('#clear-trigger-filter')) { clearTriggerFilter(); return; }
+        const card = e.target.closest('.entry-card');
+        if (!card) return;
+        if (lpFired) { lpFired = false; return; }
+        const id = card.dataset.entryId;
+        if (multiDeleteMode) { toggleEntrySelection(id); return; }
+        const entry = diaryEntries.find(x => String(x.id) === String(id));
+        if (entry) openEntryForm(entry);
+    });
+})();
 
 // === 🔐 PIN-ОБРАБОТЧИКИ ===
 document.querySelectorAll('.pin-key[data-key]').forEach(key => {
@@ -4131,22 +4231,14 @@ document.getElementById('cancel-entry-btn').onclick = async () => {
     if (!id) return;
     await dbDelete(id);
     diaryEntries = diaryEntries.filter(e => e.id !== id);
-    renderEntries();
-    renderCalendar();
-    drawMoodChart();
-    updateProgressCard();
+    scheduleRender('list', 'calendar', 'chart', 'progress');
 };
 
 
 // === ⬅️➡️ ПЕРЕЛИСТЫВАНИЕ ЗАПИСЕЙ (хронологически: следующая = новее) ===
 function getVisibleEntriesChrono() {
-    return Array.from(document.querySelectorAll('#entries-list .entry-card'))
-        .map(c => diaryEntries.find(e => e.id === c.dataset.entryId))
-        .filter(Boolean)
-        .sort((a, b) =>
-            (new Date(a.date) - new Date(b.date)) ||
-            ((a.createdAt || 0) - (b.createdAt || 0))
-        );
+    return getFilteredSorted().sort((a, b) =>
+        (new Date(a.date) - new Date(b.date)) || ((a.createdAt || 0) - (b.createdAt || 0)));
 }
 
 function updateEntryNav() {
@@ -4572,33 +4664,14 @@ function drawWeekdayChart() {
     ctx.clearRect(0, 0, width, height);
 
     
-    // Группируем записи по конкретным датам
-    const dateGroups = {};
-    diaryEntries.forEach(entry => {
-        const dateKey = getDateKey(entry.date);
-        if (!dateGroups[dateKey]) {
-            dateGroups[dateKey] = [];
-        }
-        dateGroups[dateKey].push(entry);
-    });
 
     // Считаем ПРОСТОЕ среднее для каждой даты и раскладываем по дням недели
-    const weekdayScores = [[], [], [], [], [], [], []]; // Пн, Вт, Ср, Чт, Пт, Сб, Вс
 
-    Object.entries(dateGroups).forEach(([dateKey, entries]) => {
-        let total = 0;
-        let count = 0;
-        entries.forEach(e => {
-            const s = getMoodScore(e.mood);
-            if (s !== null) { total += s; count++; }
-        });
-
-        if (count > 0) {
-            const avgForDay = total / count; // ПРОСТОЕ СРЕДНЕЕ ЗА ДЕНЬ
-            const dateObj = new Date(dateKey + 'T12:00:00');
-            const dayOfWeek = dateObj.getDay(); // 0 = Вс, 1 = Пн ...
-            weekdayScores[dayOfWeek].push(avgForDay);
-        }
+    const weekdayScores = [[], [], [], [], [], [], []];
+    getDayIndex().forEach((arr, key) => {
+        const s = calculateSmartDayScore(arr);
+        if (s === null) return;
+        weekdayScores[new Date(key + 'T12:00:00').getDay()].push(s);
     });
 
     // Теперь усредняем баллы по всем дням недели
@@ -4698,10 +4771,9 @@ function renderMonthInsights() {
 
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
-    const monthEntries = diaryEntries.filter(e => {
-        const d = new Date(e.date);
-        return d.getMonth() === month && d.getFullYear() === year;
-    });
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthEntries = [];
+    getDayIndex().forEach((arr, key) => { if (key.startsWith(prefix)) monthEntries.push(...arr); });
 
     if (monthEntries.length === 0) {
         container.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px 0;">${I18N.t('calendar.monthEmpty')}</p>`;
@@ -5454,7 +5526,7 @@ bindClick('header-favorite-btn', async () => {
     if (starSlot) starSlot.innerHTML = entry.favorite ? NAV_ICONS.starFilled : NAV_ICONS.star;
     if (favBtn) favBtn.style.opacity = entry.favorite ? '1' : '0.6';
     await dbPut(entry);
-    renderEntries();
+    scheduleRender('list');
 });
 
 function applyFavoriteFilter() {
@@ -5747,9 +5819,7 @@ async function deleteTriggerById(id) {
     if (touched) {
         try { await saveAllToIndexedDB(); }
         catch (err) { console.error(err); showToast(I18N.t('trig.saveFailed'), 'error'); }
-        renderEntries();
-        renderCalendar();
-        updateProgressCard();
+        scheduleRender('list', 'calendar', 'progress');
     }
     showToast(I18N.t('trig.deleted'), 'success');
 }
