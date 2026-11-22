@@ -3,7 +3,7 @@
 // Стратегия: stale-while-revalidate (кэш + фоновое обновление)
 // ВАЖНО: при каждом релизе меняй CACHE_VERSION!
 
-const CACHE_VERSION = 'v3.33';
+const CACHE_VERSION = 'v3.41';
 const CACHE_NAME = `my-web-diary-${CACHE_VERSION}`;
 
 const urlsToCache = [

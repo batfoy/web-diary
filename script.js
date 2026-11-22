@@ -141,7 +141,7 @@ async function hashPin(pin) {
 
 const appMain = document.getElementById('app-main');
 
-// === 🎨 КОНФИГ ИКОНОК (SVG) ===
+
 // === 🎨 КОНФИГ ИКОНОК (SVG) ===
 const NAV_ICONS = {
     // Иконка "Назад" (круглая стрелка)
@@ -1933,11 +1933,11 @@ document.getElementById('sidebar-export-import-toggle').onclick = () => {
 };
 
 document.getElementById('sidebar-export-btn').onclick = () => {
-    if (diaryEntries.length === 0) return showToast('Нет записей для экспорта', 'error');
+    if (diaryEntries.length === 0) return showToast(I18N.t('export.none'), 'error');
     const data = JSON.stringify({ version: '2.0', entries: diaryEntries }, null, 2);
     downloadFile(data, getExportFileName('json'), 'application/json');
     closeSidebar();
-    showToast(`Экспортировано записей: ${diaryEntries.length}`, 'success');
+    showToast(I18N.t('export.jsonDone', { n: diaryEntries.length }), 'success');
 };
 
 function escapeMarkdownText(text) {
@@ -1946,50 +1946,28 @@ function escapeMarkdownText(text) {
 }
 
 function exportMarkdown() {
-    if (diaryEntries.length === 0) {
-        showToast('Нет записей для экспорта', 'error');
-        return;
-    }
-
+    if (diaryEntries.length === 0) { showToast(I18N.t('export.none'), 'error'); return; }
     const sorted = [...diaryEntries].sort((a, b) => new Date(a.date) - new Date(b.date));
-
     const lines = [
-        '# Мой дневник',
+        `# ${I18N.t('md.title')}`,
         '',
-        `_Записей: ${sorted.length}_`,
-        `_Экспорт от ${new Date().toLocaleDateString('ru-RU')}_`,
+        `_${I18N.t('md.count', { n: sorted.length })}_`,
+        `_${I18N.t('md.exportedAt', { date: I18N.fmtDate(new Date()) })}_`,
         ''
     ];
-
     sorted.forEach(entry => {
-        const d = new Date(entry.date);
-        const dateLabel = d.toLocaleDateString('ru-RU', {
-            day: '2-digit', month: 'long', year: 'numeric'
-        });
-
+        const dateLabel = I18N.fmtDate(new Date(entry.date), { day: '2-digit', month: 'long', year: 'numeric' });
         lines.push('---', '');
         lines.push(`## ${dateLabel} ${entry.mood || ''}`.trim(), '');
-
-        if (entry.title) {
-            lines.push(`### ${escapeMarkdownText(entry.title)}`, '');
-        }
-
+        if (entry.title) lines.push(`### ${escapeMarkdownText(entry.title)}`, '');
         lines.push(entry.content || '', '');
-
         if (entry.tags && entry.tags.length > 0) {
-            const tagLabels = entry.tags.map(tag => tag.replace(/^#/, ''));
-            lines.push(`_Теги: ${tagLabels.join(', ')}_`, '');
+            lines.push(`_${I18N.t('md.tags', { tags: entry.tags.map(tag => tag.replace(/^#/, '')).join(', ') })}_`, '');
         }
     });
-
-    downloadFile(
-        lines.join('\n'),
-        getExportFileName('md'),
-        'text/markdown;charset=utf-8'
-    );
-
+    downloadFile(lines.join('\n'), getExportFileName('md'), 'text/markdown;charset=utf-8');
     closeSidebar();
-    showToast(`Экспорт в Markdown готов: ${sorted.length} записей`, 'success');
+    showToast(I18N.t('export.mdDone', { n: sorted.length }), 'success');
 }
 
 document.getElementById('sidebar-markdown-btn').onclick = exportMarkdown;
@@ -2033,9 +2011,9 @@ document.getElementById('import-file').onchange = (e) => {
                 }
             });
             saveAndRender();
-            showToast(`Импортировано: ${count}`, 'success');
+            showToast(I18N.t('import.done', { n: count }), 'success');
             closeSidebar();
-        } catch { showToast('Ошибка файла', 'error'); }
+        }   catch { showToast(I18N.t('import.badFile'), 'error'); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -2730,6 +2708,10 @@ function openStatsModalInMode(mode) {
 function closeAllTriggersList() {
     closeTriggersModal();
     closeAddTriggerModal();
+    ['settings-modal', 'notifications-modal', 'language-modal'].forEach(id => {
+        const m = document.getElementById(id); if (m) m.classList.add('hidden');
+    });
+    document.body.classList.remove('modal-lock');
     const modal = document.getElementById('triggers-list-modal');
     if (!modal || modal.classList.contains('hidden')) return; // список не открыт — ничего не делаем
     modal.classList.add('hidden');
@@ -4363,6 +4345,29 @@ document.addEventListener('app:langchange', () => {
     }
 });
 
+document.addEventListener('app:langchange', () => {
+    const st = document.getElementById('stories-modal');
+    if (st && !st.classList.contains('hidden')) {
+        I18N.applyStatic(st);
+        showStorySlide(storiesIndex); // перерисовываем активный слайд на новом языке
+    }
+    const no = document.getElementById('nostalgia-modal');
+    if (no && !no.classList.contains('hidden')) { I18N.applyStatic(no); openNostalgiaModal(); }
+    const pg = document.getElementById('pixel-grid-modal');
+    if (pg && !pg.classList.contains('hidden')) { I18N.applyStatic(pg); renderPixelGrid(); }
+});
+
+document.addEventListener('app:langchange', () => {
+    if (typeof renderEntries === 'function') renderEntries();
+    if (typeof updateProgressCard === 'function') updateProgressCard();
+    const set = document.getElementById('settings-modal');
+    if (set && !set.classList.contains('hidden')) I18N.applyStatic(set);
+    const nm = document.getElementById('notifications-modal');
+    if (nm && !nm.classList.contains('hidden')) I18N.applyStatic(nm);
+    const lm = document.getElementById('language-modal');
+    if (lm && !lm.classList.contains('hidden')) I18N.applyStatic(lm);
+});
+
 // === 🛡️ ЗАЩИТА ОТ «УСТАРЕВШЕГО» ВЫДЕЛЕНИЯ ===
 // Если пользователь коснулся экрана ВНЕ палитры цветов, сбрасываем сохраненное выделение
 document.addEventListener('touchstart', (e) => {
@@ -4802,7 +4807,8 @@ document.getElementById('nav-entries-btn').onclick = () => {
     
     const entryModal = document.getElementById('entry-modal');
     if (!entryModal.classList.contains('hidden')) {
-        handleSaveCloseBtn();
+        if (isEditing) handleSaveEntry().finally(closeEntryForm);
+        else closeEntryForm();
     }
     
     // Рендерим список и сбрасываем скролл в начало
@@ -5131,13 +5137,13 @@ function drawStoryMoodChart() {
 
     const sub = document.getElementById('story-chart-sub');
     const cap = document.getElementById('story-chart-caption');
-    if (sub) sub.textContent = now.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    if (sub) sub.textContent = I18N.fmtDate(now, { month: 'long', year: 'numeric' });
 
     if (pts.length === 0) {
         ctx.fillStyle = '#93a1ad'; ctx.font = '12px sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('В этом месяце пока нет записей', w / 2, top + plotH / 2);
-        if (cap) cap.textContent = 'Добавь запись — и график оживёт';
+        ctx.fillText(I18N.t('chart.emptyMonth'), w / 2, top + plotH / 2);
+        if (cap) cap.textContent = I18N.t('story.addEntry');
         return;
     }
     if (pts.length > 1) {
@@ -5172,7 +5178,7 @@ function drawStoryMoodChart() {
     });
     const avg = pts.reduce((s, p) => s + p.s, 0) / pts.length;
     const total = Object.values(byDay).reduce((s, es) => s + es.length, 0);
-    if (cap) cap.innerHTML = `Среднее: <strong>${avg.toFixed(1)}</strong> ${getMoodSvg(getEmojiByScore(avg), 18)} · записей: ${total} · дней: ${pts.length}`;
+        if (cap) cap.innerHTML = `${I18N.t('story.avgPrefix')} <strong>${avg.toFixed(1)}</strong> ${getMoodSvg(getEmojiByScore(avg), 18)} · ${I18N.t('story.counts', { entries: total, days: pts.length })}`;
 }
 
 // === СТОРИС 2: ПРОШЛАЯ НЕДЕЛЯ ===
@@ -5184,19 +5190,27 @@ function renderStoryWeek() {
     const start = new Date(today);
     start.setDate(today.getDate() - dow - 6);
     start.setHours(0, 0, 0, 0);
+
+    const byDay = {};
+    diaryEntries.forEach(e => {
+        const k = getDateKey(e.date);
+        (byDay[k] = byDay[k] || []).push(e);
+    });
+
     const days = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(start);
         d.setDate(d.getDate() + i);
-        const es = diaryEntries.filter(e => getDateKey(e.date) === getDateKey(d));
+        const es = byDay[getDateKey(d)] || [];
         days.push({ d, avg: calculateSmartDayScore(es), count: es.length });
     }
+
+    const title = `<h3 class="story-title">${I18N.t('deep.lastWeekTitle')}</h3>`;
     if (days.filter(x => x.avg !== null).length < 3) {
-        box.innerHTML = `
-            <h3 class="story-title">Настроение на прошлой неделе</h3>
-            <p class="story-caption" style="margin-top:10px;">Веди дневник хотя бы 3 дня в неделю,<br>чтобы увидеть картину недели.</p>`;
+        box.innerHTML = `${title}<p class="story-caption" style="margin-top:10px;">${I18N.t('story.weekEmpty1')}<br>${I18N.t('story.weekEmpty2')}</p>`;
         return;
     }
+
     const valid = days.map((x, i) => x.avg !== null ? i : -1).filter(i => i !== -1);
     const first = valid[0], last = valid[valid.length - 1];
     const stops = [];
@@ -5214,7 +5228,8 @@ function renderStoryWeek() {
         }
     }
     const gradient = `linear-gradient(90deg, ${stops.join(', ')})`;
-    const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const DAY_KEYS = ['day.mon', 'day.tue', 'day.wed', 'day.thu', 'day.fri', 'day.sat', 'day.sun'];
+
     const cells = days.map((x, i) => {
         if (i !== 0 && i !== 3 && i !== 6) return '';
         return `
@@ -5222,29 +5237,28 @@ function renderStoryWeek() {
                 <div style="width:44px;height:44px;border-radius:50%;background:#1b232c;border:2px solid ${x.avg !== null ? storyMoodColor(x.avg) : '#2d3945'};display:flex;align-items:center;justify-content:center;">
                     ${x.avg !== null ? getMoodSvg(getEmojiByScore(x.avg), 26) : '<span style="color:#6d7a86;font-size:.8em;">—</span>'}
                 </div>
-                <span style="font-size:.7em;color:#93a1ad;">${names[i]}</span>
-                <span style="font-size:.62em;color:#6d7a86;">${x.d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                <span style="font-size:.7em;color:#93a1ad;">${I18N.t(DAY_KEYS[i])}</span>
+                <span style="font-size:.62em;color:#6d7a86;">${I18N.fmtDate(x.d, { day: 'numeric', month: 'short' })}</span>
             </div>`;
     }).join('');
+
     const scored = days.filter(x => x.avg !== null);
     const weekAvg = scored.reduce((s, x) => s + x.avg, 0) / scored.length;
     const trig = {};
     const weekEnd = new Date(start.getTime() + 7 * 86400000);
     diaryEntries.forEach(e => {
         const t = new Date(e.date);
-        if (t >= start && t < weekEnd && e.triggers) {
-            e.triggers.forEach(x => trig[x] = (trig[x] || 0) + 1);
-        }
+        if (t >= start && t < weekEnd && e.triggers) e.triggers.forEach(x => trig[x] = (trig[x] || 0) + 1);
     });
     const top = Object.entries(trig).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
-    box.innerHTML = `
-        <h3 class="story-title">Настроение на прошлой неделе</h3>
+
+    box.innerHTML = `${title}
         <div style="position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 6px;margin:22px 0 10px;">
             <div style="position:absolute;top:22px;left:26px;right:26px;height:4px;border-radius:2px;background:${gradient};z-index:1;"></div>
             ${cells}
         </div>
-        <p class="story-caption">Среднее за неделю: <strong>${weekAvg.toFixed(1)}</strong> ${getMoodSvg(getEmojiByScore(weekAvg), 18)}</p>
-        ${top.length ? `<p class="story-sub" style="margin-top:6px;">чаще всего влияли: ${top.map(escapeHtml).join(', ')}</p>` : ''}`;
+        <p class="story-caption">${I18N.t('story.weekAvg')} <strong>${weekAvg.toFixed(1)}</strong> ${getMoodSvg(getEmojiByScore(weekAvg), 18)}</p>
+        ${top.length ? `<p class="story-sub" style="margin-top:6px;">${I18N.t('story.topTriggers')} ${escapeHtml(top.map(x => I18N.triggerLabel(x)).join(', '))}</p>` : ''}`;
 }
 
 // === СТОРИС 3: СРАВНЕНИЕ МЕСЯЦЕВ ===
@@ -5274,7 +5288,7 @@ function animateMonthCompare() {
         const score = document.getElementById('mc-score-' + suffix);
         const label = document.getElementById('mc-label-' + suffix);
         if (!bar || !emoji || !score || !label) return;
-        label.textContent = dateObj.toLocaleDateString('ru-RU', { month: 'long' });
+        label.textContent = I18N.fmtDate(dateObj, { month: 'long' });
         bar.style.transition = 'none';
         emoji.style.transition = 'none';
         score.style.transition = 'none';
@@ -5284,7 +5298,7 @@ function animateMonthCompare() {
         if (avg === null) {
             bar.style.background = '#2d3945';
             emoji.innerHTML = '<span style="color:#6d7a86;font-size:1.2em;line-height:34px;display:inline-block;">—</span>';
-            score.textContent = 'нет данных';
+            score.textContent = I18N.t('story.noData');
             score.style.fontSize = '.62em';
         } else {
             const c = storyMoodColor(avg);
@@ -5310,14 +5324,19 @@ function animateMonthCompare() {
     const cap = document.getElementById('mc-caption');
     if (!cap) return;
     if (prevAvg === null || curAvg === null) {
-        cap.textContent = 'Пока мало данных для сравнения — веди дневник оба месяца.';
+        cap.textContent = I18N.t('story.compareEmpty');
     } else {
         const diff = curAvg - prevAvg;
-        const curName = now.toLocaleDateString('ru-RU', { month: 'long' });
-        const prevName = prevDate.toLocaleDateString('ru-RU', { month: 'long' });
-        if (Math.abs(diff) < 0.15) cap.textContent = `${curName} и ${prevName} — примерно одинаковое настроение.`;
-        else if (diff > 0) cap.innerHTML = `${curName} лучше, чем ${prevName}, на <strong>${diff.toFixed(1)}</strong> балла ${getMoodSvg(getEmojiByScore(curAvg), 18)}`;
-        else cap.innerHTML = `${curName} пока ниже, чем ${prevName}, на <strong>${Math.abs(diff).toFixed(1)}</strong> балла`;
+        const curName = I18N.fmtDate(now, { month: 'long' });
+        const prevName = I18N.fmtDate(prevDate, { month: 'long' });
+        const points = (v) => I18N.plural(Math.abs(v), 'unit.point', { n: Math.abs(v).toFixed(1) });
+        if (Math.abs(diff) < 0.15) {
+            cap.textContent = I18N.t('story.compareSame', { a: curName, b: prevName });
+        } else if (diff > 0) {
+            cap.innerHTML = `${I18N.t('story.compareBetter', { a: curName, b: prevName })} <strong>${points(diff)}</strong> ${getMoodSvg(getEmojiByScore(curAvg), 18)}`;
+        } else {
+            cap.innerHTML = `${I18N.t('story.compareLower', { a: curName, b: prevName })} <strong>${points(diff)}</strong>`;
+        }
     }
 }
 
@@ -5329,16 +5348,15 @@ function openNostalgiaModal() {
     const list = document.getElementById('nostalgia-list');
     const mem = getNostalgiaEntries();
     if (!mem.length) {
-        list.innerHTML = '<p class="nostalgia-empty">Ностальгии пока нет.<br>Записи, сделанные в этот день в прошлые годы, появятся здесь.</p>';
+        list.innerHTML = `<p class="nostalgia-empty">${I18N.t('nostalgia.empty1')}<br>${I18N.t('nostalgia.empty2')}</p>`;
     } else {
         list.innerHTML = mem.map(e => {
             const t = getPlainTextFromHTML(e.content || '');
             const years = new Date().getFullYear() - new Date(e.date).getFullYear();
-            const label = years === 1 ? 'год' : years < 5 ? 'года' : 'лет';
             return `<button class="nostalgia-row" type="button" data-entry-id="${e.id}">
-                <span class="nostalgia-years">${years} ${label} назад</span>
+                <span class="nostalgia-years">${I18N.plural(years, 'unit.year')} ${I18N.t('nostalgia.ago')}</span>
                 <span class="nostalgia-mood">${getMoodSvg(e.mood, 22)}</span>
-                <span class="nostalgia-text">${escapeHtml(t ? t.slice(0, 110) : (e.title || '(без текста)'))}</span>
+                <span class="nostalgia-text">${escapeHtml(t ? t.slice(0, 110) : (e.title || I18N.t('nostalgia.noText')))}</span>
             </button>`;
         }).join('');
     }
@@ -5575,6 +5593,10 @@ function getAvailableIcons(exceptId = null) {
 function triggerKey(t) { return `${t.icon} ${t.name}`; }
 
 function startTriggersFlow(mood) {
+    if (window.DiarySettings && !window.DiarySettings.triggersEnabled) {
+        openEntryForm(null, mood, []);
+        return;
+    }
     pendingNewMood = mood;
     openTriggersModal('new');
 }
@@ -5606,7 +5628,6 @@ function syncTriggersNav() {
 function renderTriggersGroups() {
     const box = document.getElementById('triggers-groups-container');
     if (!box) return;
-    const addTitle = escapeHtml(I18N.t('trig.add'));
     box.innerHTML = `<p class="triggers-hint">${I18N.t('trig.hint')}</p>` +
         triggerCatalog.map((g, gi) => `
         <section class="trigger-group">
@@ -5617,7 +5638,7 @@ function renderTriggersGroups() {
                     const active = triggersSelection.includes(key) ? ' active' : '';
                     return `<button type="button" class="trigger-chip${active}" data-id="${t.id}" data-trigger="${escapeHtml(key)}">${t.icon} ${escapeHtml(I18N.triggerLabel(t.name))}</button>`;
                 }).join('')}
-                ${gi === triggerCatalog.length - 1 ? `<button type="button" class="trigger-add-btn" title="${addTitle}">${NAV_ICONS.plus}</button>` : ''}
+                ${gi === triggerCatalog.length - 1 ? `<button type="button" class="trigger-add-btn" title="${escapeHtml(I18N.t('trig.add'))}" aria-label="${escapeHtml(I18N.t('trig.add'))}">${NAV_ICONS.plus}</button>` : ''}
             </div>
         </section>`).join('');
 }
@@ -5885,7 +5906,7 @@ let pixelYear = new Date().getFullYear();
 let pixelSelectedKey = null;
 let pixelDayMap = {};
 let statsModeBeforePixel = 'deep';
-const PIXEL_MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const PIXEL_MONTHS = ['month.short.jan','month.short.feb','month.short.mar','month.short.apr','month.short.may','month.short.jun','month.short.jul','month.short.aug','month.short.sep','month.short.oct','month.short.nov','month.short.dec'];
 
 function pixelLevel(score) {
     if (score <= 2) return 1;
@@ -5946,7 +5967,7 @@ function renderPixelGrid() {
     const daysInYear = new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
 
     monthsRow.innerHTML = '<span class="pixel-corner"></span>' +
-        PIXEL_MONTHS.map(m => `<span class="pixel-month-label">${m}</span>`).join('');
+        PIXEL_MONTHS.map(k => `<span class="pixel-month-label">${I18N.t(k)}</span>`).join('');
 
     let html = '';
     for (let day = 1; day <= 31; day++) {
@@ -5961,12 +5982,11 @@ function renderPixelGrid() {
             const selCls = key === pixelSelectedKey ? ' selected' : '';
             const delay = (day - 1) * 12;
             const pretty = formatPrettyDate(key);
-            if (score !== null) {
-                const label = `${pretty}, настроение ${score.toFixed(1)}`;
-                html += `<button type="button" class="pixel-cell pixel-level-${pixelLevel(score)}${todayCls}${selCls}" data-key="${key}" style="--d:${delay}ms" title="${label}" aria-label="${label}"></button>`;
-            } else {
-                html += `<button type="button" class="pixel-cell pixel-empty${todayCls}${selCls}" data-key="${key}" style="--d:${delay}ms" title="${pretty}: нет записей" aria-label="${pretty}, нет записей"></button>`;
-            }
+            const label = score !== null
+                ? I18N.t('pixel.cellMood', { date: pretty, score: score.toFixed(1) })
+                : I18N.t('pixel.cellEmpty', { date: pretty });
+            const cls = score !== null ? 'pixel-level-' + pixelLevel(score) : 'pixel-empty';
+            html += `<button type="button" class="pixel-cell ${cls}${todayCls}${selCls}" data-key="${key}" style="--d:${delay}ms" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></button>`;
         }
     }
     body.innerHTML = html;
@@ -5982,8 +6002,8 @@ function renderPixelGrid() {
     document.getElementById('pixel-bar-neu').style.width = pct(neu) + '%';
     document.getElementById('pixel-bar-neg').style.width = pct(neg) + '%';
     document.getElementById('pixel-summary-total').innerHTML = filled
-        ? `Заполнено <strong>${filled}</strong> из ${daysInYear} дней · ${Math.round(filled / daysInYear * 100)}% года`
-        : 'В этом году пока нет записей — сетка оживёт с первой записью';
+        ? `${I18N.t('pixel.filledLabel')} <strong>${filled}</strong> ${I18N.t('pixel.filledRest', { total: daysInYear, p: Math.round(filled / daysInYear * 100) })}`
+        : I18N.t('pixel.yearEmpty');
     updatePixelInspector();
 }
 
@@ -5999,11 +6019,11 @@ function updatePixelInspector() {
     if (es && es.length) {
         const s = calculateSmartDayScore(es);
         moodEl.innerHTML = getMoodSvg(getEmojiByScore(s), 22);
-        metaEl.textContent = `${s.toFixed(1)} · ${es.length} ${pixelPlural(es.length, ['запись', 'записи', 'записей'])}`;
+        metaEl.textContent = `${s.toFixed(1)} · ${I18N.plural(es.length, 'unit.entry')}`;
         openBtn.classList.remove('hidden');
     } else {
         moodEl.innerHTML = '';
-        metaEl.textContent = 'нет записей';
+        metaEl.textContent = I18N.t('pixel.noEntries');
         openBtn.classList.add('hidden');
     }
     box.classList.remove('hidden');
@@ -6067,6 +6087,22 @@ function syncThemeColor() {
 }
 
 
+function virtualizeEntriesList() {
+    const list = document.getElementById('entries-list');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Загружаем контент карточки
+                loadEntryCard(entry.target);
+            }
+        });
+    }, { rootMargin: '100px' });
+    
+    document.querySelectorAll('.entry-card').forEach(card => {
+        observer.observe(card);
+    });
+}
+
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {
@@ -6075,7 +6111,7 @@ async function initApp() {
         console.log('IndexedDB инициализирована');
     } catch (error) {
         console.error('Не удалось инициализировать IndexedDB:', error);
-        showToast('Ошибка хранилища данных', 'error');
+        showToast(I18N.t('storage.error'), 'error');
         return;
     }
     preloadMoodImages();
@@ -6170,250 +6206,17 @@ initApp();
         back: `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 8 8 12 12 16"></polyline><line x1="16" y1="12" x2="8" y2="12"></line></svg>`
     };
 
-    // ---------- СЛОВАРЬ ----------
-    const EN = {
-        'Меню': 'Menu', 'Записи': 'Entries', 'Статистика': 'Statistics', 'Календарь': 'Calendar',
-        'Настройки': 'Settings', 'Уведомления': 'Notifications', 'Триггеры': 'Triggers', 'Язык': 'Language',
-        'Сортировать записи по...': 'Sort entries by...', '📅 Дате создания': '📅 Date created',
-        '🕒 Дате изменения': '🕒 Date modified', 'Тема': 'Theme', '☀️ Светлая': '☀️ Light',
-        '🌙 Тёмная': '🌙 Dark', '🌸 Пастельная': '🌸 Pastel', '🌊 Мягкая голубая': '🌊 Soft blue',
-        'Следующие темы скоро...': 'More themes coming soon...', 'Настроение': 'Mood',
-        'Избранные': 'Favorites', 'Теги': 'Tags', 'Экспорт / Импорт': 'Export / Import',
-        '📤 Экспорт в JSON': '📤 Export to JSON', '📥 Импорт из JSON': '📥 Import from JSON',
-        '📝 Экспорт в Markdown': '📝 Export to Markdown', 'PIN-код': 'PIN code',
-        '🔒 Создать PIN-код': '🔒 Create PIN code', '🔓 Сбросить PIN-код': '🔓 Reset PIN code',
-        'Мой дневник': 'My diary', '← Назад к статистике': '← Back to statistics',
-        '3 сторис о настроении': '3 mood stories', 'Ностальгия': 'Nostalgia',
-        'ностальгии пока нет': 'no memories yet', 'Мои записи': 'My entries',
-        'Как прошел ваш день?': 'How was your day?', 'Что повлияло на настроение?': 'What affected your mood?',
-        'Что повлияло?': 'What affected you?', 'Сегодня': 'Today', 'Вчера': 'Yesterday',
-        'Шрифт': 'Font', 'Список': 'List', 'Таблица': 'Table', 'Фон записи': 'Entry background',
-        '🗑️ Удалить': '🗑️ Delete', 'Вы уверены?': 'Are you sure?', 'Отмена': 'Cancel', 'Да': 'Yes',
-        'Все теги': 'All tags', 'Нажмите на тег, чтобы увидеть записи': 'Tap a tag to see entries',
-        '🔐 Введите PIN-код': '🔐 Enter PIN code', '🔐 Установите PIN-код': '🔐 Set PIN code',
-        '🔐 Подтвердите PIN': '🔐 Confirm PIN', 'Придумайте 4-значный код': 'Come up with a 4-digit code',
-        'Повторите код ещё раз': 'Enter the code again', 'Пропустить': 'Skip',
-        'Неверный PIN-код': 'Wrong PIN code', 'Коды не совпадают. Попробуйте снова': 'Codes do not match. Try again',
-        'PIN-код установлен': 'PIN code set', 'PIN-код сброшен': 'PIN code reset',
-        '👋 Давно не виделись!': '👋 Long time no see!', 'Позже': 'Later', 'Написать': 'Write',
-        'Глубокая статистика': 'Deep statistics', 'Обычная статистика': 'Basic statistics',
-        'Обычная': 'Basic', 'Глубокая': 'Deep', 'Линия': 'Line', 'Гистограмма': 'Bars',
-        'За всё время': 'All time', 'За месяц': 'This month', 'За неделю': 'This week',
-        'За текущий месяц': 'Current month', 'Частота эмоций': 'Emotion frequency', 'Распределение': 'Distribution',
-        'Настроение по дням недели': 'Mood by weekday', 'Все триггеры': 'All triggers',
-        'Нажми чтобы узнать подробнее о триггерах': 'Tap to learn more about triggers',
-        'Что радует': 'What lifts you up', 'Что тревожит': 'What brings you down',
-        '📝 Выберите шаблон': '📝 Choose a template', '🙏 Благодарности дня': '🙏 Daily gratitude',
-        'За что я благодарен сегодня?': 'What am I grateful for today?', '📊 Итоги дня': '📊 Day summary',
-        'Что получилось? Что улучшить?': 'What worked? What to improve?',
-        '💡 Идеи на будущее': '💡 Ideas for the future', 'Мысли, планы, мечты': 'Thoughts, plans, dreams',
-        '📄 Пустой шаблон': '📄 Blank template', 'Начать с чистого листа': 'Start from scratch',
-        'Добавить триггер': 'Add trigger', 'Группа': 'Group', 'Выбрать группу': 'Choose group',
-        'Иконка': 'Icon', 'Выбрать иконку': 'Choose icon', 'Сохранить': 'Save',
-        'Изменить триггер': 'Edit trigger', 'Удалить триггер': 'Delete trigger',
-        'Пиксельная сетка года': 'Year in pixels', '365 дней настроения одним взглядом': '365 days of mood at a glance',
-        'Открыть день': 'Open day', 'Позитивных': 'Positive', 'Нейтральных': 'Neutral', 'Негативных': 'Negative',
-        'Удалить': 'Delete', '✕ Отмена': '✕ Cancel',
-        'Лучшее за неделю': 'Best this week', 'Худшее за неделю': 'Worst this week',
-        'Самое частое настроение': 'Most frequent mood', 'Среднее за 7 дней': '7-day average',
-        'Среднее за 30 дней': '30-day average', 'Среднее за всё время': 'All-time average',
-        'Дней с записями': 'Days with entries', 'Всего записей': 'Total entries', 'Первая запись': 'First entry',
-        'Самая длинная полоса хорошего настроения': 'Longest good-mood streak',
-        'Настроение на прошлой неделе': 'Last week mood', 'Инсайты месяца': 'Month insights',
-        'График настроений': 'Mood chart', 'Сравнение месяцев': 'Month comparison',
-        'среднее настроение по дням': 'average mood by day', 'свайп · удержание = пауза': 'swipe · hold to pause',
-        'Запись сохранена': 'Entry saved', 'Запись обновлена': 'Entry updated', 'Запись удалена': 'Entry deleted',
-        'Настроение сохранено': 'Mood saved', 'Пустая запись удалена': 'Empty entry deleted',
-        'Не удалось сохранить запись': 'Could not save the entry', 'Ничего не найдено': 'Nothing found',
-        'В этот день записей нет': 'No entries on this day',
-        'Пока нет записей. Нажмите +, чтобы начать!': 'No entries yet. Tap + to start!',
-        'Пока нет записей.': 'No entries yet.', 'Начните вести дневник!': 'Start your diary!',
-        'Пока нет ни одного тега.': 'No tags yet.', 'Добавьте #тег в текст записи!': 'Add a #tag to an entry!',
-        'Пока нет записей с триггерами.': 'No entries with triggers yet.',
-        'В этом месяце пока нет записей': 'No entries this month yet',
-        'В этом месяце пока нет записей.': 'No entries this month yet.',
-        'Пока нет непрерывной полосы хорошего настроения.': 'No continuous good-mood streak yet.',
-        'Недостаточно данных для анализа.': 'Not enough data to analyse.',
-        '✨ Больше всего радости:': '✨ Brings the most joy:',
-        '⚠️ Чаще всего портит настроение:': '⚠️ Most often spoils the mood:',
-        'Среднее настроение за неделю:': 'Average mood for the week:',
-        'Чаще всего влияли:': 'Most influential:', 'чаще всего влияли:': 'most influential:',
-        'Ведите дневник хотя бы 3 дня в неделю, чтобы видеть результаты.': 'Keep the diary at least 3 days a week to see results.',
-        'Веди дневник хотя бы 3 дня в неделю,': 'Keep the diary at least 3 days a week',
-        'чтобы увидеть картину недели.': 'to see the whole week.',
-        'Пока мало данных для сравнения.': 'Not enough data to compare.',
-        'Пока мало данных для сравнения — веди дневник оба месяца.': 'Not enough data — keep the diary in both months.',
-        'Добавь запись — и график оживёт': 'Add an entry and the chart comes alive',
-        'Напоминание сработает': 'Next reminder',
-        'Сортировка: по дате создания': 'Sorted by date created',
-        'Сортировка: по дате изменения': 'Sorted by date modified',
-        'Сначала выделите текст, который хотите покрасить': 'Select the text you want to colour first',
-        'Списки нельзя применять внутри таблицы': 'Lists cannot be used inside a table',
-        'Таблица удалена': 'Table deleted', 'Курсор не в таблице': 'Cursor is not inside a table',
-        'Ностальгии пока нет.': 'No memories yet.',
-        'Записи, сделанные в этот день в прошлые годы, появятся здесь.': 'Entries written on this day in previous years will appear here.',
-        'Пн': 'Mon', 'Вт': 'Tue', 'Ср': 'Wed', 'Чт': 'Thu', 'Пт': 'Fri', 'Сб': 'Sat', 'Вс': 'Sun',
-        'Как твой день?': 'How was your day?', 'Страницы': 'Pages',
-        'Одно касание — и настроение отмечено': 'One tap and your mood is logged',
-        'Ежедневное напоминание': 'Daily reminder', 'Время': 'Time',
-        'Когда присылать напоминание': 'When to send the reminder', 'Дни недели': 'Days of the week',
-        'Разрешение системы': 'System permission', 'Разрешить уведомления': 'Allow notifications',
-        'Проверить уведомление': 'Send a test notification', 'Пришлёт тестовое прямо сейчас': 'Sends one right now',
-        'Спрашивать, что повлияло на настроение': 'Ask what affected your mood',
-        'Настройки хранятся только на этом устройстве': 'Settings are stored only on this device',
-        'Язык меняет интерфейс приложения. Текст ваших записей остаётся нетронутым.': 'Language changes the app interface. Your entries stay untouched.',
-        'Выключены': 'Off', 'Разрешение получено': 'Permission granted',
-        'Разрешение не запрошено': 'Permission not requested',
-        'Уведомления запрещены в настройках браузера': 'Notifications blocked in browser settings',
-        'Уведомления запрещены в настройках системы': 'Notifications blocked in system settings',
-        'Браузер не поддерживает уведомления': 'This browser does not support notifications',
-        'Выберите хотя бы один день': 'Pick at least one day',
-        'Уведомления включены': 'Notifications on', 'Уведомления выключены': 'Notifications off',
-        'Триггеры включены': 'Triggers on', 'Триггеры выключены': 'Triggers off',
-        'Тестовое уведомление отправлено': 'Test notification sent',
-        'Сначала разрешите уведомления': 'Allow notifications first',
-        'Язык изменён': 'Language changed', 'нет данных': 'no data',
-        'Записей за месяц: 0': 'Entries this month: 0',
-        'Веб-режим': 'Web mode', 'Нативный режим': 'Native mode',
-        'Напоминание приходит, пока приложение открыто. В сборке через Capacitor расписание станет системным автоматически — этот экран менять не придётся.': 'The reminder fires while the app is open. In a Capacitor build the schedule becomes system-level automatically — this screen needs no changes.',
-        'Расписание зарегистрировано в системе: напоминания придут и при закрытом приложении.': 'The schedule is registered with the system: reminders arrive even when the app is closed.',
-        'каждый день': 'every day'
-    };
-    const EN_PREFIX = [
-        ['🌟 Лучший день:', '🌟 Best day:'], ['⚠️ Худший день:', '⚠️ Worst day:'],
-        ['Среднее:', 'Average:'], ['Записей:', 'Entries:'], ['Дней:', 'Days:'],
-        ['Всего записей:', 'Total entries:'], ['Записей за месяц:', 'Entries this month:'],
-        ['Вы пишете ', 'You have been writing '], ['Удалено:', 'Deleted:'],
-        ['Экспортировано записей:', 'Entries exported:'], ['Импортировано:', 'Imported:'],
-        ['Показаны записи:', 'Showing entries:'], ['Триггер:', 'Trigger:'],
-        ['Тег:', 'Tag:'], ['Настроение:', 'Mood:']
-    ];
-    const EN_ATTR = {
-        'Поиск по записям...': 'Search entries...', 'Оглавление (необязательно)': 'Title (optional)',
-        'О чем вы хотите написать?': 'What would you like to write about?', 'Добавить имя': 'Add name',
-        'Поиск': 'Search', 'Закрыть фильтр': 'Clear filter', 'Сохранить': 'Save', 'Отмена': 'Cancel',
-        'В избранное': 'Favorite', 'Удалить запись': 'Delete entry', 'Редактировать': 'Edit',
-        'Предыдущая запись': 'Previous entry', 'Следующая запись': 'Next entry', 'Назад': 'Back',
-        'Меню': 'Menu', 'Новая запись': 'New entry', 'Статистика': 'Statistics', 'Календарь': 'Calendar',
-        'Записи': 'Entries', 'Выбрать период': 'Choose period', 'Закрыть': 'Close',
-        'Сортировка записей': 'Sort entries', 'Триггеры': 'Triggers', 'Уведомления': 'Notifications',
-        'Предыдущий год': 'Previous year', 'Следующий год': 'Next year', 'Показать все': 'Show all'
-    };
-    const ATTR_PAIRS = [
-        ['placeholder', 'data-ds-orig-placeholder'],
-        ['title', 'data-ds-orig-title'],
-        ['data-placeholder', 'data-ds-orig-data-placeholder']
-    ];
-    const SKIP_SELECTOR = '#entry-text, #entry-title, .entry-text, .entry-title, .nostalgia-text, .insight-content';
-
-    const originals = new Map();
-    let translating = false;
-
-    function translateText(value) {
-        const key = value.trim();
-        if (!key) return null;
-        if (EN[key]) return value.replace(key, EN[key]);
-        for (const [ru, en] of EN_PREFIX) if (key.startsWith(ru)) return value.replace(ru, en);
-        return null;
-    }
-
-    function translateTree(root) {
-        if (state.lang !== 'en' || !root) return;
-        translating = true;
-        try {
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-                acceptNode(node) {
-                    const p = node.parentElement;
-                    if (!p) return NodeFilter.FILTER_REJECT;
-                    if (['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(p.tagName)) return NodeFilter.FILTER_REJECT;
-                    if (p.closest(SKIP_SELECTOR) || p.closest('[data-ds-skip]')) return NodeFilter.FILTER_REJECT;
-                    if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-                    return NodeFilter.FILTER_ACCEPT;
-                }
-            });
-            const nodes = [];
-            while (walker.nextNode()) nodes.push(walker.currentNode);
-            nodes.forEach(node => {
-                const next = translateText(node.nodeValue);
-                if (next !== null && next !== node.nodeValue) {
-                    if (!originals.has(node)) originals.set(node, node.nodeValue);
-                    node.nodeValue = next;
-                }
-            });
-            root.querySelectorAll('[placeholder],[title],[data-placeholder]').forEach(el => {
-                if (el.closest('[data-ds-skip]')) return;
-                ATTR_PAIRS.forEach(([attr, store]) => {
-                    const val = el.getAttribute(attr);
-                    if (!val) return;
-                    const key = val.trim();
-                    const tr = EN_ATTR[key] || EN[key];
-                    if (!tr) return;
-                    if (!el.hasAttribute(store)) el.setAttribute(store, val);
-                    el.setAttribute(attr, tr);
-                });
-            });
-        } finally { translating = false; }
-    }
-
-    function restoreTree() {
-        originals.forEach((value, node) => { if (node.isConnected) node.nodeValue = value; });
-        originals.clear();
-        document.querySelectorAll('[data-ds-orig-placeholder],[data-ds-orig-title],[data-ds-orig-data-placeholder]').forEach(el => {
-            ATTR_PAIRS.forEach(([attr, store]) => {
-                const orig = el.getAttribute(store);
-                if (orig !== null) { el.setAttribute(attr, orig); el.removeAttribute(store); }
-            });
-        });
-    }
-
-    const t = ru => (state.lang === 'en' ? (EN[ru] || ru) : ru);
-
-    const _toLocaleDate = Date.prototype.toLocaleDateString;
-    const _toLocaleTime = Date.prototype.toLocaleTimeString;
-    Date.prototype.toLocaleDateString = function (locales, options) {
-        return _toLocaleDate.call(this, state.lang === 'en' ? 'en-GB' : locales, options);
-    };
-    Date.prototype.toLocaleTimeString = function (locales, options) {
-        return _toLocaleTime.call(this, state.lang === 'en' ? 'en-GB' : locales, options);
-    };
-    if (window.CanvasRenderingContext2D) {
-        const _fillText = CanvasRenderingContext2D.prototype.fillText;
-        CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
-            let s = String(text);
-            if (state.lang === 'en') s = translateText(s) || s;
-            return maxWidth === undefined ? _fillText.call(this, s, x, y) : _fillText.call(this, s, x, y, maxWidth);
-        };
-    }
-
-    let treeObserver = null, rafId = null;
-    function observeTree() {
-        if (treeObserver) treeObserver.disconnect();
-        if (state.lang !== 'en') { treeObserver = null; return; }
-        treeObserver = new MutationObserver(() => {
-            if (translating || rafId) return;
-            rafId = requestAnimationFrame(() => { rafId = null; translateTree(document.body); });
-        });
-        treeObserver.observe(document.body, { childList: true, subtree: true });
-    }
+    // ---------- ЯЗЫК: тонкая обёртка над I18N ----------
+    const t = (key) => window.I18N.t(key);
 
     function applyLanguage(lang, announce) {
-        if (window.I18N) window.I18N.setLang(lang); // новый движок: статика на ключах
-        state.lang = lang === 'en' ? 'en' : 'ru';
+        state.lang = window.I18N.languages.includes(lang) ? lang : 'ru';
         write(KEYS.lang, state.lang);
-        document.documentElement.lang = state.lang;
-        if (treeObserver) { treeObserver.disconnect(); treeObserver = null; }
-        restoreTree();
+        window.I18N.setLang(state.lang); // статика + событие app:langchange
         renderLanguage();
         renderSettingsSubs();
-        if (state.lang === 'en') translateTree(document.body);
-        observeTree();
         renderNotifications();
-        if (typeof window.renderEntries === 'function') window.renderEntries();
-        if (typeof window.renderCalendar === 'function') window.renderCalendar();
-        if (typeof window.updateProgressCard === 'function') window.updateProgressCard();
-        if (typeof window.refreshStatsChart === 'function') window.refreshStatsChart();
-        if (state.lang === 'en') requestAnimationFrame(() => translateTree(document.body));
-        if (announce && typeof window.showToast === 'function') window.showToast(t('Язык изменён'), 'success');
+        if (announce && typeof window.showToast === 'function') showToast(t('language.changed'), 'success');
     }
 
     // ---------- УВЕДОМЛЕНИЯ: веб сейчас, Capacitor без переделок ----------
@@ -6423,7 +6226,7 @@ initApp();
     let webTimer = null;
     const MAX_TIMEOUT = 2147483647;
     const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-    const DAY_RU = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Вс' };
+    const DAY_KEY = { 1: 'day.mon', 2: 'day.tue', 3: 'day.wed', 4: 'day.thu', 5: 'day.fri', 6: 'day.sat', 0: 'day.sun' };
     const NOTIF_ID_BASE = 4100;
 
     function permState() {
@@ -6465,7 +6268,7 @@ initApp();
     }
 
     function notifPayload() {
-        return { title: t('Страницы'), body: t('Как твой день?') };
+        return { title: t('app.brand'), body: t('notif.heroTitle') };
     }
 
     async function pushNow() {
@@ -6548,7 +6351,7 @@ initApp();
                     const i = state.notif.days.indexOf(d);
                     if (i === -1) state.notif.days.push(d);
                     else if (state.notif.days.length > 1) state.notif.days.splice(i, 1);
-                    else { if (typeof window.showToast === 'function') window.showToast(t('Выберите хотя бы один день'), 'info'); return; }
+                    else { if (typeof window.showToast === 'function') window.showToast(t('notif.pickDay'), 'info'); return; }
                     saveNotif();
                 });
                 daysBox.appendChild(b);
@@ -6557,7 +6360,7 @@ initApp();
         if (daysBox) {
             daysBox.querySelectorAll('.ds-day').forEach(b => {
                 const d = Number(b.dataset.day);
-                b.textContent = t(DAY_RU[d]);
+                b.textContent = t(DAY_KEY[d]);
                 b.classList.toggle('active', state.notif.days.includes(d));
             });
         }
@@ -6567,21 +6370,21 @@ initApp();
         const p = permState();
         if (permSub) {
             permSub.classList.remove('ds-perm-ok', 'ds-perm-bad');
-            if (p === 'granted') { permSub.textContent = t('Разрешение получено'); permSub.classList.add('ds-perm-ok'); }
-            else if (p === 'denied') { permSub.textContent = t(isNative ? 'Уведомления запрещены в настройках системы' : 'Уведомления запрещены в настройках браузера'); permSub.classList.add('ds-perm-bad'); }
-            else if (p === 'unsupported') { permSub.textContent = t('Браузер не поддерживает уведомления'); permSub.classList.add('ds-perm-bad'); }
-            else { permSub.textContent = t('Разрешение не запрошено'); }
+            if (p === 'granted') { permSub.textContent = t('notif.permGranted'); permSub.classList.add('ds-perm-ok'); }
+            else if (p === 'denied') { permSub.textContent = t(isNative ? 'notif.permDeniedSystem' : 'notif.permDeniedBrowser'); permSub.classList.add('ds-perm-bad'); }
+            else if (p === 'unsupported') { permSub.textContent = t('notif.unsupported'); permSub.classList.add('ds-perm-bad'); }
+            else { permSub.textContent = t('notif.permDefault'); }
         }
         if (permBtn) permBtn.classList.toggle('hidden', p === 'granted' || p === 'unsupported');
 
         const nextSub = $('notif-next-sub');
         if (nextSub) {
-            if (!state.notif.enabled) nextSub.textContent = t('Выключены');
+            if (!state.notif.enabled) nextSub.textContent = t('common.off');
             else {
                 const next = nextOccurrence();
                 nextSub.textContent = next
-                    ? `${t('Напоминание сработает')} · ${next.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${state.notif.time}`
-                    : t('Выберите хотя бы один день');
+                    ? `${t('notif.next')} · ${window.I18N.fmtDate(next, { day: 'numeric', month: 'short' })}, ${state.notif.time}`
+                    : t('notif.pickDay');
             }
         }
 
@@ -6589,23 +6392,19 @@ initApp();
         const bTitle = $('notif-engine-title');
         const bSub = $('notif-engine-sub');
         if (bridge) bridge.classList.toggle('native', isNative);
-        if (bTitle) bTitle.textContent = t(isNative ? 'Нативный режим' : 'Веб-режим');
-        if (bSub) bSub.textContent = t(isNative
-            ? 'Расписание зарегистрировано в системе: напоминания придут и при закрытом приложении.'
-            : 'Напоминание приходит, пока приложение открыто. В сборке через Capacitor расписание станет системным автоматически — этот экран менять не придётся.');
+        if (bTitle) bTitle.textContent = t(isNative ? 'notif.nativeMode' : 'notif.webMode');
+        if (bSub) bSub.textContent = t(isNative ? 'notif.nativeSub' : 'notif.webSub');
     }
 
     function renderSettingsSubs() {
-        const T = window.I18N ? window.I18N.t : t;
-        const DAY_KEY = { 1: 'day.mon', 2: 'day.tue', 3: 'day.wed', 4: 'day.thu', 5: 'day.fri', 6: 'day.sat', 0: 'day.sun' };
         const nSub = $('settings-notif-sub');
         if (nSub) {
             nSub.textContent = state.notif.enabled
-                ? `${state.notif.time} · ${state.notif.days.length === 7 ? T('settings.everyday') : DAY_ORDER.filter(d => state.notif.days.includes(d)).map(d => T(DAY_KEY[d])).join(', ')}`
-                : T('common.off');
+                ? `${state.notif.time} · ${state.notif.days.length === 7 ? t('settings.everyday') : DAY_ORDER.filter(d => state.notif.days.includes(d)).map(d => t(DAY_KEY[d])).join(', ')}`
+                : t('common.off');
         }
         const lSub = $('settings-lang-sub');
-        if (lSub) lSub.textContent = state.lang === 'en' ? 'English' : 'Русский';
+        if (lSub) lSub.textContent = ({ ru: 'Русский', en: 'English', fr: 'Français' })[state.lang] || 'Русский';
     }
 
     function renderLanguage() {
@@ -6616,29 +6415,6 @@ initApp();
         });
     }
 
-    // ---------- ТРИГГЕРЫ ----------
-    let manualTriggersUntil = 0;
-    let skippingTriggers = false;
-
-    function watchTriggersModal() {
-        const modal = $('triggers-modal');
-        if (!modal) return;
-        new MutationObserver(() => {
-            if (state.triggers) return;
-            if (modal.classList.contains('hidden')) return;
-            if (Date.now() < manualTriggersUntil) return;
-            if (skippingTriggers) return;
-            skippingTriggers = true;
-            requestAnimationFrame(() => {
-                const save = $('triggers-save-btn');
-                if (save) save.click();
-                setTimeout(() => {
-                    if (!modal.classList.contains('hidden')) modal.classList.add('hidden');
-                    skippingTriggers = false;
-                }, 80);
-            });
-        }).observe(modal, { attributes: true, attributeFilter: ['class'] });
-    }
 
     // ---------- НАВИГАЦИЯ ----------
     const open = id => { const m = $(id); if (m) m.classList.remove('hidden'); };
@@ -6648,12 +6424,16 @@ initApp();
         if (typeof window.closeSidebar === 'function') window.closeSidebar();
         renderSettingsSubs();
         open('settings-modal');
-        if (state.lang === 'en') requestAnimationFrame(() => translateTree($('settings-modal')));
+        window.I18N.applyStatic($('settings-modal')); 
+        document.body.classList.add('modal-lock');
     }
+
     function backToSettings(id) { close(id); open('settings-modal'); }
+
     function closeSettings() {
         close('settings-modal');
         if (typeof window.setActiveNav === 'function') window.setActiveNav('nav-entries-btn');
+        document.body.classList.remove('modal-lock');
     }
 
     const bind = (id, handler) => { const el = $(id); if (el) el.onclick = handler; };
@@ -6664,13 +6444,13 @@ initApp();
         close('settings-modal');
         renderNotifications();
         open('notifications-modal');
-        if (state.lang === 'en') requestAnimationFrame(() => translateTree($('notifications-modal')));
+        window.I18N.applyStatic($('notifications-modal'));
     });
     bind('settings-language-btn', () => {
         close('settings-modal');
         renderLanguage();
         open('language-modal');
-        if (state.lang === 'en') requestAnimationFrame(() => translateTree($('language-modal')));
+        window.I18N.applyStatic($('language-modal'));
     });
     bind('close-notifications-btn', () => backToSettings('notifications-modal'));
     bind('close-language-btn', () => backToSettings('language-modal'));
@@ -6686,12 +6466,11 @@ initApp();
         trigToggle.addEventListener('change', () => {
             state.triggers = trigToggle.checked;
             write(KEYS.triggers, state.triggers);
-            if (typeof window.showToast === 'function') window.showToast(t(state.triggers ? 'Триггеры включены' : 'Триггеры выключены'), 'info');
+            if (typeof window.showToast === 'function') window.showToast(t(state.triggers ? 'trig.on' : 'trig.off'), 'info');
         });
     }
 
-    const toolbarTriggers = $('toolbar-triggers-btn');
-    if (toolbarTriggers) toolbarTriggers.addEventListener('click', () => { manualTriggersUntil = Date.now() + 1500; }, true);
+    
 
     const notifToggle = $('notif-enabled-toggle');
     if (notifToggle) {
@@ -6702,16 +6481,16 @@ initApp();
                     notifToggle.checked = false;
                     state.notif.enabled = false;
                     saveNotif();
-                    if (typeof window.showToast === 'function') window.showToast(t('Сначала разрешите уведомления'), 'error');
+                    if (typeof window.showToast === 'function') window.showToast(t('notif.allowFirst'), 'error');
                     return;
                 }
                 state.notif.enabled = true;
                 saveNotif();
-                if (typeof window.showToast === 'function') window.showToast(t('Уведомления включены'), 'success');
+                if (typeof window.showToast === 'function') window.showToast(t('notif.enabled'), 'success');
             } else {
                 state.notif.enabled = false;
                 saveNotif();
-                if (typeof window.showToast === 'function') window.showToast(t('Уведомления выключены'), 'info');
+                if (typeof window.showToast === 'function') window.showToast(t('notif.disabled'), 'info');
             }
         });
     }
@@ -6723,12 +6502,12 @@ initApp();
 
     bind('notif-test-btn', async () => {
         if (permState() !== 'granted') {
-            if (typeof window.showToast === 'function') window.showToast(t('Сначала разрешите уведомления'), 'error');
+            if (typeof window.showToast === 'function') window.showToast(t('notif.allowFirst'), 'error');
             return;
         }
         const ok = await pushNow();
         if (typeof window.showToast === 'function') {
-            window.showToast(ok ? t('Тестовое уведомление отправлено') : t('Браузер не поддерживает уведомления'), ok ? 'success' : 'error');
+            window.showToast(ok ? t('notif.testSent') : t('notif.unsupported'), ok ? 'success' : 'error');
         }
     });
 
@@ -6771,14 +6550,13 @@ initApp();
         get language() { return state.lang; },
         get nativeNotifications() { return isNative; },
         t,
-        allowTriggersOnce() { manualTriggersUntil = Date.now() + 1500; },
+        allowTriggersOnce() {}, // legacy: проверка триггеров теперь в startTriggersFlow
         rescheduleNotifications: syncSchedule,
         openSettings
     };
 
     renderSettingsSubs();
     renderLanguage();
-    watchTriggersModal();
     applyLanguage(state.lang, false);
     refreshPermission().then(() => { renderNotifications(); syncSchedule(); });
 })();

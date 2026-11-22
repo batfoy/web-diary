@@ -148,14 +148,14 @@
             <button class="home-widget widget-stats is-active" id="widget-stats-btn" type="button" aria-expanded="true">
                 <span class="widget-head">
                     <span class="widget-icon" id="icon-widget-stats"></span>
-                    <span class="widget-title">Статистика</span>
+                    <span class="widget-title" data-i18n="stats.title">Статистика</span>
                     <span class="widget-note" id="widget-stats-note">3 сторис о настроении</span>
                 </span>
             </button>
             <button class="home-widget widget-nostalgia" id="widget-nostalgia-btn" type="button" aria-expanded="false">
                 <span class="widget-head">
                     <span class="widget-icon" id="icon-widget-nostalgia"></span>
-                    <span class="widget-title">Ностальгия</span>
+                    <span class="widget-title" data-i18n="nostalgia.title">Ностальгия</span>
                     <span class="widget-note" id="widget-nostalgia-note">ностальгии пока нет</span>
                 </span>
             </button>
@@ -217,8 +217,8 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content fullscreen-content nostalgia-modal-content">
             <div class="entry-modal-header">
-                <button id="close-nostalgia-btn" class="back-btn-icon" title="Назад"><span id="icon-back-nostalgia"></span></button>
-                <h2 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.2em;"><span id="nostalgia-header-icon"></span> Ностальгия</h2>
+                <button id="close-nostalgia-btn" class="back-btn-icon" data-i18n-title="common.back"><span id="icon-back-nostalgia"></span></button>
+                <h2 style="display:flex;align-items:center;gap:8px;margin:0;font-size:1.2em;"><span id="nostalgia-header-icon"></span> <span data-i18n="nostalgia.title">Ностальгия</span></h2>
                 <span style="width:34px;"></span>
             </div>
             <div id="nostalgia-list" class="nostalgia-list"></div>
@@ -405,7 +405,7 @@
                         </div>
                         <div class="list-options-grid">
                             <button class="list-option-btn" data-type="circle" data-i18n-title="toolbar.listCircle">●</button>
-                            <button class="list-option-btn" data-type="asterisk" data-i18n-title="toolbar.listStar>⭐</button>
+                            <button class="list-option-btn" data-type="asterisk" data-i18n-title="toolbar.listStar">⭐</button>
                             <button class="list-option-btn" data-type="heart" data-i18n-title="toolbar.listHeart">❤️</button>
                             <button class="list-option-btn" data-type="thumbs" data-i18n-title="toolbar.listThumb">👌</button>
                             <button class="list-option-btn list-btn-number" data-type="number" data-i18n-title="toolbar.listNumber">123</button>
@@ -604,7 +604,7 @@
         <div class="modal-backdrop stories-backdrop"></div>
         <div class="modal-content stories-content">
             <div class="stories-top">
-                <button id="close-stories-btn" class="stories-close" type="button" title="Закрыть">
+                <button id="close-stories-btn" class="stories-close" type="button" data-i18n-title="common.close">
                     <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
                 <div class="stories-progress" id="stories-progress">
@@ -617,7 +617,7 @@
 
             <div class="stories-stage" id="stories-stage">
                 <section class="story-slide is-active" id="story-slide-1">
-                    <h3 class="story-title">График настроений</h3>
+                    <h3 class="story-title" data-i18n="story.compareTitle">График настроений</h3>
                     <p class="story-sub" id="story-chart-sub">—</p>
                     <canvas id="story-mood-chart"></canvas>
                     <p class="story-caption" id="story-chart-caption">—</p>
@@ -628,8 +628,8 @@
                 </section>
 
                 <section class="story-slide" id="story-slide-3">
-                    <h3 class="story-title">Сравнение месяцев</h3>
-                    <p class="story-sub">среднее настроение по дням</p>
+                    <h3 class="story-title" data-i18n="story.compareTitle">Сравнение месяцев</h3>
+                    <p class="story-sub" data-i18n="story.compareSub">среднее настроение по дням</p>
                     <div class="month-compare">
                         <div class="mc-col">
                             <div class="mc-track">
@@ -653,11 +653,11 @@
             </div>
 
             <div class="stories-nav">
-                <button id="story-prev-btn" class="stories-nav-btn" type="button" title="Назад">
+                <button id="story-prev-btn" class="stories-nav-btn" type="button" data-i18n-title="common.back">
                     <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
-                <span class="stories-hint">свайп · удержание = пауза</span>
-                <button id="story-next-btn" class="stories-nav-btn" type="button" title="Далее">
+                <span class="stories-hint" data-i18n="story.hint">свайп · удержание = пауза</span>
+                <button id="story-next-btn" class="stories-nav-btn" type="button" data-i18n-title="common.next">
                     <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             </div>
@@ -784,14 +784,14 @@
                     <button id="open-pixel-grid-btn" class="pixel-grid-cta" type="button">
                         <span class="pixel-cta-icon">
                             <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-                                <rect class="px1" x="2" y="2" width="6" height="6" rx="1.5"/><rect class="px2" x="9" y="2" width="6" height="6" rx="1.5"/><rect class="px4" x="16" y="2" width="6" height="6" rx="1.5"/>
-                                <rect class="px3" x="2" y="9" width="6" height="6" rx="1.5"/><rect class="px5" x="9" y="9" width="6" height="6" rx="1.5"/><rect class="px2" x="16" y="9" width="6" height="6" rx="1.5"/>
-                                <rect class="px4" x="2" y="16" width="6" height="6" rx="1.5"/><rect class="px1" x="9" y="16" width="6" height="6" rx="1.5"/><rect class="px5" x="16" y="16" width="6" height="6" rx="1.5"/>
+                                <rect class="px1" x="2" y="2" width="6" height="6" rx="1.5"></rect><rect class="px2" x="9" y="2" width="6" height="6" rx="1.5"></rect><rect class="px4" x="16" y="2" width="6" height="6" rx="1.5"></rect>
+                                <rect class="px3" x="2" y="9" width="6" height="6" rx="1.5"></rect><rect class="px5" x="9" y="9" width="6" height="6" rx="1.5"></rect><rect class="px2" x="16" y="9" width="6" height="6" rx="1.5"></rect>
+                                <rect class="px4" x="2" y="16" width="6" height="6" rx="1.5"></rect><rect class="px1" x="9" y="16" width="6" height="6" rx="1.5"></rect><rect class="px5" x="16" y="16" width="6" height="6" rx="1.5"></rect>
                             </svg>
                         </span>
                         <span class="pixel-cta-text">
-                            <span class="pixel-cta-title">Пиксельная сетка года</span>
-                            <span class="pixel-cta-sub">365 дней настроения одним взглядом</span>
+                            <span class="pixel-cta-title" data-i18n="pixel.yearGridTitle">Пиксельная сетка года</span>
+                            <span class="pixel-cta-sub" data-i18n="pixel.yearGridSub">365 дней настроения одним взглядом</span>
                         </span>
                         <span class="pixel-cta-chevron">
                             <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -963,11 +963,11 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content fullscreen-content pixel-grid-content">
             <div class="entry-modal-header">
-                <button id="close-pixel-grid-btn" class="back-btn-icon" title="Назад"><span id="icon-back-pixel"></span></button>
+                <button id="close-pixel-grid-btn" class="back-btn-icon" data-i18n-title="common.back"><span id="icon-back-pixel"></span></button>
                 <div class="pixel-year-switch">
-                    <button id="pixel-prev-year" class="calendar-nav" title="Предыдущий год">‹</button>
+                    <button id="pixel-prev-year" class="calendar-nav" data-i18n-title="pixel.prevYear">‹</button>
                     <h2 id="pixel-year-label">2026</h2>
-                    <button id="pixel-next-year" class="calendar-nav" title="Следующий год">›</button>
+                    <button id="pixel-next-year" class="calendar-nav" data-i18n-title="pixel.nextYear">›</button>
                 </div>
                 <span style="width:34px;"></span>
             </div>
@@ -981,7 +981,7 @@
                 <span id="pixel-inspector-date" class="pixel-inspector-date"></span>
                 <span id="pixel-inspector-mood" class="pixel-inspector-mood"></span>
                 <span id="pixel-inspector-meta" class="pixel-inspector-meta"></span>
-                <button id="pixel-open-day-btn" class="btn-secondary pixel-open-day" type="button">Открыть день</button>
+                <button id="pixel-open-day-btn" class="btn-secondary pixel-open-day" type="button" data-i18n="pixel.openDay">Открыть день</button>
             </div>
 
             <div class="pixel-summary">
@@ -989,19 +989,19 @@
                 <div class="pixel-summary-cards">
                     <div class="pixel-sum-card pos">
                         <span id="pixel-count-pos" class="pixel-sum-num">0</span>
-                        <span class="pixel-sum-label">Позитивных</span>
+                        <span class="pixel-sum-label" data-i18n="pixel.pos">Позитивных</span>
                         <span id="pixel-pct-pos" class="pixel-sum-pct">0%</span>
                         <span class="pixel-sum-bar"><span id="pixel-bar-pos"></span></span>
                     </div>
                     <div class="pixel-sum-card neu">
                         <span id="pixel-count-neu" class="pixel-sum-num">0</span>
-                        <span class="pixel-sum-label">Нейтральных</span>
+                        <span class="pixel-sum-label" data-i18n="pixel.neu">Нейтральных</span>
                         <span id="pixel-pct-neu" class="pixel-sum-pct">0%</span>
                         <span class="pixel-sum-bar"><span id="pixel-bar-neu"></span></span>
                     </div>
                     <div class="pixel-sum-card neg">
                         <span id="pixel-count-neg" class="pixel-sum-num">0</span>
-                        <span class="pixel-sum-label">Негативных</span>
+                        <span class="pixel-sum-label" data-i18n="pixel.neg">Негативных</span>
                         <span id="pixel-pct-neg" class="pixel-sum-pct">0%</span>
                         <span class="pixel-sum-bar"><span id="pixel-bar-neg"></span></span>
                     </div>
@@ -1069,8 +1069,8 @@
         <div class="modal-backdrop"></div>
         <div class="modal-content fullscreen-content settings-modal-content">
             <div class="entry-modal-header">
-                <button id="close-notifications-btn" class="back-btn-icon" title="Назад"><span id="icon-back-notifications"></span></button>
-                <h2 class="ds-header-title" data-i18n="Уведомления">Уведомления</h2>
+                <button id="close-notifications-btn" class="back-btn-icon" data-i18n-title="common.back"><span id="icon-back-notifications"></span></button>
+                <h2 class="ds-header-title" data-i18n="settings.notifications">Уведомления</h2>
                 <span style="width:34px;"></span>
             </div>
 
@@ -1096,15 +1096,15 @@
                             <circle cx="72" cy="55" r="5" fill="#EF9A9A" opacity="0.45"/>
                         </svg>
                     </span>
-                    <span class="notif-hero-title" data-i18n="Как твой день?">Как твой день?</span>
-                    <span class="notif-hero-sub" data-i18n="Одно касание — и настроение отмечено">Одно касание — и настроение отмечено</span>
+                    <span class="notif-hero-title" data-i18n="notif.heroTitle">Как твой день?</span>
+                    <span class="notif-hero-sub" data-i18n="notif.heroSub">Одно касание — и настроение отмечено</span>
                 </div>
 
                 <div class="push-preview">
                     <img src="icon-192.png" alt="" class="push-preview-icon">
                     <span class="push-preview-body">
-                        <span class="push-preview-app" data-i18n="Страницы">Страницы</span>
-                        <span class="push-preview-text" data-i18n="Как твой день?">Как твой день?</span>
+                        <span class="push-preview-app" data-i18n="app.brand">Daytone</span>
+                        <span class="push-preview-text" data-i18n="notif.heroTitle">Как твой день?</span>
                     </span>
                     <span class="push-preview-time" id="push-preview-time">20:00</span>
                 </div>
@@ -1112,10 +1112,10 @@
                 <div class="settings-group">
                     <div class="settings-row is-static">
                         <span class="settings-row-text">
-                            <span class="settings-row-title" data-i18n="Ежедневное напоминание">Ежедневное напоминание</span>
+                            <span class="settings-row-title" data-i18n="notif.daily">Ежедневное напоминание</span>
                             <span class="settings-row-sub" id="notif-next-sub">—</span>
                         </span>
-                        <label class="ds-switch" title="Уведомления">
+                        <label class="ds-switch" data-i18n-title="settings.notifications"></label>
                             <input type="checkbox" id="notif-enabled-toggle">
                             <span class="ds-switch-track"><span class="ds-switch-thumb"></span></span>
                         </label>
@@ -1123,29 +1123,29 @@
 
                     <div class="settings-row is-static">
                         <span class="settings-row-text">
-                            <span class="settings-row-title" data-i18n="Время">Время</span>
-                            <span class="settings-row-sub" data-i18n="Когда присылать напоминание">Когда присылать напоминание</span>
+                            <span class="settings-row-title" data-i18n="notif.time">Время</span>
+                            <span class="settings-row-sub" data-i18n="notif.timeSub">Когда присылать напоминание</span>
                         </span>
                         <input type="time" id="notif-time-input" class="ds-time-input" value="20:00">
                     </div>
                 </div>
 
-                <div class="ds-block-title" data-i18n="Дни недели">Дни недели</div>
+                <div class="ds-block-title" data-i18n="notif.days">Дни недели</div>
                 <div class="ds-days" id="notif-days"></div>
 
                 <div class="settings-group">
                     <div class="settings-row is-static column">
-                        <span class="settings-row-title" data-i18n="Разрешение системы">Разрешение системы</span>
+                        <span class="settings-row-title" data-i18n="notif.permission">Разрешение системы</span>
                         <span class="settings-row-sub" id="notif-permission-sub">—</span>
-                        <button id="notif-permission-btn" class="btn-primary ds-wide-btn" type="button" data-i18n="Разрешить уведомления">Разрешить уведомления</button>
+                        <button id="notif-permission-btn" class="btn-primary ds-wide-btn" type="button" data-i18n="notif.allow">Разрешить уведомления</button>
                     </div>
                     <button class="settings-row" id="notif-test-btn" type="button">
                         <span class="settings-row-icon icon-send">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                         </span>
                         <span class="settings-row-text">
-                            <span class="settings-row-title" data-i18n="Проверить уведомление">Проверить уведомление</span>
-                            <span class="settings-row-sub" data-i18n="Пришлёт тестовое прямо сейчас">Пришлёт тестовое прямо сейчас</span>
+                            <span class="settings-row-title" data-i18n="notif.test">Проверить уведомление</span>
+                            <span class="settings-row-sub" data-i18n="notif.testSub">Пришлёт тестовое прямо сейчас</span>
                         </span>
                     </button>
                 </div>
