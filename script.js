@@ -263,6 +263,7 @@ const NAV_ICONS = {
     // Корзина
     trash: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`,
     nostalgia: `<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline><path d="M3.5 9 L3.5 4.5 L8 4.5"></path></svg>`,
+        trophy: `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 5"/><path d="M17 6h3a3 3 0 0 1-3 5"/></svg>`,
 };
 
 
@@ -1545,6 +1546,7 @@ async function saveAndRender() {
     renderEntries();
     drawMoodChart();
     renderCalendar();
+    checkAchievements();
 }
 
 async function loadEntries() {
@@ -1942,6 +1944,9 @@ function applyTheme(themeName) {
         btn.classList.toggle('selected', btn.getAttribute('data-theme') === themeName);
     });
     localStorage.setItem('my_web_diary_theme_v1', themeName);
+    const prevTheme = localStorage.getItem('my_web_diary_theme_prev_v1');
+    if (prevTheme === null || prevTheme !== themeName) localStorage.setItem('ds_theme_changed_v1', '1');
+    localStorage.setItem('my_web_diary_theme_prev_v1', themeName);
     syncThemeColor();
     
     // Перерисовываем статистику, если она открыта
@@ -1960,6 +1965,8 @@ function applyTheme(themeName) {
         }
     }
     syncThemeColor();
+    // Проверяем достижение "Разноцветная жизнь" сразу после смены темы
+    checkAchievements();
 }
 
 function loadTheme() {
@@ -2476,15 +2483,9 @@ document.getElementById('stats-mode-deep').onclick = () => { if (currentStatsMod
 
 // === Глубокая статистика === //
 function renderBestStreak() {
-    const daysMap = {};
-    diaryEntries.forEach(e => {
-        const k = getDateKey(e.date);
-        (daysMap[k] = daysMap[k] || []).push(e);
-    });
-
-    const sortedDays = Object.keys(daysMap).map(dateKey => {
+    const sortedDays = [...getDayIndex().entries()].map(([dateKey, es]) => {
         let total = 0, count = 0;
-        daysMap[dateKey].forEach(e => {
+        es.forEach(e => {
             const s = getMoodScore(e.mood);
             if (s !== null) { total += s; count++; }
         });
@@ -2492,7 +2493,7 @@ function renderBestStreak() {
             date: dateKey,
             dateObj: new Date(dateKey + 'T12:00:00'),
             avgScore: count > 0 ? total / count : 0,
-            entries: daysMap[dateKey]
+            entries: es
         };
     }).sort((a, b) => a.dateObj - b.dateObj);
 
@@ -2577,11 +2578,12 @@ function renderLastWeekMood(containerId = 'last-week-mood-container') {
         (byDay[k] = byDay[k] || []).push(e);
     });
 
+    const index = getDayIndex();
     const dayScores = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(startOfLastWeek);
         d.setDate(d.getDate() + i);
-        const es = byDay[getDateKey(d)] || [];
+        const es = index.get(getDateKey(d)) || [];
         const avg = calculateSmartDayScore(es);
         dayScores.push({ date: d, avg, emoji: avg !== null ? getEmojiByScore(avg) : null });
     }
@@ -2827,11 +2829,7 @@ function renderAllTriggersList() {
     });
     const globalAvg = globalCount ? globalTotal / globalCount : 0;
 
-    const entriesByDay = {};
-    diaryEntries.forEach(e => {
-        const k = getDateKey(e.date);
-        (entriesByDay[k] = entriesByDay[k] || []).push(e);
-    });
+    const entriesByDay = getDayIndex();
 
     let bestPositive = null, bestNegative = null, maxPos = 0, maxNeg = 0;
     Object.entries(triggerStats).forEach(([triggerName, data]) => {
@@ -2847,7 +2845,7 @@ function renderAllTriggersList() {
             if (!e.triggers || !e.triggers.includes(triggerName)) return;
             const d = new Date(e.date);
             d.setDate(d.getDate() + 1);
-            (entriesByDay[getDateKey(d)] || []).forEach(n => {
+            (entriesByDay.get(getDateKey(d)) || []).forEach(n => {
                 const s = getMoodScore(n.mood);
                 if (s !== null) { nextTotal += s; nextCount++; }
             });
@@ -5577,6 +5575,7 @@ function updateProgressCard() {
     progressText.textContent = I18N.t('progress.streak', { count: I18N.plural(streak, 'unit.day') });
     progressFill.style.width = `${Math.min((streak / 7) * 100, 100)}%`;
     renderWidgetPreviews();
+    checkAchievements();
 }
 
 bindClick('sidebar-favorites-btn', applyFavoriteFilter);
@@ -6173,6 +6172,193 @@ function virtualizeEntriesList() {
     });
 }
 
+// === 🏅 ДОСТИЖЕНИЯ ===
+const ACH_KEY = 'ds_achievements_v1';
+const ACHIEVEMENTS = [
+    { id: 'newbie',       cur: s => s.totalEntries, target: 1 },
+    { id: 'apprentice',   cur: s => s.totalDays,    target: 7 },
+    { id: 'master',       cur: s => s.totalDays,    target: 30 },
+    { id: 'eternal',      cur: s => s.totalDays,    target: 360 },
+    { id: 'tireless',     cur: s => s.bestStreak,   target: 30 },
+    { id: 'nights',       cur: s => s.totalDays,    target: 1001 },
+    { id: 'multifaceted', cur: s => s.moods,        target: 6 },
+    { id: 'rich',         cur: s => s.moods,        target: 10 },
+    { id: 'colorful',     cur: s => s.themeChanged ? 1 : 0, target: 1 }
+];
+
+function computeAchievementStats() {
+    const days = new Set(), moods = new Set();
+    diaryEntries.forEach(e => {
+        days.add(getDateKey(e.date));
+        if (e.mood) moods.add(e.mood);
+    });
+    const sortedDays = [...days].sort();
+    let best = 0, cur = 0, prevTs = 0;
+    sortedDays.forEach(k => {
+        const ts = new Date(k + 'T12:00:00').getTime();
+        cur = (prevTs && Math.round((ts - prevTs) / 86400000) === 1) ? cur + 1 : 1;
+        if (cur > best) best = cur;
+        prevTs = ts;
+    });
+    return {
+        totalEntries: diaryEntries.length,
+        totalDays: days.size,
+        bestStreak: best,
+        moods: moods.size,
+        themeChanged: localStorage.getItem('ds_theme_changed_v1') === '1'
+    };
+}
+
+function getUnlockedAchievements() {
+    try { return JSON.parse(localStorage.getItem(ACH_KEY)) || {}; } catch { return {}; }
+}
+
+function checkAchievements() {
+    // если иконки ещё не инициализированы — пропускаем, будет вызвано позже
+    if (typeof ACHIEVEMENTS === 'undefined') return;
+
+    const unlocked = getUnlockedAchievements();
+    const stats = computeAchievementStats();
+    let changed = false;
+    ACHIEVEMENTS.forEach(a => {
+        if (unlocked[a.id]) return;
+        if (a.cur(stats) >= a.target) {
+            unlocked[a.id] = Date.now();
+            changed = true;
+            showAchievementToast(a.id);
+        }
+    });
+    if (changed) {
+        localStorage.setItem(ACH_KEY, JSON.stringify(unlocked));
+        const modal = document.getElementById('achievements-modal');
+        if (modal && !modal.classList.contains('hidden')) renderAchievements();
+    }
+}
+
+// === 🏅 ТОСТ ДОСТИЖЕНИЯ: очередь, чтобы при массовой разблокировке тосты не наслаивались ===
+const _achToastQueue = [];
+let _achToastBusy = false;
+
+function showAchievementToast(achId) {
+    _achToastQueue.push(achId);
+    if (!_achToastBusy) nextAchievementToast();
+}
+
+function nextAchievementToast() {
+    const id = _achToastQueue.shift();
+    if (!id) { _achToastBusy = false; return; }
+
+    // защита: если иконки ещё не инициализированы — ставим обратно в очередь
+    if (typeof ACHIEVEMENT_ICONS === 'undefined' || !ACHIEVEMENT_ICONS[id]) {
+        _achToastQueue.unshift(id);
+        _achToastBusy = false;
+        setTimeout(nextAchievementToast, 200);
+        return;
+    }
+    _achToastBusy = true;
+
+    const toast = document.createElement('div');
+    toast.className = 'ach-toast';
+    toast.innerHTML = `
+        <span class="ach-toast-trophy">${NAV_ICONS.trophy}</span>
+        <span class="ach-toast-icon">${ACHIEVEMENT_ICONS[id] || ''}</span>
+        <span class="ach-toast-text">
+            <span class="ach-toast-title">${I18N.t('ach.congrats')}</span>
+            <span class="ach-toast-name">${I18N.t('ach.' + id + '.name')}</span>
+        </span>
+    `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    const duration = _achToastQueue.length >= 3 ? 1600 : 3200;
+    setTimeout(() => {
+        toast.classList.add('hide');
+        setTimeout(() => {
+            toast.remove();
+            nextAchievementToast();
+        }, 450);
+    }, duration);
+}
+
+function renderAchievements() {
+    const grid = document.getElementById('achievements-grid');
+    if (!grid) return;
+    const unlocked = getUnlockedAchievements();
+    const stats = computeAchievementStats();
+    grid.innerHTML = ACHIEVEMENTS.map(a => {
+        const done = !!unlocked[a.id];
+        const cur = Math.min(a.cur(stats), a.target);
+        return `<button type="button" class="ach-card${done ? ' unlocked' : ''}" data-ach="${a.id}">
+            <span class="ach-icon">${ACHIEVEMENT_ICONS[a.id] || ''}</span>
+            <span class="ach-name">${I18N.t('ach.' + a.id + '.name')}</span>
+            <span class="ach-progress">${done ? '✓' : cur + ' / ' + a.target}</span>
+        </button>`;
+    }).join('');
+    const count = ACHIEVEMENTS.filter(a => unlocked[a.id]).length;
+    const counter = document.getElementById('achievements-counter');
+    if (counter) counter.textContent = I18N.t('ach.counter', { a: count, b: ACHIEVEMENTS.length });
+}
+
+let _achDetailId = null;
+function openAchievementDetail(id) {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    if (!a) return;
+    _achDetailId = id;
+    const done = !!getUnlockedAchievements()[id];
+    const stats = computeAchievementStats();
+    const iconBox = document.getElementById('achievement-detail-icon');
+    iconBox.innerHTML = ACHIEVEMENT_ICONS[id] || '';
+    iconBox.classList.toggle('unlocked', done);
+    document.getElementById('achievement-detail-name').textContent = I18N.t('ach.' + id + '.name');
+    document.getElementById('achievement-detail-text').textContent = done
+        ? I18N.t('ach.congrats')
+        : `${I18N.t('ach.' + id + '.desc')} — ${Math.min(a.cur(stats), a.target)} / ${a.target}`;
+    document.getElementById('achievement-detail-modal').classList.remove('hidden');
+}
+function closeAchievementDetail() {
+    _achDetailId = null;
+    document.getElementById('achievement-detail-modal').classList.add('hidden');
+}
+
+function openAchievements() {
+    closeSidebar();
+    renderAchievements();
+    document.getElementById('achievements-modal').classList.remove('hidden');
+    document.body.classList.add('modal-lock');
+    document.getElementById('bottomNav').classList.add('nav-hidden');
+}
+function closeAchievements() {
+    closeAchievementDetail();
+    document.getElementById('achievements-modal').classList.add('hidden');
+    document.body.classList.remove('modal-lock');
+    document.getElementById('bottomNav').classList.remove('nav-hidden');
+}
+
+document.getElementById('sidebar-achievements-btn').onclick = openAchievements;
+document.getElementById('close-achievements-btn').onclick = closeAchievements;
+document.querySelector('#achievements-modal .modal-backdrop').onclick = closeAchievements;
+document.getElementById('achievements-grid').addEventListener('click', (e) => {
+    const card = e.target.closest('.ach-card');
+    if (card) openAchievementDetail(card.dataset.ach);
+});
+document.getElementById('close-achievement-detail-btn').onclick = closeAchievementDetail;
+document.querySelector('#achievement-detail-modal .modal-backdrop').onclick = closeAchievementDetail;
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const detail = document.getElementById('achievement-detail-modal');
+    if (detail && !detail.classList.contains('hidden')) { closeAchievementDetail(); return; }
+    const main = document.getElementById('achievements-modal');
+    if (main && !main.classList.contains('hidden')) closeAchievements();
+});
+document.addEventListener('app:langchange', () => {
+    const main = document.getElementById('achievements-modal');
+    if (main && !main.classList.contains('hidden')) {
+        I18N.applyStatic(main);
+        renderAchievements();
+    }
+    if (_achDetailId) openAchievementDetail(_achDetailId);
+});
+
 
 // === 🚀 ЗАПУСК ===
 async function initApp() {
@@ -6221,7 +6407,9 @@ async function initApp() {
         'icon-chart': NAV_ICONS.chart,
         'icon-tags': NAV_ICONS.tags,
         'icon-export': NAV_ICONS.exportImport,
-        'icon-pin': NAV_ICONS.pin
+        'icon-pin': NAV_ICONS.pin,
+        'icon-achievements': NAV_ICONS.trophy,
+        'icon-back-achievements': NAV_ICONS.back,
     };
     Object.entries(iconMap).forEach(([id, svg]) => {
         const el = document.getElementById(id);
@@ -6608,6 +6796,8 @@ initApp();
         } catch {}
     }
 
+    
+
     // ---------- СТАРТ ----------
     const gearSlot = $('icon-settings');
     if (gearSlot) gearSlot.innerHTML = ICONS.gear;
@@ -6630,3 +6820,16 @@ initApp();
     applyLanguage(state.lang, false);
     refreshPermission().then(() => { renderNotifications(); syncSchedule(); });
 })();
+
+// === 🏅 ИКОНКИ ДОСТИЖЕНИЙ (SVG, stroke-стиль приложения, цвет через currentColor) ===
+const ACHIEVEMENT_ICONS = {
+    newbie: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.6 9.4 4l-1.1.9"/><path d="M12 5.3V3.5"/><path d="M14 5.6l.6-1.6 1.1.9"/><circle cx="12" cy="9.6" r="4.4"/><path d="M10.4 9.1h.01"/><path d="M13.6 9.1h.01"/><path d="M12 10.4l1.3 1-1.3 1-1.3-1z"/><path d="M4.2 13.6l2.5 1.8 2.8-2.2 2.5 2.2 2.5-2.2 2.8 2.2 2.5-1.8"/><path d="M4.2 13.6c.3 3.9 3.7 6.9 7.8 6.9s7.5-3 7.8-6.9"/><path d="M17.4 7.6c1.9 1.3 3.1 3.3 3.2 5.6l-1.9 1.3-1.3-1 1.2-1.3-1.3-1.2 1.2-1.3-1.4-1.1z"/></svg>`,
+    apprentice: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.7 9.2 12 4.8l9.3 4.4L12 13.6z"/><path d="M6.7 11.2v3.6c0 1.5 2.4 2.7 5.3 2.7s5.3-1.2 5.3-2.7v-3.6"/><path d="M21.3 9.2v4.6"/><path d="M21.3 15.6h.01"/></svg>`,
+    master: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.2" width="14" height="12.6" rx="2"/><path d="M8.6 11.6V8.4l1.9 1.5L12 7.4l1.5 2.5 1.9-1.5v3.2z"/><path d="M5 18.2h14v1.6a1.6 1.6 0 0 1-1.6 1.6H6.6A1.6 1.6 0 0 1 5 19.8z"/><path d="M16.4 20h.01"/></svg>`,
+    eternal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 19.8 6v6.1c0 4.9-3.3 8.5-7.8 9.3-4.5-.8-7.8-4.4-7.8-9.3V6z"/><path d="M9.2 9.9a2.3 2.3 0 1 0 0 4.6c1.5 0 2.2-1.1 2.8-2.3.6-1.2 1.3-2.3 2.8-2.3a2.3 2.3 0 1 1 0 4.6c-1.5 0-2.2-1.1-2.8-2.3-.6-1.2-1.3-2.3-2.8-2.3z"/></svg>`,
+    tireless: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.9" r="2.2"/><path d="M9 9.1 6.4 7.9 5 4.9"/><path d="M15 9.1l2.6-1.2L19 4.9"/><path d="M9.4 8.9h5.2l.9 6-1.1 6.4h-1.5l-.9-5.2-.9 5.2H9.6L8.5 14.9z"/><path d="M8.7 9.6c-1.8 2.5-2.8 5.4-3 8.6l2.8.9"/><path d="M15.3 9.6c1.8 2.5 2.8 5.4 3 8.6l-2.8.9"/></svg>`,
+    nights: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5 20.5 3.5"/><path d="M9 5.2V3.4"/><path d="M5.4 6.6 4.1 5.3"/><path d="M4.8 10.2H3"/><path d="M6.6 13.4l-1.3 1.3"/><path d="M12.6 6.4a4.6 4.6 0 1 0-6.2 6.2z"/><path d="M15.8 12.6a4.8 4.8 0 1 0 4.6 6.4 5.6 5.6 0 0 1-4.6-6.4z"/></svg>`,
+    multifaceted: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="8.2" ry="9.2"/><path d="M9.2 9.6h.01"/><path d="M14.8 9.6h.01"/><path d="M8.6 14.6h6.8"/></svg>`,
+    rich: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 3.6l.75 1.5 1.65.24-1.2 1.17.28 1.65-1.48-.78-1.48.78.28-1.65-1.2-1.17 1.65-.24z"/><path d="M12 2.4l.85 1.7 1.9.28-1.37 1.34.32 1.88L12 6.7l-1.7.9.32-1.88L9.25 4.38l1.9-.28z"/><path d="M17.7 3.6l.75 1.5 1.65.24-1.2 1.17.28 1.65-1.48-.78-1.48.78.28-1.65-1.2-1.17 1.65-.24z"/><circle cx="12" cy="11.2" r="2.5"/><path d="M8.6 21v-3.6c-2.5-.9-4.2-3.5-4.4-6.6a1.5 1.5 0 0 1 3-.2c.3 2.5 1.6 4.4 3.2 4.4h3.2c1.6 0 2.9-1.9 3.2-4.4a1.5 1.5 0 0 1 3 .2c-.2 3.1-1.9 5.7-4.4 6.6V21z"/></svg>`,
+    colorful: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a8 8 0 1 0 0 16c1.3 0 1.9-.9 1.5-1.9-.4-1.2.3-2.4 1.7-2.4h1.3a3.5 3.5 0 0 0 3.4-3.2A8.2 8.2 0 0 0 10 4z"/><circle cx="7" cy="9" r="1"/><circle cx="5.6" cy="12.4" r="1"/><circle cx="7.6" cy="15.4" r="1"/><path d="M13.5 15.5l6-6"/><path d="M18.5 8.5l1-1a1.5 1.5 0 0 1 2.1 2.1l-1 1z"/><path d="M13.2 16.2c-1.1.3-1.9 1.1-2.2 2.2 1.1-.3 1.9-1.1 2.2-2.2z"/></svg>`
+};

@@ -249,7 +249,20 @@
             'trig.on': 'Триггеры включены', 'trig.off': 'Триггеры выключены',
             'pixel.yearGridTitle': 'Пиксельная сетка года',
             'pixel.yearGridSub': '365 дней настроения одним взглядом',
-            'trig.add': 'Добавить триггер'
+            'trig.add': 'Добавить триггер',
+            'ach.menu': 'Достижения', 'ach.title': 'Достижения',
+            'ach.counter': '{a} из {b}',
+            'ach.unlockedToast': '🏅 Достижение: {name}',
+            'ach.congrats': 'Поздравляем! Вы получили достижение',
+            'ach.newbie.name': 'Новичок', 'ach.newbie.desc': 'Сделать первую запись',
+            'ach.apprentice.name': 'Подмастерье', 'ach.apprentice.desc': 'Вести дневник 7 дней',
+            'ach.master.name': 'Мастер', 'ach.master.desc': 'Вести дневник 30 дней',
+            'ach.eternal.name': 'Вечный', 'ach.eternal.desc': 'Вести дневник 360 дней',
+            'ach.tireless.name': 'Неутомимый', 'ach.tireless.desc': 'Вести дневник 30 дней подряд',
+            'ach.nights.name': '1001 ночь', 'ach.nights.desc': 'Вести дневник 1001 день',
+            'ach.multifaceted.name': 'Многогранная личность', 'ach.multifaceted.desc': 'Использовать 6 разных настроений',
+            'ach.rich.name': 'Богатая натура', 'ach.rich.desc': 'Использовать все 10 настроений',
+            'ach.colorful.name': 'Разноцветная жизнь', 'ach.colorful.desc': 'Сменить тему оформления'
         },
         en: {
             'app.brand': 'Daytone',
@@ -487,7 +500,20 @@
             'trig.on': 'Triggers on', 'trig.off': 'Triggers off',
             'pixel.yearGridTitle': 'Year in pixels',
             'pixel.yearGridSub': '365 days of mood at a glance',
-            'trig.add': 'Add trigger'
+            'trig.add': 'Add trigger',
+            'ach.menu': 'Achievements', 'ach.title': 'Achievements',
+            'ach.counter': '{a} of {b}',
+            'ach.unlockedToast': '🏅 Achievement: {name}',
+            'ach.congrats': 'Congratulations! You have earned this achievement',
+            'ach.newbie.name': 'Newbie', 'ach.newbie.desc': 'Make your first entry',
+            'ach.apprentice.name': 'Apprentice', 'ach.apprentice.desc': 'Keep the diary for 7 days',
+            'ach.master.name': 'Master', 'ach.master.desc': 'Keep the diary for 30 days',
+            'ach.eternal.name': 'Eternal', 'ach.eternal.desc': 'Keep the diary for 360 days',
+            'ach.tireless.name': 'Tireless', 'ach.tireless.desc': 'Write 30 days in a row',
+            'ach.nights.name': '1001 Nights', 'ach.nights.desc': 'Keep the diary for 1001 days',
+            'ach.multifaceted.name': 'Multifaceted personality', 'ach.multifaceted.desc': 'Use 6 different moods',
+            'ach.rich.name': 'Rich nature', 'ach.rich.desc': 'Use all 10 moods',
+            'ach.colorful.name': 'Colorful life', 'ach.colorful.desc': 'Change the app theme'
         }
     };
 

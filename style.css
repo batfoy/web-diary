@@ -4307,3 +4307,111 @@ option,
     content-visibility: auto;
     contain-intrinsic-size: auto 140px;
 }
+
+/* ============================================
+🏅 ДОСТИЖЕНИЯ
+============================================ */
+:root { --gold: #FFD700; }
+.achievements-modal-content { padding: 0; }
+.achievements-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-color) var(--surface-variant);
+}
+.achievements-body::-webkit-scrollbar { width: 6px; }
+.achievements-body::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 3px; }
+.achievements-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ach-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 6px 10px;
+    background: var(--surface-variant);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    cursor: pointer; font: inherit;
+    color: var(--text-muted);
+    transition: transform .15s, border-color .2s, box-shadow .2s, background .2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.ach-card:active { transform: scale(.95); }
+.ach-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.ach-icon svg { width: 34px; height: 34px; }
+.ach-name { font-size: .7em; font-weight: 600; text-align: center; line-height: 1.25; }
+.ach-progress { font-size: .62em; opacity: .8; }
+.ach-card.unlocked {
+    color: var(--gold);
+    border-color: rgba(255, 215, 0, .55);
+    background: linear-gradient(160deg, rgba(255,215,0,.16), rgba(255,215,0,.04));
+    box-shadow: 0 4px 14px rgba(255, 215, 0, .18);
+}
+body:not(.theme-dark) .ach-card.unlocked { color: #b8860b; }
+.ach-card.unlocked .ach-icon { filter: drop-shadow(0 0 6px rgba(255, 215, 0, .55)); }
+.achievements-counter { text-align: center; font-size: .75em; color: var(--text-muted); margin: 14px 0 0; }
+
+.achievement-detail-content {
+    max-width: 320px; width: 86%;
+    padding: 26px 20px 22px;
+    border-radius: 20px;
+    text-align: center; position: relative;
+}
+.achievement-detail-close {
+    position: absolute; top: 10px; right: 10px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--surface-variant); border: none;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: color .2s, transform .15s;
+}
+.achievement-detail-close:hover { color: var(--text-color); }
+.achievement-detail-close:active { transform: scale(.9); }
+.achievement-detail-icon {
+    width: 84px; height: 84px; margin: 6px auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+}
+.achievement-detail-icon svg { width: 64px; height: 64px; }
+.achievement-detail-icon.unlocked { color: var(--gold); filter: drop-shadow(0 0 10px rgba(255,215,0,.5)); }
+.achievement-detail-name { font-size: 1.05em; font-weight: 700; margin: 0 0 8px; color: var(--text-color); }
+.achievement-detail-text { font-size: .85em; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+/* ============================================
+🏅 ТОСТ ДОСТИЖЕНИЯ (выплывает сверху)
+============================================ */
+.ach-toast {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translate(-50%, -160%);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: min(92vw, 380px);
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid rgba(255, 215, 0, .65);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25), 0 0 18px rgba(255, 215, 0, .25);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .45s cubic-bezier(.22, 1, .36, 1), opacity .4s ease;
+}
+.ach-toast.show { transform: translate(-50%, 0); opacity: 1; }
+.ach-toast.hide { transform: translate(-50%, -160%); opacity: 0; }
+.ach-toast-trophy { color: var(--gold, #FFD700); display: flex; flex-shrink: 0; }
+.ach-toast-trophy svg { width: 22px; height: 22px; }
+.ach-toast-icon {
+    width: 44px; height: 44px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(160deg, rgba(255, 215, 0, .22), rgba(255, 215, 0, .06));
+    color: var(--gold, #FFD700);
+}
+.ach-toast-icon svg { width: 30px; height: 30px; filter: drop-shadow(0 0 6px rgba(255, 215, 0, .55)); }
+.ach-toast-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ach-toast-title { font-size: .78em; font-weight: 700; color: var(--text-color); line-height: 1.3; }
+.ach-toast-name {
+    font-size: .86em; font-weight: 700; color: var(--gold, #FFD700);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body:not(.theme-dark) .ach-toast-name { color: #b8860b; }
